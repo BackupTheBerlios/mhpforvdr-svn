@@ -1,0 +1,24 @@
+
+This AWT is based on Kaffe's old AWT and adapted to the needs of MHP.
+
+The following classes contain changes to the original implementation:
+AWTEvent
+Color
+Component
+Container
+Defaults
+EventDispatchThread
+EventQueue
+FocusEvt
+Font
+FontMetrics
+Image
+ImageNativeProducer
+Toolkit
+
+All classes beginning with MHP* have been added.
+Several classes have been removed because they are not needed
+for MHP (most notably Window and Frame)
+
+In the future an implementation as a peer of the classpath
+AWT may be possible, this needs to be evaluated.

@@ -1,0 +1,4 @@
+This directory contained patches needed for this plugin.
+With the course of development of VDR (the 1.3 series) and
+my own involvement in this (libsi, which was originally written with
+this plugin in mind) all of these patches are no longer needed.

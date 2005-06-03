@@ -1,0 +1,739 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HTML>
+<HEAD>
+	<META HTTP-EQUIV="CONTENT-TYPE" CONTENT="text/html; charset=iso-8859-15">
+	<TITLE></TITLE>
+	<META NAME="GENERATOR" CONTENT="OpenOffice.org 1.1.3  (Linux)">
+	<META NAME="CREATED" CONTENT="20041001;16325900">
+	<META NAME="CHANGED" CONTENT="20041004;19544900">
+	<STYLE>
+	<!--
+		P.sdfootnote { margin-left: 0.5cm; text-indent: -0.5cm; margin-bottom: 0cm; font-size: 10pt }
+		A.sdfootnoteanc { font-size: 57% }
+	-->
+	</STYLE>
+</HEAD>
+<BODY LANG="de-DE" DIR="LTR">
+<H1 ALIGN=CENTER>MHP API list</H1>
+<P>I recommend to read the main parts of the MHP specification first
+to get a general idea (chapters 0, 5, 9, 11, 13). Some APIs are
+mentioned at various places, giving clarifications or extensions.
+Once you have understood the basic architecture, you will know what
+most of the APIs in this list are supposed to do.</P>
+<P>The <B>second</B> column gives the first page where the respective
+package is described in the main part of the MHP specification
+(mostly in chapter 11), while the <B>third</B> column gives the
+location of the actual specification of that package (mostly in the
+annexes)</P>
+<P>If not noted otherwise (Sun, Davic), all references point to the
+MHP specification. First the section numberis given, then the page
+number. These page numbers are taken from the MHP specification (ETSI
+TS 102 812) version 1.1.1 from 2001-11. Other versions of this
+specification will have different numbers, in this case use the
+section number.</P>
+<P>Some sources for the specifications are listed below the table.</P>
+<P>The packages listed here vary extremely in extent (from one class
+to more than a hundred) and difficulty to implement (some contain
+only trivial interfaces, other require heavy-weight native support).
+So do not compare the number of packages with green status to those
+with red status, the percentage you get is meaningless.</P>
+<TABLE WIDTH=100% BORDER=1 CELLPADDING=4 CELLSPACING=3>
+	<COL WIDTH=80*>
+	<COL WIDTH=29*>
+	<COL WIDTH=49*>
+	<COL WIDTH=82*>
+	<COL WIDTH=16*>
+	<THEAD>
+		<TR VALIGN=TOP>
+			<TH WIDTH=31%>
+				<P>Name, Java package</P>
+			</TH>
+			<TH WIDTH=11%>
+				<P>Occurrence in Spec.</P>
+			</TH>
+			<TH WIDTH=19%>
+				<P ALIGN=RIGHT>Specification</P>
+			</TH>
+			<TH WIDTH=32%>
+				<P>Comments</P>
+			</TH>
+			<TH WIDTH=6%>
+				<P>Status</P>
+			</TH>
+		</TR>
+	</THEAD>
+	<TBODY>
+		<TR VALIGN=TOP>
+			<TD WIDTH=31%>
+				<P>Fundamental classes, org.dvb.lang</P>
+			</TD>
+			<TD WIDTH=11%>
+				<P ALIGN=RIGHT>11.3.2.1, 246</P>
+			</TD>
+			<TD WIDTH=19%>
+				<P ALIGN=RIGHT>Annex H, 453</P>
+			</TD>
+			<TD WIDTH=32%>
+				<P>This is only the DVBClassLoader</P>
+			</TD>
+			<TD WIDTH=6% BGCOLOR="#008000">
+				<P><BR>
+				</P>
+			</TD>
+		</TR>
+		<TR VALIGN=TOP>
+			<TD WIDTH=31%>
+				<P>The AWT, java.awt</P>
+			</TD>
+			<TD WIDTH=11%>
+				<P ALIGN=RIGHT>11.4.1.1, 247</P>
+			</TD>
+			<TD WIDTH=19%>
+				<P ALIGN=RIGHT>Sun, PJAE</P>
+			</TD>
+			<TD WIDTH=32%>
+				<P>The heart of the graphics implementation</P>
+			</TD>
+			<TD WIDTH=6% BGCOLOR="#3deb3d">
+				<P><BR>
+				</P>
+			</TD>
+		</TR>
+		<TR VALIGN=TOP>
+			<TD WIDTH=31%>
+				<P>Havi User Interface, org.havi.ui</P>
+			</TD>
+			<TD WIDTH=11%>
+				<P ALIGN=RIGHT>11.4.1.2, 248</P>
+			</TD>
+			<TD WIDTH=19%>
+				<P ALIGN=RIGHT>Annex V, 790<A CLASS="sdfootnoteanc" NAME="sdfootnote1anc" HREF="#sdfootnote1sym"><SUP>1</SUP></A></P>
+			</TD>
+			<TD WIDTH=32%>
+				<P>The central API on top of AWT</P>
+			</TD>
+			<TD WIDTH=6% BGCOLOR="#ffff00">
+				<P><BR>
+				</P>
+			</TD>
+		</TR>
+		<TR VALIGN=TOP>
+			<TD WIDTH=31%>
+				<P>Havi Events, org.havi.ui.event</P>
+			</TD>
+			<TD WIDTH=11%>
+				<P ALIGN=RIGHT>11.4.1.2, 248</P>
+			</TD>
+			<TD WIDTH=19%>
+				<P ALIGN=RIGHT>Annex V, 790</P>
+			</TD>
+			<TD WIDTH=32%>
+				<P>Some events on top of java.awt.events</P>
+			</TD>
+			<TD WIDTH=6% BGCOLOR="#008000">
+				<P><BR>
+				</P>
+			</TD>
+		</TR>
+		<TR VALIGN=TOP>
+			<TD WIDTH=31%>
+				<P>DVB Events, org.dvb.event</P>
+			</TD>
+			<TD WIDTH=11%>
+				<P ALIGN=RIGHT>11.3.2.2, 246</P>
+			</TD>
+			<TD WIDTH=19%>
+				<P ALIGN=RIGHT>Annex I, 453</P>
+			</TD>
+			<TD WIDTH=32%>
+				<P>An extra event mechanism (there are three, this one, AWT,
+				Havi)</P>
+			</TD>
+			<TD WIDTH=6% BGCOLOR="#008000">
+				<P><BR>
+				</P>
+			</TD>
+		</TR>
+		<TR VALIGN=TOP>
+			<TD WIDTH=31%>
+				<P>Extended Graphics, org.dvb.ui</P>
+			</TD>
+			<TD WIDTH=11%>
+				<P ALIGN=RIGHT>11.4.1.3, 249; 13.3.6, 345</P>
+			</TD>
+			<TD WIDTH=19%>
+				<P ALIGN=RIGHT>Annex U, 753</P>
+			</TD>
+			<TD WIDTH=32%>
+				<P>Things like AlphaColor or DVBTextLayoutManager</P>
+			</TD>
+			<TD WIDTH=6% BGCOLOR="#ffff00">
+				<P><BR>
+				</P>
+			</TD>
+		</TR>
+		<TR VALIGN=TOP>
+			<TD WIDTH=31%>
+				<P>Streaming media, javax.media, javax.media.protocol</P>
+			</TD>
+			<TD WIDTH=11%>
+				<P ALIGN=RIGHT>11.4.2, 250</P>
+			</TD>
+			<TD WIDTH=19%>
+				<P ALIGN=RIGHT>Sun, JMF</P>
+			</TD>
+			<TD WIDTH=32%>
+				<P>a lot of clarifications and requirements on 250-255 (section
+				11.4.2), for this and the next packages</P>
+			</TD>
+			<TD WIDTH=6% BGCOLOR="#ff0000">
+				<P><BR>
+				</P>
+			</TD>
+		</TR>
+		<TR VALIGN=TOP>
+			<TD WIDTH=31%>
+				<P>javax.tv.media</P>
+			</TD>
+			<TD WIDTH=11%>
+				<P ALIGN=RIGHT>11.4.2, 252</P>
+			</TD>
+			<TD WIDTH=19%>
+				<P ALIGN=RIGHT>Sun, JavaTV</P>
+			</TD>
+			<TD WIDTH=32%>
+				<P><BR>
+				</P>
+			</TD>
+			<TD WIDTH=6% BGCOLOR="#ff0000">
+				<P><BR>
+				</P>
+			</TD>
+		</TR>
+		<TR VALIGN=TOP>
+			<TD WIDTH=31%>
+				<P>org.dvb.media</P>
+			</TD>
+			<TD WIDTH=11%>
+				<P ALIGN=RIGHT>11.4.2, 252</P>
+			</TD>
+			<TD WIDTH=19%>
+				<P ALIGN=RIGHT>Annex N, 574</P>
+			</TD>
+			<TD WIDTH=32%>
+				<P><BR>
+				</P>
+			</TD>
+			<TD WIDTH=6% BGCOLOR="#ff0000">
+				<P><BR>
+				</P>
+			</TD>
+		</TR>
+		<TR VALIGN=TOP>
+			<TD WIDTH=31%>
+				<P>org.davic.media</P>
+			</TD>
+			<TD WIDTH=11%>
+				<P ALIGN=RIGHT>11.4.2, 251</P>
+			</TD>
+			<TD WIDTH=19%>
+				<P ALIGN=RIGHT>Davic, Annex L</P>
+			</TD>
+			<TD WIDTH=32%>
+				<P>only parts required, see list</P>
+			</TD>
+			<TD WIDTH=6% BGCOLOR="#ff0000">
+				<P><BR>
+				</P>
+			</TD>
+		</TR>
+		<TR VALIGN=TOP>
+			<TD WIDTH=31%>
+				<P>Broadcast Transport Protocol Access, org.dvb.dsmcc</P>
+			</TD>
+			<TD WIDTH=11%>
+				<P ALIGN=RIGHT>11.5.1, 255</P>
+			</TD>
+			<TD WIDTH=19%>
+				<P ALIGN=RIGHT>Annex P, 624</P>
+			</TD>
+			<TD WIDTH=32%>
+				<P>Access to the DSMCC broadcast carousel</P>
+			</TD>
+			<TD WIDTH=6% BGCOLOR="#ffff99">
+				<P><BR>
+				</P>
+			</TD>
+		</TR>
+		<TR VALIGN=TOP>
+			<TD WIDTH=31%>
+				<P>Section Filter, org.davic.mpeg.sections</P>
+			</TD>
+			<TD WIDTH=11%>
+				<P ALIGN=RIGHT>11.5.4, 258</P>
+			</TD>
+			<TD WIDTH=19%>
+				<P ALIGN=RIGHT>Davic, Annex E</P>
+			</TD>
+			<TD WIDTH=32%>
+				<P>Access to section filtering</P>
+			</TD>
+			<TD WIDTH=6% BGCOLOR="#ff0000">
+				<P><BR>
+				</P>
+			</TD>
+		</TR>
+		<TR VALIGN=TOP>
+			<TD WIDTH=31%>
+				<P>Return Channel Connection Management, org.dvb.net.rc</P>
+			</TD>
+			<TD WIDTH=11%>
+				<P ALIGN=RIGHT>11.5.5, 258</P>
+			</TD>
+			<TD WIDTH=19%>
+				<P ALIGN=RIGHT>Annex R, 688</P>
+			</TD>
+			<TD WIDTH=32%>
+				<P>Necessary for the return channel from the box to the
+				application provider (TV station possibly), which wants to make
+				you buy stuff.</P>
+			</TD>
+			<TD WIDTH=6% BGCOLOR="#ff0000">
+				<P><BR>
+				</P>
+			</TD>
+		</TR>
+		<TR VALIGN=TOP>
+			<TD WIDTH=31%>
+				<P>Persistent Storage, org.dvb.io.persistent</P>
+			</TD>
+			<TD WIDTH=11%>
+				<P ALIGN=RIGHT>11.5.6, 258</P>
+			</TD>
+			<TD WIDTH=19%>
+				<P ALIGN=RIGHT>Annex J, 469</P>
+			</TD>
+			<TD WIDTH=32%>
+				<P>Persistent storage is not self-evident on a set-top box!</P>
+			</TD>
+			<TD WIDTH=6% BGCOLOR="#ff0000">
+				<P><BR>
+				</P>
+			</TD>
+		</TR>
+		<TR VALIGN=TOP>
+			<TD WIDTH=31%>
+				<P>java.io</P>
+			</TD>
+			<TD WIDTH=11%>
+				<P ALIGN=RIGHT>11.5.1.1, 255; 11.5.6, 258</P>
+			</TD>
+			<TD WIDTH=19%>
+				<P ALIGN=RIGHT>Sun, PJAE</P>
+			</TD>
+			<TD WIDTH=32%>
+				<P>some extensions to the behavior of java.io.File in particular</P>
+			</TD>
+			<TD WIDTH=6% BGCOLOR="#33cc66">
+				<P><BR>
+				</P>
+			</TD>
+		</TR>
+		<TR VALIGN=TOP>
+			<TD WIDTH=31%>
+				<P>DVB Service information, org.dvb.si</P>
+			</TD>
+			<TD WIDTH=11%>
+				<P ALIGN=RIGHT>11.6.1, 259</P>
+			</TD>
+			<TD WIDTH=19%>
+				<P ALIGN=RIGHT>Annex M, 490</P>
+			</TD>
+			<TD WIDTH=32%>
+				<P>Extensive access to all fields of ETSI/DVB based SI
+				information</P>
+			</TD>
+			<TD WIDTH=6% BGCOLOR="#33cc66">
+				<P><BR>
+				</P>
+			</TD>
+		</TR>
+		<TR VALIGN=TOP>
+			<TD WIDTH=31%>
+				<P>Service Selection, javax.tv.service.selection</P>
+			</TD>
+			<TD WIDTH=11%>
+				<P ALIGN=RIGHT>11.6.2, 259</P>
+			</TD>
+			<TD WIDTH=19%>
+				<P ALIGN=RIGHT>Sun, JavaTV</P>
+			</TD>
+			<TD WIDTH=32%>
+				<P>A service is what you may call a channel. API to change the
+				channel.</P>
+			</TD>
+			<TD WIDTH=6% BGCOLOR="#ffff00">
+				<P><BR>
+				</P>
+			</TD>
+		</TR>
+		<TR VALIGN=TOP>
+			<TD WIDTH=31%>
+				<P>Tuning, org.davic.net.tuning</P>
+			</TD>
+			<TD WIDTH=11%>
+				<P ALIGN=RIGHT>11.6.3, 259</P>
+			</TD>
+			<TD WIDTH=19%>
+				<P ALIGN=RIGHT>Davic, Annex H apart from H.4</P>
+			</TD>
+			<TD WIDTH=32%>
+				<P>API to tune to a different transponder, regardless of the
+				notion of services</P>
+			</TD>
+			<TD WIDTH=6% BGCOLOR="#ff0000">
+				<P><BR>
+				</P>
+			</TD>
+		</TR>
+		<TR VALIGN=TOP>
+			<TD WIDTH=31%>
+				<P>Conditional Access, org.davic.net.ca</P>
+			</TD>
+			<TD WIDTH=11%>
+				<P ALIGN=RIGHT>11.6.4, 260</P>
+			</TD>
+			<TD WIDTH=19%>
+				<P ALIGN=RIGHT>Davic, Annex I</P>
+			</TD>
+			<TD WIDTH=32%>
+				<P>CA stuff</P>
+			</TD>
+			<TD WIDTH=6% BGCOLOR="#ff0000">
+				<P><BR>
+				</P>
+			</TD>
+		</TR>
+		<TR VALIGN=TOP>
+			<TD WIDTH=31%>
+				<P>JavaTV Service, javax.tv.service, javax.tv.service.guide,
+				javax.tv.service.navigation, javax.tv.service.transport</P>
+			</TD>
+			<TD WIDTH=11%>
+				<P ALIGN=RIGHT>11.6.5, 260</P>
+			</TD>
+			<TD WIDTH=19%>
+				<P ALIGN=RIGHT>Sun, JavaTV; 617</P>
+			</TD>
+			<TD WIDTH=32%>
+				<P>The higher-level equivalent to javax.tv.service.selection
+				above. Not limited to ETSI/DVB, more general API.</P>
+			</TD>
+			<TD WIDTH=6% BGCOLOR="#23ff23">
+				<P><BR>
+				</P>
+			</TD>
+		</TR>
+		<TR VALIGN=TOP>
+			<TD WIDTH=31%>
+				<P>javax.tv.xlet</P>
+			</TD>
+			<TD WIDTH=11%>
+				<P ALIGN=RIGHT>11.7.1, 261</P>
+			</TD>
+			<TD WIDTH=19%>
+				<P ALIGN=RIGHT>Sun, JavaTV</P>
+			</TD>
+			<TD WIDTH=32%>
+				<P>Every Xlet must implement the Xlet interface</P>
+			</TD>
+			<TD WIDTH=6% BGCOLOR="#008000">
+				<P><BR>
+				</P>
+			</TD>
+		</TR>
+		<TR VALIGN=TOP>
+			<TD WIDTH=31%>
+				<P>Application Listing and Launching, org.dvb.application</P>
+			</TD>
+			<TD WIDTH=11%>
+				<P ALIGN=RIGHT>11.7.2, 261</P>
+			</TD>
+			<TD WIDTH=19%>
+				<P ALIGN=RIGHT>Annex S, 711</P>
+			</TD>
+			<TD WIDTH=32%>
+				<P>API to list available MHP applications and also launch them
+				(in the implementation, this framework is also used internally!)</P>
+			</TD>
+			<TD WIDTH=6% BGCOLOR="#33cc66">
+				<P><BR>
+				</P>
+			</TD>
+		</TR>
+		<TR VALIGN=TOP>
+			<TD WIDTH=31%>
+				<P>Inter-Application Communication, org.dvb.io.ixc</P>
+			</TD>
+			<TD WIDTH=11%>
+				<P ALIGN=RIGHT>11.7.3, 263</P>
+			</TD>
+			<TD WIDTH=19%>
+				<P ALIGN=RIGHT>Annex Y, 1261</P>
+			</TD>
+			<TD WIDTH=32%>
+				<P><BR>
+				</P>
+			</TD>
+			<TD WIDTH=6% BGCOLOR="#23ff23">
+				<P><BR>
+				</P>
+			</TD>
+		</TR>
+		<TR VALIGN=TOP>
+			<TD WIDTH=31%>
+				<P>MPEG, org.davic.mpeg</P>
+			</TD>
+			<TD WIDTH=11%>
+				<P ALIGN=RIGHT>11.7.4, 265</P>
+			</TD>
+			<TD WIDTH=19%>
+				<P ALIGN=RIGHT>Davic, Annex G</P>
+			</TD>
+			<TD WIDTH=32%>
+				<P>Some ideas like TransportStream, Service</P>
+			</TD>
+			<TD WIDTH=6% BGCOLOR="#e6ff00">
+				<P><BR>
+				</P>
+			</TD>
+		</TR>
+		<TR VALIGN=TOP>
+			<TD WIDTH=31%>
+				<P>Resource Notification, org.davic.resources</P>
+			</TD>
+			<TD WIDTH=11%>
+				<P ALIGN=RIGHT>11.7.5, 266</P>
+			</TD>
+			<TD WIDTH=19%>
+				<P ALIGN=RIGHT>Davic, Annex F</P>
+			</TD>
+			<TD WIDTH=32%>
+				<P>Abstract management for scarce resources (reserve access to a
+				tuner, an MPEG-decoder etc.)</P>
+			</TD>
+			<TD WIDTH=6% BGCOLOR="#008000">
+				<P><BR>
+				</P>
+			</TD>
+		</TR>
+		<TR VALIGN=TOP>
+			<TD WIDTH=31%>
+				<P>Content Referencing, javax.tv.Locator, org.davic.net.locator,
+				org.davic.net.locator.dvb 
+				</P>
+			</TD>
+			<TD WIDTH=11%>
+				<P ALIGN=RIGHT>11.7.6, 266</P>
+			</TD>
+			<TD WIDTH=19%>
+				<P ALIGN=RIGHT>Sun, JavaTV; Davic, Annex H.4</P>
+			</TD>
+			<TD WIDTH=32%>
+				<P>Referencing a service or a transport stream with an URL such
+				as dvb://1.33.564</P>
+			</TD>
+			<TD WIDTH=6% BGCOLOR="#008000">
+				<P><BR>
+				</P>
+			</TD>
+		</TR>
+		<TR VALIGN=TOP>
+			<TD WIDTH=31%>
+				<P>Error Reporting, org.davic.mpeg</P>
+			</TD>
+			<TD WIDTH=11%>
+				<P ALIGN=RIGHT>11.7.7, 267</P>
+			</TD>
+			<TD WIDTH=19%>
+				<P ALIGN=RIGHT>Davic, Annex G</P>
+			</TD>
+			<TD WIDTH=32%>
+				<P>Some exceptions</P>
+			</TD>
+			<TD WIDTH=6% BGCOLOR="#008000">
+				<P><BR>
+				</P>
+			</TD>
+		</TR>
+		<TR VALIGN=TOP>
+			<TD WIDTH=31%>
+				<P>Plugins, org.dvb.application.plugins</P>
+			</TD>
+			<TD WIDTH=11%>
+				<P ALIGN=RIGHT>11.7.8, 267</P>
+			</TD>
+			<TD WIDTH=19%>
+				<P ALIGN=RIGHT>Annex AF, 1328</P>
+			</TD>
+			<TD WIDTH=32%>
+				<P>Support for MHP plugins</P>
+			</TD>
+			<TD WIDTH=6% BGCOLOR="#ff0000">
+				<P><BR>
+				</P>
+			</TD>
+		</TR>
+		<TR VALIGN=TOP>
+			<TD WIDTH=31%>
+				<P>Inner applications, org.dvb.application.inner</P>
+			</TD>
+			<TD WIDTH=11%>
+				<P ALIGN=RIGHT>11.7.8, 267</P>
+			</TD>
+			<TD WIDTH=19%>
+				<P ALIGN=RIGHT>Annex AE, 1314</P>
+			</TD>
+			<TD WIDTH=32%>
+				<P><BR>
+				</P>
+			</TD>
+			<TD WIDTH=6% BGCOLOR="#ff0000">
+				<P><BR>
+				</P>
+			</TD>
+		</TR>
+		<TR VALIGN=TOP>
+			<TD WIDTH=31%>
+				<P>Security, java.security, java.security.cert</P>
+			</TD>
+			<TD WIDTH=11%>
+				<P ALIGN=RIGHT>11.8., 268</P>
+			</TD>
+			<TD WIDTH=19%>
+				<P ALIGN=RIGHT>Sun, PJAE; Sun, JSSE</P>
+			</TD>
+			<TD WIDTH=32%>
+				<P>Some other packages are involved as well, see the list. The
+				whole chapter 12 deals with security.</P>
+			</TD>
+			<TD WIDTH=6% BGCOLOR="#ff0000">
+				<P><BR>
+				</P>
+			</TD>
+		</TR>
+		<TR VALIGN=TOP>
+			<TD WIDTH=31%>
+				<P>SSL Over Return Channel, javax.net, javax.net.ssl</P>
+			</TD>
+			<TD WIDTH=11%>
+				<P ALIGN=RIGHT>11.8.2, 269</P>
+			</TD>
+			<TD WIDTH=19%>
+				<P ALIGN=RIGHT>Sun, JSSE</P>
+			</TD>
+			<TD WIDTH=32%>
+				<P>Encrypted return channnel.<BR>Need to evaluate Sun's
+				implementation, maybe we can use it.</P>
+			</TD>
+			<TD WIDTH=6% BGCOLOR="#ff0000">
+				<P><BR>
+				</P>
+			</TD>
+		</TR>
+		<TR VALIGN=TOP>
+			<TD WIDTH=31%>
+				<P>Additional Permissions, org.dvb.net.ca</P>
+			</TD>
+			<TD WIDTH=11%>
+				<P ALIGN=RIGHT>11.8.3, 269</P>
+			</TD>
+			<TD WIDTH=19%>
+				<P ALIGN=RIGHT>Annex T, 746</P>
+			</TD>
+			<TD WIDTH=32%>
+				<P>Actually, this is one class ;-)</P>
+			</TD>
+			<TD WIDTH=6% BGCOLOR="#008000">
+				<P><BR>
+				</P>
+			</TD>
+		</TR>
+		<TR VALIGN=TOP>
+			<TD WIDTH=31%>
+				<P>Timers, javax.tv.util</P>
+			</TD>
+			<TD WIDTH=11%>
+				<P ALIGN=RIGHT>11.9.1, 269</P>
+			</TD>
+			<TD WIDTH=19%>
+				<P ALIGN=RIGHT>Sun, JavaTV</P>
+			</TD>
+			<TD WIDTH=32%>
+				<P>Since Java 1.3 there is java.util.Timer which is much better
+				than this, and is used to implement this</P>
+			</TD>
+			<TD WIDTH=6% BGCOLOR="#008000">
+				<P><BR>
+				</P>
+			</TD>
+		</TR>
+		<TR VALIGN=TOP>
+			<TD WIDTH=31%>
+				<P>User Setting and Preferences, org.dvb.user</P>
+			</TD>
+			<TD WIDTH=11%>
+				<P ALIGN=RIGHT>11.9.2, 270</P>
+			</TD>
+			<TD WIDTH=19%>
+				<P ALIGN=RIGHT>Annex L, 477</P>
+			</TD>
+			<TD WIDTH=32%>
+				<P>General preferences such as language, user's name, address.</P>
+			</TD>
+			<TD WIDTH=6% BGCOLOR="#3deb3d">
+				<P><BR>
+				</P>
+			</TD>
+		</TR>
+		<TR VALIGN=TOP>
+			<TD WIDTH=31%>
+				<P>Non-CA Smart Cards</P>
+			</TD>
+			<TD WIDTH=11%>
+				<P ALIGN=RIGHT>11.9.4, 271</P>
+			</TD>
+			<TD WIDTH=19%>
+				<P ALIGN=RIGHT>Embedded OCF</P>
+			</TD>
+			<TD WIDTH=32%>
+				<P>Don't know what this is about</P>
+			</TD>
+			<TD WIDTH=6% BGCOLOR="#ff0000">
+				<P><BR>
+				</P>
+			</TD>
+		</TR>
+	</TBODY>
+</TABLE>
+<P><BR><BR>
+</P>
+<P>Sources for specifications:</P>
+<UL>
+	<LI><P>All ETSI specifications are available from
+	<A HREF="http://www.etsi.org/">http://www.etsi.org/</A></P>
+	<LI><P>The Sun Specifications for DVB,
+	<A HREF="http://java.sun.com/products/specformhp/">http://java.sun.com/products/specformhp/</A></P>
+	<LI><P>DAVIC 1.4.1 Specification Part 9, <A HREF="http://www.davic.org/">www.davic.org</A></P>
+</UL>
+<P>You find a more detailed specification list in the
+README.DEVELOPER file in the package.</P>
+<P STYLE="margin-bottom: 0cm"><BR>
+</P>
+<DIV ID="sdfootnote1">
+	<P CLASS="sdfootnote" STYLE="margin-bottom: 0.5cm"><A CLASS="sdfootnotesym" NAME="sdfootnote1sym" HREF="#sdfootnote1anc">1</A>Only
+	in version 1.1.1, in more recent version this annex is left out.
+	Probably available from <A HREF="http://www.havi.org/">www.havi.org</A></P>
+</DIV>
+</BODY>
+</HTML>

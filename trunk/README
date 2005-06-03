@@ -1,0 +1,107 @@
+This is a "plugin" for the Video Disk Recorder (VDR).
+
+Written by:                  Marcel Wiesweg <marcel.wiesweg@gmx.de>
+
+Project's homepage:          http://interactive-vdr.sourceforge.net/
+
+Latest version available at: http://www.sourceforge.net/projects/interactive-vdr
+
+See the file COPYING for license information.
+
+Description:
+
+This plugin aims at an implementation of the 
+Multimedia Home Platform (MHP) for VDR.
+
+
+Installation:
+ 
+ The plugin requires four steps. Please do not forget step 3 and 4, which
+ are unusual for VDR plugins.
+
+ 1)The plugin has quite a few dependencies. Please check this list
+   before compiling the plugin.
+   You need (hierarchically):
+   
+   - The MPEG encoding for the traditional FF-card output will require some power
+     from your CPU, but it is not real time encoding, only one picture per change.
+     I am developing an a 1,2 GHz Celeron processor which is  more than sufficient,
+     so I expect really low power CPUs to work. Expensive drawing operations,
+     such as displaying 3.2 megapixel Jpegs on TV, are a different story.
+
+   - VDR 1.3.x series, tested with version 1.3.9, later versions are okay,
+     earlier versions are not recommended (it is a development series after all)
+   
+   - DirectFB (www.directfb.org), version 0.9.20, 0.9.21 or 0.9.22.
+      Please note that DirectFB is primarily used for its graphics capabilities.
+      You do _not_ need a working framebuffer or supported graphics card.
+      Do
+      
+      ./configure; make; make install      
+      
+       (Or, if you install DirectFB only for this plugins and have no plans to use
+        it with your graphics card (e.g. for the softdevice output method),
+        you can switch off compiling the graphics driver parts:
+      
+        ./configure --with-gfxdrivers= --disable-fbdev
+      
+        If you do not know which one to choose, ignore this hint and choose the first suggestion.)
+      
+      In the output from configure, please check for PNG, JPG and Freetype support.
+      If there is a "no", please check this:
+         - libpng >= 1.2.0
+         - libjpeg >= 6.2
+         - freetype2 >= 2.0.2 
+         
+   - DFB++, with the same version number as your DirectFB installation
+   
+     This needs
+       * pkg-config (http://www.freedesktop.org/software/pkgconfig/, but
+         this is a standard package, it will be available from your distributor)
+        
+     If you installed DirectFB (as recommended) in /usr/local, and DFB++' configure
+     complains, do
+     PKG_CONFIG_PATH=/usr/local/lib/pkgconfig/ ./configure
+      
+   - Kaffe (www.kaffe.org), at least version 1.1.4,
+      with "unix-pthreads" threading system.
+   
+      Any version of Kaffe prior to 1.1.4 (particularly 1.1.3) and any version
+      with the "unix-jthreads" threading system will crash!
+      
+      So do
+      
+      ./configure --with-threads=unix-pthreads; make; make install
+      
+      (don't forget the unix-pthreads!)
+      If it complains about missing GNU MP, choose the suggested alternative.
+      (we do not need number crunching in MHP after all ;-)
+      
+   - ffmpeg, both 0.4.8 and 0.4.9-pre1 are tested
+     ./configure --enable-shared
+
+   Please compile and install all these packages.
+   Then edit Make.config and adapt the paths to your system.
+         
+ 2)Now it is time to compile the plugin like all other plugins.
+ 
+ 3)Some files (Java and native libraries from the MHP stack, fonts)
+   need to be installed to /usr/local/vdr/mhp.
+   Descend into the plugin's main directory and execute (as root)
+   
+   "make install".
+   
+ 4)Command line arguments:
+   The plugin needs to know the VDR plugin directory.
+   So if you start VDR with the "-L" option, start the plugin with the same option:
+   "-P 'mhp -L /path/to/PLUGINS/lib'"
+   If you don't do this, it won't work and you will reminded by an error message in the syslog.
+   
+   Now enjoy...
+
+
+
+Additional information for developers can be found in 
+the README.DEVELOPER file.
+If you only want to use the plugin, you do NOT need to read this.
+

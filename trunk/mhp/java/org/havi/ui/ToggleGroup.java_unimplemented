@@ -1,0 +1,133 @@
+
+package org.havi.ui;
+
+/*HToggleButton within the same HToggleGroup will behave so that a maximum of one 
+HToggleButton has witchable state true,as returned by getSwitchableState(),so as to 
+achieve a "radio button"effect.When an HToggleButton is acted upon to change its witchable 
+state to true,then if any other HToggleButton within the HToggleGroup currently has 
+witchable state true,it will have its witchable state set to false.Similarly,if an 
+HToggleButton is added which has witchable state true,then any current HToggleButton 
+within the HToggleGroup with witchable state true,shall have its switchable state modi  ed 
+to false. If the forced selection mode for the HToggleGroup is set via a call to 
+setForcedSelection(true) then there will always be one HToggleButton selected (i.e.with 
+witchable state true ,and if necessary the HToggleGroup will automatically force a 
+selection to ensure this.If forced selection mode is not set it is valid for there to be 
+no selection,i.e.all HToggleButton may have witchable state false By default forced 
+selection mode is not set. Note that when an HToggleButton has switchable state true this 
+implies that the interaction state as returned by getInteractionState()will be either the 
+ACTIONED_STATE or ACTIONED_FOCUSED_STATE state. Similarly,a witchable state of false 
+implies that the interaction state is any other state for which the ACTIONED_STATE_BIT is 
+not set.See the HSwitchable class description for more information about the valid 
+interaction states.The parameters to the constructors are as follows,in cases where 
+parameters are not used,then the constructor should use the default 
+values. */
+
+
+//TODO: When group is en/disabled, should the state of the buttons set accordingly?
+
+public class HToggleGroup {
+
+protected HToggleButton current;
+private java.util.Vector list;
+private boolean forcedSelection;
+protected boolean enabled;
+
+/*
+Creates a new version instance of an HToggleGroup */
+public HToggleGroup() {
+   list=new java.util.Vector();
+   current=null;
+   forcedSelection=false;
+   enabled=true;
+}
+
+/*
+Add the speci  ed HToggleButton to this HToggleGroup .The HToggleButton will be enabled or disabled as necessary to 
+match the current state of the HToggleGroup as determined by the isEnabled()method. If the HToggleGroup is empty and 
+forced selection mode is active then the HToggleButton will automatically have its witchable state set to true Note that 
+any ActionListeners registered with the HToggleButton are not called as a result of this operation. This method is 
+protected to allow the platform to override it in subclasses of HToggleGroup .It is not intended for use by the 
+application and conformant applications shall not use this method. Parameters: button -the HToggleButton to add to the 
+HToggleGroup . */
+protected void add(HToggleButton button) {
+   list.add(button);
+   if (current=null && forcedSelection) {
+      button.SetSwitchableState(true);
+      current=button;
+   }
+}
+
+/*
+Returns the HToggleButton from this HToggleGroup which has state true,or null otherwise,for example,if there are no 
+HToggleButton associated with this HToggleGroup ,or if all HToggleButton within this HToggleGroup have state false. 
+Returns: the currently selected HToggleButton or null if no such HToggleButton 
+exists. */
+public HToggleButton getCurrent() {
+   return current;
+}
+
+/*
+Determines whether the HToggleGroup is enabled.HToggleGroup are enabled initially by default.A group may be enabled or 
+disabled by calling its setEnabled method. Returns: true if the component is enabled;false 
+otherwise. */
+public boolean isEnabled() {
+   return enabled;
+}
+
+/* Return the current forced selection mode of the group. Returns: the current 
+forced selection mode.If this value is true the group is forced to always have 
+one HToggleButton selected (i.e.with switchable state true .Otherwise,the group 
+may have either one or zero HToggleButton selected. */
+public boolean getForcedSelection() {
+   return forcedSelection;
+}
+
+/*
+Remove the speci  ed HToggleButton to this HToggleGroup .If button is not part of this HToggleGroup this method throws a 
+java.lang.IllegalArgumentException If the HToggleButton is the currently selected button in this group and forced 
+selection mode is set the  rst remaining HToggleButton will automatically have its witchable state set to true.Note that 
+any ActionListeners registered with the HToggleButton are not called as a result of this operation. This method is 
+protected to allow the platform to override it in subclasses of HToggleGroup.It is not intended for use by the 
+application and conformant applications shall not use this method. Parameters: button -the HToggleButton to remove from 
+the HToggleGroup . Throws: java.lang.IllegalArgumentException -if button is not a member of this HToggleGroup 
+. */
+protected void remove(HToggleButton button) {
+   list.remove(button);
+}
+
+/*
+If the speci  ed HToggleButton is a member of this HToggleGroup ,then it is selected,its state is set to true and 
+consequently any other HToggleButton within the HToggleGroup will have their states set to false. If the speci  ed 
+HToggleButton is not a member of this HToggleGroup ,then no actions are performed. Parameters: selection -the 
+HToggleButton to be set as the currently selected item within the HToggleGroup 
+. */
+public void setCurrent(HToggleButton selection) {
+   current.SetSwitchableState(false);
+   current=selection;
+   current.SetSwitchableState(true);
+}
+
+/*
+Enables or disables the group,depending on the value of the parameter enable An enabled group's HToggleButton can 
+respond to user input and generate events.An HToggleGroup is initially enabled by default. Enabling or disabling an 
+HToggleGroup enables or disables all the HToggleButton components in the group by calling their setEnabled methods. 
+Whether or not a group is enabled does not affect the adding or removing of HToggleButton from that group. Parameters: 
+enable -true to enable all the HToggleButton components in the group,false to disable 
+them. */
+public void setEnabled(boolean enable) {
+   enabled=enable;
+}
+
+/*
+Set the forced selection mode of the group.If forceSelection is true and no HToggleButton is currently selected in the 
+group the  rst HToggleButton automatically has its witchable state set to true.If no HToggleButton components have been 
+added to this group there will be no visual indication of the mode change. Parameters: forceSelection -if this parameter 
+is true the group is forced to always have one HToggleButton selected (i.e.with switchable state true .Otherwise,the 
+group may have either one or zero HToggleButton selected. */
+public void setForcedSelection(boolean forceSelection) {
+   forcedSelection=forceSelection;
+   setCurrent((HToggleButton)list.FirstElement());
+}
+
+
+}

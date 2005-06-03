@@ -1,0 +1,318 @@
+/*
+ * NIST/DASE API Reference Implementation
+ * $File: HAbstractImageMatte.java $
+ * Last changed on $Date: 2001/06/15 22:29:49 UTC $
+ *
+ * See the file "nist.disclaimer" in the top-level directory for information
+ * on usage and redistribution of this file.
+ *
+ */
+
+package org.havi.ui;
+import java.util.ArrayList;
+import org.havi.ui.event.HMatteEvent;
+import org.havi.ui.event.HMatteListener;
+import java.awt.Graphics;
+import java.awt.image.BufferedImage;
+//import java.awt.image.WritableRaster;
+import java.awt.Dimension;
+import java.awt.Rectangle;
+import java.awt.Point;
+import java.awt.Image;
+//import java.awt.image.Raster;
+//import java.awt.image.RenderedImage;
+import java.awt.image.ImageObserver;
+
+
+/**
+ * This abstract class is the parents of both ImageMatte and ImageEffectMatte.
+ * ImageEffectMatte should naturally subclass ImageMatte but this cannot be
+ * done directly because getMatteData() returns different types.
+ * This class contains everything for FlatMatte except getMatteData
+ * <br>See (C) official HaVi documentation for reference.
+ * <p>
+ * <p>Revision information:<br>
+ * $Revision: 1.5 $
+ *
+ */
+
+public abstract class HAbstractImageMatte implements HMatte, ImageObserver {
+
+  /** Opacity mask: this is a single-channel image where 1.0 means fully
+      opaque and 0.0 means transparent. If null, the matte defaults to fully
+      opaque. */
+  protected Image data = null;
+
+  /** Buffered version of the image, cached for speed */
+  protected BufferedImage bufferedData = null;
+
+  /** Mask pixel offset, relative to the top left corner of the component.
+      Default is (0,0) */
+  protected Point offset;
+  
+
+  /** Maximum value in the current color model in bufferedData */
+  private float COLOR_MAX_VALUE;
+  
+  /** Constructor with no parameter. Default for data = 1.0 (fully opaque) */
+  public HAbstractImageMatte() {
+    this(null);
+  }
+
+  /** Constructor with opacity level
+   *  @param data opacity mask as a single-channel image */
+  public HAbstractImageMatte(Image data) {
+    setMatteData(data);
+    setOffset(new Point(0,0));
+  }
+
+  /** Change the opacity matte image. If data does not implement
+      RenderedImage, ignore it.
+   *  @param data new opacity mask */
+  public void setMatteData(Image data) {
+
+    synchronized(this) {
+    //synchronized(data) {
+      this.bufferedData = null;
+      this.data = data;
+    }
+    
+    /* Sanity check */
+    if(data == null) {
+      return;
+    }
+      
+    int width = data.getWidth(this);
+    int height = data.getHeight(this);
+    
+    /* If the entire width/height information is not yet available,
+       an imageUpate event will be fired later when it is.
+       If it is available at this time, no events are generate
+       (return the values instead). Simulate the event in this case */
+    
+    if((width!=-1) && (height!=-1)) {
+      this.imageUpdate(data, (ImageObserver.WIDTH|ImageObserver.HEIGHT),
+                       0, 0, width, height);
+    }
+
+  }
+
+  /** Process image events asynchronously. There are two possible event sources
+      <ul><li>The source image: in this case, create a new buffered image
+      and copy the content over</li>
+      <li>The buffered image: notify the listeners to have them repaint
+      themselves. </ul> */
+  public boolean imageUpdate(Image img,
+                             int infoflags,
+                             int x,
+                             int y,
+                             int width,
+                             int height) {
+
+    if( (infoflags & ImageObserver.ABORT) == ImageObserver.ABORT ) {
+      System.err.println("Failed to change matte image (ABORT)");
+      setMatteData(null);
+      return false;
+    }
+    if( (infoflags & ImageObserver.ERROR) == ImageObserver.ERROR ) {
+      System.err.println("Failed to change matte image (ERROR)");
+      setMatteData(null);
+      return false;
+    }
+    
+    if(img == data) {
+      if( bufferedData == null ) {
+        if ( (infoflags & (ImageObserver.WIDTH|ImageObserver.HEIGHT) ) ==
+             (  ImageObserver.WIDTH|ImageObserver.HEIGHT) ) {
+          bufferedData = new BufferedImage(width, height);
+          //bufferedData = new BufferedImage(width, height,
+           //                                BufferedImage.TYPE_BYTE_GRAY);
+          COLOR_MAX_VALUE = 255.0F;//(float)
+            //( (1 << bufferedData.getColorModel().getComponentSize(0))  - 1 );
+          
+          /* Transfer data into this buffer.
+             If the entire image is available at this time, calling drawImage
+             will not generate any event (return true). Simulate the event
+             in this case */
+          Graphics g = bufferedData.getGraphics();
+          if( g.drawImage(data, 0, 0, this) ) {
+            notifyListeners();
+            return false;
+          }
+          
+        }
+      }
+      if( (infoflags & ImageObserver.ALLBITS) == ImageObserver.ALLBITS ) {
+        /* The image is fully ready to draw */
+        Graphics g = bufferedData.getGraphics();
+        g.drawImage(data, 0, 0, null);
+        notifyListeners();
+        return false;
+        
+      }
+      return true;
+      
+    } else {
+      /* This is another image. We don't care (anymore?) */
+      return false;
+    }
+  }
+
+  // See HImageMatte for this
+  // public Object getMatteData()
+  
+
+  /** Set the mask offset
+      @param p new pixel location */
+  public void setOffset(Point p) {
+    offset = p;
+  }
+
+  /** Get the current mask offset value
+      @return current offset */
+  public Point getOffset() {
+    return offset;
+  }
+  
+
+
+  /* ************** NOT PART OF API ********************** */
+
+  /** List of listeners registered to receive matte change events */
+  private ArrayList listeners = new ArrayList();
+
+  /** Register to receive matte change events
+      @param listener target listener to add */
+  public void addListener(HMatteListener listener) {
+    synchronized(listeners) {
+      listeners.add(listener);
+    }
+  }
+
+  /** Remove a listener
+      @param listener listener to remove */
+  public void removeListener(HMatteListener listener) {
+    synchronized(listeners) {
+      /* listener may have been registered several times */
+      while(listeners.remove(listener)) {}
+    }
+  }
+
+  private class NotifyThread extends Thread {
+    private HMatteEvent event;
+    public NotifyThread(HMatteEvent e) {
+      super();
+      this.event = e;
+      setName("HAbstractImageMatte listeners notify");
+    }
+    public void run() {
+      synchronized(listeners) {
+        for(int i=0; i < listeners.size(); i++) {
+          ((HMatteListener)(listeners.get(i))).matteUpdate(event);
+        }
+      }
+    }
+  }
+    
+  
+  /** Notify all listeners of a matte change */
+  public void notifyListeners() {
+
+    Thread notifyThread = new NotifyThread(new HMatteEvent(this));
+    notifyThread.start();
+
+  }
+  
+  
+  /** WARNING: This is not part of the official HAVi APIs.
+      <p>Compose an image based on the current matte rules.
+      @param source image to compose with the matte
+      @param clip area of the image to compose with (from calling Graphics)
+  */
+  public void compose(BufferedImage source, Rectangle clip) {
+
+    // TODO: It is unclear what happens outside the boundaries of
+    // the matte image. For now, do nothing (ie opaque)
+    if(this.bufferedData==null) {
+      return;
+    }
+
+    
+    //Raster is post-jdk1.1
+    //Raster matteRaster = bufferedData.getData();
+
+    //BufferedImage is always a DVBBufferedImage, which is always ARGB. Skip sanity checks.
+    /* Various sanity checks */
+
+    /*if(matteRaster.getNumBands() != 1) {
+      System.err.println("Matte image has more or less than one channel.");
+      return;
+    }
+
+
+    
+    WritableRaster alphaRaster = source.getAlphaRaster();
+    if(alphaRaster==null) {
+      System.err.println("Ooops: Image to compose in HImageMatte has no alpha channel. Bailing out");
+      return;
+    }
+      
+    if(alphaRaster.getNumBands() != 1) {
+      System.err.println("Ooops: AlphaRaster has more than one band in HImageMatte (" + alphaRaster.getNumBands() + "). Don't know what to do: bailing out.");
+      return;
+    }
+
+    if(source.isAlphaPremultiplied()) {
+      System.err.println("Ooops: Alpha is already pre-multiplied in HImageMatte (" + alphaRaster.getNumBands() + "). Don't know what to do: bailing out.");
+      return;
+    }*/
+
+    // WARNING
+    /* Note: the BufferedImage specs require that minX and minY be (0,0) 
+    int minX = alphaRaster.getMinX();
+    int minY = alphaRaster.getMinY(); */
+
+    /* Find the intersecting rectangle of source and matte images */
+    Rectangle matteRectangle = new Rectangle(offset,
+           new Dimension(bufferedData.getWidth(), bufferedData.getHeight()));
+//           new Dimension(matteRaster.getWidth(), matteRaster.getHeight()));
+   Rectangle composeRectangle = matteRectangle.intersection(clip);
+    
+    int[] samples = new int[composeRectangle.width];
+    int[] matte = new int[composeRectangle.width];
+    int pixelWithoutAlpha;
+    int bufferedImageAlpha;
+    int matteAlpha;
+                             
+    for(int y = composeRectangle.y ;
+        y < ( composeRectangle.y + composeRectangle.height ) ;
+        y++ ) {
+      /*matteRaster.getSamples(composeRectangle.x - offset.x, y - offset.y,
+                             composeRectangle.width, 1, 0, matte);
+      alphaRaster.getSamples(composeRectangle.x, y,
+                             composeRectangle.width, 1, 0, samples);*/
+      bufferedData.getRGB(composeRectangle.x - offset.x, y - offset.y,
+                             composeRectangle.width, 1, samples, 0, composeRectangle.width);
+      source.getRGB(composeRectangle.x, y,
+                             composeRectangle.width, 1, matte, 0, composeRectangle.width);
+      for(int x = 0; x < composeRectangle.width; x++ ) {
+         pixelWithoutAlpha=  samples[x] & 0x00ffffff;
+         bufferedImageAlpha= samples[x] & 0xff000000;
+         matteAlpha = matte[x] & 0xff000000;
+         samples[x] = pixelWithoutAlpha;
+         samples[x] |= ( (bufferedImageAlpha*(int)((float)matteAlpha/COLOR_MAX_VALUE)) <<24 );
+         //samples[x] *= (matte[x]/COLOR_MAX_VALUE);
+      }
+
+      //alphaRaster.setSamples(composeRectangle.x, y,
+       //                      composeRectangle.width, 1, 0, samples);
+      source.setRGB(composeRectangle.x, y,
+                             composeRectangle.width, 1, samples, 0, composeRectangle.width);
+    }
+
+    return;
+
+  }
+
+  
+}

@@ -1,0 +1,28 @@
+--- ../VDR/eit.c	Thu May 29 17:04:10 2003
++++ eit.c	Tue Aug  5 18:15:03 2003
+@@ -21,4 +21,5 @@
+ 
+ #include "eit.h"
++#include "applicationmonitor.h"
+ #include <ctype.h>
+ #include <fcntl.h>
+@@ -1328,6 +1322,10 @@
+                                  // Also scan the PidInfo list for descriptors - some broadcasts send them only here.
+                                  for (struct PidInfo *p = (struct PidInfo *)pi->InfoList->Head; p; p = (struct PidInfo *)xSucc(p)) {
+-                                     for (d = (struct Descriptor *)p->Descriptors->Head; d; d = (struct Descriptor *)xSucc(d))
++                                     for (d = (struct Descriptor *)p->Descriptors->Head; d; d = (struct Descriptor *)xSucc(d)) {
++                                         int pid=cApplicationMonitor::NewPMTInnerLoopDescriptor(d, pi, p, currentSource, currentTransponder);
++                                         if (pid)
++                                             AddFilter(pid, TID_AIT);                                             
+                                          NewCaDescriptor(d, pi->ProgramID);
++                                         }
+                                      }
+                                  }
+@@ -1335,4 +1333,7 @@
+                               lastPmtScan = 0; // this triggers the next scan
+                               }
++                           else if ( buf[0] == TID_AIT && currentSource && currentTransponder) {
++                              cApplicationMonitor::NewAITSection(buf, pid, currentSource, currentTransponder);
++                              }
+                            }
+                            break;

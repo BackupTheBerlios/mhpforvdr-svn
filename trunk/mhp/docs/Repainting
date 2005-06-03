@@ -1,0 +1,33 @@
+
+This document is about the repainting mechanism in the display stack
+
+Chapter 13 of the specification describes the layout of the display stack in
+an MHP implementation.
+In 13.3.2, you find drawing which illustrates the way a repaint message is dispatched.
+In normal AWT, if a component needs a redraw, it is sufficient to sent a redraw event to that
+component only. However, in MHP, dealing with transparency, underlying and previously covered
+parts will possibly also have to be redrawn.
+Remember that all these components up to HScene are lightweight, so we cannot use DirectFB's
+mechanisms to deal with this problem. However as to HScenes, DirectFB will take care for them
+(every DirectFBWindow (=MHPPlane) has its own buffer, so repainting the window stack does not
+ require repainting the window but only compositing the buffer once again).
+
+==Calling repaint==
+
+Instead of generating a repaint event immediately, java.awt.Component.repaint()
+has been changed to call repaint of its parent, finally reaching MHPPlane.
+However, the region of the component requesting a repaint is preserved.
+MHPPlane posts a repaint event for itself restricted to the region originally requested.
+
+==Calling paint==
+
+The repaint event - in a different thread - in due  course reaches MHPPlane.processPaintEvent().
+It creates the actual java.awt.Graphics object and then calls either paint() or update().
+
+Remember that update() either calls paint, or clears the background and then calls paint.
+Only update() for java.awt.Component (->org.havi.ui.HComponent) and java.awt.Container clears the background.
+It is overidden and only calls paint in org.havi.ui.HContainer, org.havi.ui.HVisible and java.awt.MHPPlane
+(->org.havi.ui.HScene).
+
+MHPPlane's or HScene's (or HContainer's) paint calls Container's paint,
+which calls Graphics.paintChild for all its children, and so on recursively.

@@ -1,0 +1,46 @@
+VDR Plugin 'mhp' Revision History
+---------------------------------
+
+Version 0.3
+
+- dropped kaffe dependency, work towards VM independence
+  (only GNU classpath VMs)
+- support for SableVM, now default VM
+- named private package more appropriately vdr.mhp
+- support for permission based Java 2 security framework
+  (ProtectionDomain, AccessController etc.)
+- make the WDRTicker application working
+- DsmccReceiver now using cFilter section filtering
+- implemented suspend and resume of receiving, better caching
+- implementation of a proper state machine in ApplicationManager
+- new implementation of higher-level control code for receiving in mhpcontrol.c
+- higher-level support for suspend/resume of receiving (caching is now used)
+- interface now better defined and more asynchronous, so
+- loading now controlled from Java side
+- integrated libxmi, used for some more advanced drawing operations
+- implemented all missing graphics operations with the help of libxmi
+  (drawArc, fillArc, drawOval, fillRoundRect, drawRoundRect, fillPolygon)
+- fixes in AWT core (MHPNativeGraphics, MHPPlane etc.)
+- more or less complete implementation of javax.util.Timers, org.dvb.user,
+  preliminary code for org.dvb.io.ixc
+- fixes and implementations in org.dvb.application, javax.tv.service.*
+- cleaned up Makefiles and Make.config
+- many bugfixes
+
+
+2004-09-17: Version 0.2
+
+- Release with basic infrastructure working, tested with some self-made test applications.
+  (no detailed changelog)
+
+2004-01-21: Version 0.1
+
+- Pre-release, the code is in a state which allows to debug the Java stack
+- the Java stack is currently in no usable form, nothing for end users.
+  (no detailed changelog)
+
+2003-06-04: Version 0.0.1
+
+- Initial revision.
+  (no detailed changelog)
+

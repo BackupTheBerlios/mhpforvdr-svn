@@ -1,0 +1,3 @@
+The Davic MPEG API contains all necessary definitions and compiles.
+However, every "retrieve" function currently returns null.
+These are non-trivial to implement because access to VDR is needed.

@@ -1,0 +1,111 @@
+diff -U 2 -P -x AIT.patch ../temp/vdr-1.1.32/applicationmonitor.c ./applicationmonitor.c
+--- ../temp/vdr-1.1.32/applicationmonitor.c	Thu Jan  1 01:00:00 1970
++++ ./applicationmonitor.c	Tue Aug  5 18:14:45 2003
+@@ -0,0 +1,51 @@
++/***************************************************************************
++ *       Copyright (c) 2003 by Marcel Wiesweg                              *
++ *                                                                         *
++ *   This program is free software; you can redistribute it and/or modify  *
++ *   it under the terms of the GNU General Public License as published by  *
++ *   the Free Software Foundation; either version 2 of the License, or     *
++ *   (at your option) any later version.                                   *
++ *                                                                         *
++ ***************************************************************************/
++
++#include "applicationmonitor.h"
++
++
++cList<cApplicationMonitor> cApplicationMonitor::list;
++
++cApplicationMonitor::cApplicationMonitor() {
++   list.Add(this);
++}
++
++cApplicationMonitor::~cApplicationMonitor() {
++   list.Del(this, false);
++}
++
++int cApplicationMonitor::NewPMTInnerLoopDescriptor(struct Descriptor *d, struct Pid *pi, struct PidInfo *p, int currentSource, int currentTransponder) {
++   int ret=0, temp;
++   for (cApplicationMonitor *m=list.First(); m; m=list.Next(m)) {
++      temp=m->PMTInnerLoopDescriptor(d, pi, p, currentSource, currentTransponder);
++      if (temp && !ret)
++         ret=temp;
++   }
++   return ret;
++}
++
++void cApplicationMonitor::NewAITSection(unsigned char *buffer, int aitPid, int currentSource, int currentTransponder) {
++   for (cApplicationMonitor *m=list.First(); m; m=list.Next(m)) {
++      m->AITSection(buffer, aitPid, currentSource, currentTransponder);
++   }
++}
++
++/*void cApplicationMonitor::NewPATDescriptor(struct Program *pr, int currentSource, int currentTransponder) {
++   for (cApplicationMonitor *m=list.First(); m; m=list.Next(m)) {
++      m->PATDescriptor(pr, currentSource, currentTransponder);
++   }
++}*/
++
++/*void cApplicationMonitor::NotifyShutdownFilters(int unique) {
++   for (cApplicationMonitor *m=list.First(); m; m=list.Next(m)) {
++      m->ShutdownFilters(unique);
++   }
++}*/
++
+diff -U 2 -P -x AIT.patch ../temp/vdr-1.1.32/applicationmonitor.h ./applicationmonitor.h
+--- ../temp/vdr-1.1.32/applicationmonitor.h	Thu Jan  1 01:00:00 1970
++++ ./applicationmonitor.h	Tue Aug  5 18:14:45 2003
+@@ -0,0 +1,40 @@
++/***************************************************************************
++ *       Copyright (c) 2003 by Marcel Wiesweg                              *
++ *                                                                         *
++ *   This program is free software; you can redistribute it and/or modify  *
++ *   it under the terms of the GNU General Public License as published by  *
++ *   the Free Software Foundation; either version 2 of the License, or     *
++ *   (at your option) any later version.                                   *
++ *                                                                         *
++ ***************************************************************************/
++
++#ifndef __APPLICATIONS_MONITOR_H
++#define __APPLICATIONS_MONITOR_H
++
++#include "tools.h"
++#include "channels.h"
++
++/* This is only hook into cSIProcessor to keep the patch against eit.c as small as possible. */
++
++class cApplicationMonitor : public cListObject {
++public:
++   static int  NewPMTInnerLoopDescriptor(struct Descriptor *d, struct Pid *pi, struct PidInfo *p, int currentSource, int currentTransponder);
++   static void NewAITSection(unsigned char *buffer, int aitPid, int currentSource, int currentTransponder);
++   //static void NewPATDescriptor(struct Program *pr, int currentSource, int currentTransponder);
++   //static void NotifyShutdownFilters(int unique);
++protected:
++   cApplicationMonitor();
++   ~cApplicationMonitor();
++   virtual int  PMTInnerLoopDescriptor(struct Descriptor *d, struct Pid *pi, struct PidInfo *p, int currentSource, int currentTransponder) = 0;
++   virtual void AITSection(unsigned char *buffer, int aitPid, int currentSource, int currentTransponder) = 0;
++   //virtual void PATDescriptor(struct Program *pr, int currentSource, int currentTransponder) = 0;
++   //virtual void ShutdownFilters(int unique) = 0;
++   //virtual void CurrentChannelID(tChannelID &channelid) = 0;
++private:
++   static cList<cApplicationMonitor> list;
++};
++
++
++
++#endif
++
+
+--- ../vdr-1.1.28/Makefile	Mon Jan  6 13:28:09 2003
++++ Makefile	Thu Aug 14 16:22:10 2003
+@@ -37,5 +37,5 @@
+        lirc.o menu.o menuitems.o osdbase.o osd.o player.o plugin.o rcu.o\
+        receiver.o recorder.o recording.o remote.o remux.o ringbuffer.o sources.o\
+-       spu.o status.o svdrp.o thread.o timers.o tools.o transfer.o vdr.o videodir.o
++       spu.o status.o svdrp.o thread.o timers.o tools.o transfer.o vdr.o videodir.o applicationmonitor.o
+ 
+ OSDFONT = -adobe-helvetica-medium-r-normal--23-*-100-100-p-*-iso8859-1
+--- ../VDR/eit.c	Thu May 29 17:04:10 2003
++++ eit.c	Tue Aug  5 18:15:03 2003

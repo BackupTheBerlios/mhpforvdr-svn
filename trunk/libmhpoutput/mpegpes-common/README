@@ -1,0 +1,6 @@
+This library provides another output system for DirectFB.
+Applications linking agains DirectFB simply have to link against
+this library.
+The SHM output simply writes the data in a dump file. The file
+format, defined in dfbdumpfile.h is simple: A simple structure as a header,
+data in RGB24 format (1 byte per pixel).
