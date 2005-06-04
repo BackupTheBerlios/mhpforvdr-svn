@@ -15,18 +15,23 @@ CLASSFILELIST = ./classfilelist
 
 JARFILE = ./$(MHPJARFILENAME)
 
-all:
-#per default, java files come precompiled
+all: $(JARFILE)
+##per default, java files come precompiled
+##If file does not exist (checkout from SVN), compile it.
 
-#use "make java" to recompile Java classes
+##use "make java" to recompile Java classes
 java: compile jar
 
-compile: javafilelist
+compile: check-jmf javafilelist
 	$(JIKES) +Z0 -classpath $(CLASSPATH) \@$(JAVAFILELIST)
    
 jar: classfilelist
 ##	jar cf $(JARFILE) `cat $(CLASSFILELIST)`
 	zip -q $(JARFILE) `cat $(CLASSFILELIST)`
+
+$(JARFILE):
+	@echo "Precompiled Java files are not found, compiling them now with jikes"
+	make java
 
 javafilelist:
 	@find -name \*.java -and -not -path \*_unimplemented\* -not -path \*_deprecated\* -printf "%P\n" > $(JAVAFILELIST)
@@ -58,7 +63,10 @@ jarfile-install:
 	install -d $(MHPJARDIR)
 	cp $(JARFILE) $(MHPJARFILE)
 	
-thirdparty-install:
+thirdparty-install: check-jmf
+	cp thirdparty/jmf.jar $(MHPJARDIR)
+
+check-jmf:
 	@if [ ! -e thirdparty/jmf.jar ]; then \
 		 echo ;\
 		 echo "JMF file not found.";\
@@ -68,7 +76,6 @@ thirdparty-install:
 		 echo ;\
 		 exit 1; \
 	 fi
-	cp thirdparty/jmf.jar $(MHPJARDIR)
    
 testcase:
 	$(JIKES) -classpath $(CLASSPATH) ../../testapps/SimpleXlet/SimpleXlet.java
