@@ -46,7 +46,7 @@ private:
    //The implementor will inform the ContextStatus listeners!
 class ServiceSelectionProvider {
 public:
-   virtual void SelectService(Service service) = 0;
+   virtual void SelectService(cChannel *service) = 0;
    virtual void StopPresentation() = 0;
 };
 
@@ -91,6 +91,8 @@ protected:
    ServiceSelectionProvider *provider;
 private:
    static Context *s_self;
+   cChannel *currentChannel;
+   const cControl *currentControl;
 };
 
 class ServiceStatus : public cListObject {
@@ -133,7 +135,7 @@ protected:
       //service is either the selected service, the previously selected service which terminated,
       //or the service which failed to be selected. So it is not necessarily identical with
       //the Service returned by Context::getService().
-   virtual void ServiceEvent(Message event, Service service);
+   virtual void ServiceEvent(Message event, Service service) {};
 private:
    static cList<ServiceStatus> list;
 };

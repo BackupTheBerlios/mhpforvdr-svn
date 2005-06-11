@@ -83,5 +83,5 @@ testcase:
 getjikes-for-topdir:
 	@echo
 	@echo "Use the following command to compile a local application stored under "$(BASEDIR)/apps/". Append \"MyApp/MyApp.java\":"
-	@echo '$(JIKES) -classpath mhp/java:$(KAFFE_LIB)/rt.jar:mhp/java/thirdparty/jmf.jar  $(BASEDIR)/apps/'
+	@echo '$(JIKES) -classpath mhp/java:$(VM_CLASSPATH):mhp/java/thirdparty/jmf.jar  $(BASEDIR)/apps/'
 	@echo

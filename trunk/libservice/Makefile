@@ -18,7 +18,7 @@ RANLIB = ranlib
 ### The directory environment:
 
 
-INCLUDES += -I../$(VDRDIR)/include -I..
+INCLUDES += -I../$(VDRDIR)/include  -I$(DIRECTFB_INCLUDES) -I..
 
 DEFINES += 
 
@@ -44,9 +44,9 @@ $(DEPFILE): Makefile
 
 ### Targets:
 
-all: libdvbsi.a
+all: libservice.a
 
-libdvbsi.a : $(OBJS)
+libservice.a : $(OBJS)
 	$(AR) $(ARFLAGS) $@ $(OBJS)
 #	$(CXX) $(CXXFLAGS) -shared $(OBJS) $(LIBS) -o $@ 
 

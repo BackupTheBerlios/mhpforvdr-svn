@@ -85,6 +85,8 @@ private static native void initializeStatus();
 
 static VDRServiceContext context = null;
 
+//This class cannot be a singleton because a DESTROYED service context object needs to be removed.
+//However, in this implementation there is only one non-Destroyed service context at a time.
 static synchronized VDRServiceContext getContext() {
    if (context == null)
       context=new VDRServiceContext();
@@ -146,89 +148,6 @@ private void doSelect(VDRService selection) {
 }
 
 private native void doSelect(long nativeData);
-
-
-//Keep these constants in sync with Service::ContextStatus::Message in libservice/servicecontext.h
-static final int SUCCESS_NORMAL_CONTENT      = 0;
-static final int SUCCESS_ALTERNATIVE_CONTENT = 1;
-static final int ACCESS_WITHDRAWN            = 2;
-static final int RESOURCES_REMOVED           = 3;
-static final int SERVICE_VANISHED            = 4;
-static final int TUNED_AWAY                  = 5;
-static final int USER_STOP                   = 6;
-static final int CA_REFUSAL                  = 7;
-static final int CONTENT_NOT_FOUND           = 8;
-static final int INSUFFICIENT_RESOURCES      = 9;
-static final int MISSING_HANDLER             = 10;
-static final int TUNING_FAILURE              = 11;
-
-//called from native code
-void serviceEvent(int event) {
-   synchronized (this) {
-      if (state==DESTROYED && !destructionPending)
-         return;
-      switch (event) {
-      case SUCCESS_NORMAL_CONTENT:
-         state=PRESENTING;
-         sendEvent(new NormalContentEvent(this));
-         break;
-      case SUCCESS_ALTERNATIVE_CONTENT:
-         state=PRESENTING;
-         sendEvent(new AlternativeContentEvent(this));
-        break;
-        
-      case ACCESS_WITHDRAWN:
-         sendEvent(new PresentationTerminatedEvent(this, PresentationTerminatedEvent.ACCESS_WITHDRAWN));
-         break;
-      case RESOURCES_REMOVED:
-         sendEvent(new PresentationTerminatedEvent(this, PresentationTerminatedEvent.RESOURCES_REMOVED));
-         break;
-      case SERVICE_VANISHED:
-         sendEvent(new PresentationTerminatedEvent(this, PresentationTerminatedEvent.SERVICE_VANISHED));
-         break;
-      case TUNED_AWAY:
-         sendEvent(new PresentationTerminatedEvent(this, PresentationTerminatedEvent.TUNED_AWAY));
-         break;
-      case USER_STOP:
-         sendEvent(new PresentationTerminatedEvent(this, PresentationTerminatedEvent.USER_STOP));
-         //if stop() was called from destroy()
-         if (destructionPending) {
-            destructionPending=false;
-            doDestroy();
-         }
-         break;
-         
-      case CA_REFUSAL:
-         state=NOT_PRESENTING;
-         sendEvent(new SelectionFailedEvent(this, SelectionFailedEvent.CA_REFUSAL));
-         break;
-      case CONTENT_NOT_FOUND:
-         state=NOT_PRESENTING;
-         sendEvent(new SelectionFailedEvent(this, SelectionFailedEvent.CONTENT_NOT_FOUND));
-         break;
-      case INSUFFICIENT_RESOURCES:
-         state=NOT_PRESENTING;
-         sendEvent(new SelectionFailedEvent(this, SelectionFailedEvent.INSUFFICIENT_RESOURCES));
-         break;
-      case MISSING_HANDLER:
-         state=NOT_PRESENTING;
-         sendEvent(new SelectionFailedEvent(this, SelectionFailedEvent.MISSING_HANDLER));
-         break;
-      case TUNING_FAILURE:
-         state=NOT_PRESENTING;
-         sendEvent(new SelectionFailedEvent(this, SelectionFailedEvent.TUNING_FAILURE));
-         break;
-      }
-   }
-}
-
-private void sendEvent(ServiceContextEvent e) {
-   if (sclistener != null)
-      sclistener.receiveServiceContextEvent(e);
-}
-
-private static void nativeServiceEvent(int event) {
-}
 
 
 /*
@@ -464,6 +383,100 @@ public void removeListener ( ServiceContextListener listener) {
       throw new IllegalStateException();
    }
 }
+
+
+//Keep these constants in sync with Service::ContextStatus::Message in libservice/servicecontext.h
+static final int SUCCESS_NORMAL_CONTENT      = 0;
+static final int SUCCESS_ALTERNATIVE_CONTENT = 1;
+static final int ACCESS_WITHDRAWN            = 2;
+static final int RESOURCES_REMOVED           = 3;
+static final int SERVICE_VANISHED            = 4;
+static final int TUNED_AWAY                  = 5;
+static final int USER_STOP                   = 6;
+static final int CA_REFUSAL                  = 7;
+static final int CONTENT_NOT_FOUND           = 8;
+static final int INSUFFICIENT_RESOURCES      = 9;
+static final int MISSING_HANDLER             = 10;
+static final int TUNING_FAILURE              = 11;
+
+//called from native code
+private void serviceEvent(int event) {
+   synchronized (this) {
+      //If state is DESTROYED, but destruction is still pending, continue to pass events.
+      //As soon as the USER_STOP event in handled, destructionPending will be reset.
+      if (state==DESTROYED && !destructionPending)
+         return;
+      switch (event) {
+      case SUCCESS_NORMAL_CONTENT:
+         state=PRESENTING;
+         sendEvent(new NormalContentEvent(this));
+         break;
+      case SUCCESS_ALTERNATIVE_CONTENT:
+         state=PRESENTING;
+         sendEvent(new AlternativeContentEvent(this));
+        break;
+        
+      case ACCESS_WITHDRAWN:
+         sendEvent(new PresentationTerminatedEvent(this, PresentationTerminatedEvent.ACCESS_WITHDRAWN));
+         break;
+      case RESOURCES_REMOVED:
+         sendEvent(new PresentationTerminatedEvent(this, PresentationTerminatedEvent.RESOURCES_REMOVED));
+         break;
+      case SERVICE_VANISHED:
+         sendEvent(new PresentationTerminatedEvent(this, PresentationTerminatedEvent.SERVICE_VANISHED));
+         break;
+      case TUNED_AWAY:
+         sendEvent(new PresentationTerminatedEvent(this, PresentationTerminatedEvent.TUNED_AWAY));
+         break;
+      case USER_STOP:
+         sendEvent(new PresentationTerminatedEvent(this, PresentationTerminatedEvent.USER_STOP));
+         //if stop() was called from destroy()
+         if (destructionPending) {
+            destructionPending=false;
+            doDestroy();
+         }
+         break;
+         
+      case CA_REFUSAL:
+         state=NOT_PRESENTING;
+         sendEvent(new SelectionFailedEvent(this, SelectionFailedEvent.CA_REFUSAL));
+         break;
+      case CONTENT_NOT_FOUND:
+         state=NOT_PRESENTING;
+         sendEvent(new SelectionFailedEvent(this, SelectionFailedEvent.CONTENT_NOT_FOUND));
+         break;
+      case INSUFFICIENT_RESOURCES:
+         state=NOT_PRESENTING;
+         sendEvent(new SelectionFailedEvent(this, SelectionFailedEvent.INSUFFICIENT_RESOURCES));
+         break;
+      case MISSING_HANDLER:
+         state=NOT_PRESENTING;
+         sendEvent(new SelectionFailedEvent(this, SelectionFailedEvent.MISSING_HANDLER));
+         break;
+      case TUNING_FAILURE:
+         state=NOT_PRESENTING;
+         sendEvent(new SelectionFailedEvent(this, SelectionFailedEvent.TUNING_FAILURE));
+         break;
+      }
+   }
+}
+
+private void sendEvent(ServiceContextEvent e) {
+   if (sclistener != null)
+      sclistener.receiveServiceContextEvent(e);
+}
+
+private static void nativeServiceEvent(int event) {
+   //with the current implementation there is only one non-destroyed object at a time,
+   //so there is no problem to which context to delegate the event.
+   //If destructionPending is true, the USER_STOP event will be the last sent to this object.
+   //It is assumed that there will be no further events after USER_STOP for an object.
+   VDRServiceContext contextForEvent = context;
+   if (contextForEvent != null) {
+      contextForEvent.serviceEvent(event);
+   }
+}
+
 
 
 

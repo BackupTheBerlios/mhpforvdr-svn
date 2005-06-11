@@ -160,11 +160,13 @@ public void checkWrite(String file) {
 //somewhere down the stack.
 public org.dvb.application.MHPApplication getApplicationFromStack() {
    Class[] cls=getClassContext();
+   /*
    System.out.println("Class context:");
    for (int i=0; i< cls.length; i++) {
       ClassLoader loader=cls[i].getClassLoader();
       System.out.println(" "+cls[i]+", "+ (loader==null ? "bootstrap loader" : (loader+" "+loader.getClass())) );
    }
+   */
    for (int i=0; i< cls.length; i++) {
       ClassLoader loader=cls[i].getClassLoader();
       if (loader instanceof org.dvb.lang.DVBClassLoader)

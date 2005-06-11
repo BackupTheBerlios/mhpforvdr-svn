@@ -17,7 +17,7 @@
 #           per default located in /usr/local/vdr/apps, with jikes,
 #           of you are located in the main directory of the plugin.
 #           Only the last parts of the path to Java files of the app must be typed.
-# testcase-install  copy the contents of testapps to /usr/local/vdr/apps
+# testapps-install  copy the contents of testapps to /usr/local/vdr/apps
 
 
 
@@ -73,7 +73,7 @@ DEFINES += -DPLUGIN_NAME_I18N='"$(PLUGIN)"' -DBASEDIR='"$(BASEDIR)"' -DLOCALAPPS
 
 LIBS += -Wl,--whole-archive libdsmccreceiver/libdsmccreceiver.a libdsmcc/libdsmcc.a -lz \
         libmhpoutput/libmhpoutput.a  -Wl,--no-whole-archive -lm -lavcodec \
-        libait/libait.a -Wl,--whole-archive libdvbsi/libdvbsi.a -Wl,--no-whole-archive \
+        libait/libait.a -Wl,--whole-archive libdvbsi/libdvbsi.a libservice/libservice.a -Wl,--no-whole-archive \
         libjava/libjava.a  -ldfb++ -ldirectfb $(VM_LINK_PATH)
         
 ### The object files (add further files here):

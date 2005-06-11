@@ -8,6 +8,12 @@
  *                                                                         *
  ***************************************************************************/
 
+#include <typeinfo>
+
+#include <vdr/player.h>
+#include <vdr/channels.h>
+
+#include <mhpcontrol.h>
 
 #include "servicecontext.h"
 
@@ -48,14 +54,17 @@ void Context::getApplications(std::list<ApplicationInfo::cApplication *> apps) {
 }
 
 cChannel *Context::getService() {
-   //TODO
-   return 0;
+   //may be null
+   return currentChannel;
 }
 
 bool Context::isPresenting() {
-   //TODO
-   return false;
+   //Please note that this access of cControl::Control out of VDR's main thread is
+   //not thread-safe possibly illegal.
+   cControl *c=cControl::Control();
+   return (c==0 || typeid(*cControl::Control()) != typeid(MhpControl));
 }
+
       //Tries to switch to given service - including tuning!
       //It is guaranteed that ServiceStatus is called subsequently.
       //Possible Messages:
@@ -69,20 +78,32 @@ bool Context::isPresenting() {
       //If the presentation is terminated afterwards,
       //    a message why the presentation terminated
 void Context::SelectService(cChannel *service) {
-   //TODO
+   provider->SelectService(service);
 }
       //I am not sure what this is supposed to do.
       //It is guaranteed that ServiceStatus is called subsequently.
 void Context::StopPresentation() {
-   //TODO
+   provider->StopPresentation();
 }
 
 void Context::ChannelSwitch(const cDevice *Device, int ChannelNumber) {
-   //TODO
+   if (Device == cDevice::PrimaryDevice()) {
+      if (ChannelNumber == 0)
+         currentChannel=0;
+      else
+         currentChannel=Channels.GetByNumber(ChannelNumber);
+   }
 }
 
 void Context::Replaying(const cControl *Control, const char *Name) {
-   //TODO
+   /*
+   //Only normal recordings are announce by this way!
+   //So, if currentControl is 0, this does not mean cControl::Control() is null!
+   if (Name==NULL)
+      currentControl=0;
+   else
+      currentControl=Control;
+   */
 }
 
 cList<ServiceStatus> ServiceStatus::list;
