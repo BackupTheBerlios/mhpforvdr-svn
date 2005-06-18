@@ -17,7 +17,7 @@ namespace ApplicationInfo {
 /* --------- cTransportStream ------------- */
 
 cTransportStream::cTransportStream(int s, int n, int t)
- : source(s), nid(n), tid(t)
+ : id(s,n,t)
 {
 }
 
@@ -103,7 +103,7 @@ cChannel *cTransportStream::GetChannelForAitPid(int aitPid) {
    Service *s=GetServiceForAitPid(aitPid);
    if (!s)
       return 0;
-   cChannel *c=s->GetChannel(); //may be null if VDR does not know channel
+   cChannel *c=s->GetChannel(); //may be 0 if VDR does not know channel
    if (!c)
       esyslog("Did not find channel for application PID %d", aitPid); //programming mistake
    return c;
@@ -408,6 +408,32 @@ cApplication *cApplicationsDatabase::findApplication(int aid, int oid, int type)
    return 0;
 }
 
+bool cApplicationsDatabase::findApplicationsForTransportStream(std::list<cApplication *> addAppsToThisList, int source, int nid, int tid) {
+   cTransportStream *ts = TransportStreams.GetTransportStream(source, nid, tid);
+   if (ts == 0)
+      return false;
+   for (cApplication *a=First(); a; a=Next(a)) {
+      if (a->GetService()->GetTransportStream() == ts)
+         addAppsToThisList.push_back(a);
+   }
+   return true;
+}
+
+bool cApplicationsDatabase::findApplicationsForService(std::list<cApplication *> addAppsToThisList, int source, int nid, int tid, int sid) {
+   cTransportStream *ts = TransportStreams.GetTransportStream(source, nid, tid);
+   if (ts == 0)
+      return false;
+   cTransportStream::Service *service = ts->findService(sid);
+   if (service == 0)
+      return false;
+
+   for (cApplication *a=First(); a; a=Next(a)) {
+      if (a->GetService() == service)
+         addAppsToThisList.push_back(a);
+   }
+   return true;
+}
+
 void cApplicationsDatabase::addApplication(cApplication *newApp) {
    cApplication *a;
    if ( (a=findApplication(newApp->GetAid(), newApp->GetOid(), newApp->GetApplicationType())) ) {
@@ -431,7 +457,11 @@ void cApplicationsDatabase::deleteTagged() {
       if (a->tagged) {
          Del(a, false);
          cApplicationStatus::MsgApplicationRemoved(a);
-         delete a;
+         //Leak removed applications for now.
+         //Currently applications are stored as pointers in Java code.
+         //TODO: Add some sort of lightweight reference counting?
+         //delete a;
+         printf("Warning: Leaking removed ApplicationInfo::cApplication object in %s.\n", __FUNCTION__);
       }
    }
 }
@@ -439,9 +469,9 @@ void cApplicationsDatabase::deleteTagged() {
 
 /* --------- cTransportStreams ------------- */
 
-cTransportStream *cTransportStreams::GetTransportStream(int source, int nid, int tid) {
+cTransportStream *cTransportStreams::findTransportStream(int source, int nid, int tid) {
    static cTransportStream *last=0;
-   
+
    if (last && last->equals(source, nid, tid) )
       return last;
    for (cTransportStream *ts=First(); ts; ts=Next(ts)) {
@@ -451,10 +481,13 @@ cTransportStream *cTransportStreams::GetTransportStream(int source, int nid, int
    return 0;
 }
 
-cTransportStream *cTransportStreams::AddTransportStream(int source, int nid, int tid) {
-   cTransportStream *str=new cTransportStream(source, nid, tid);
-   Add(str);
-   return str;
+cTransportStream *cTransportStreams::GetTransportStream(int source, int nid, int tid) {
+   cTransportStream *ts=findTransportStream(source, nid, tid);
+   if (ts == 0) {
+      ts=new cTransportStream(source, nid, tid);
+      Add(ts);
+   }
+   return ts;
 }
 
 

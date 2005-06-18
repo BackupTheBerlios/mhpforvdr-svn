@@ -39,6 +39,7 @@ class Scheduler {
 public:
    virtual void Add(TimedObject *o, bool initialExecute=true) = 0;
    virtual void Remove(TimedObject *o) = 0;
+   virtual void RemoveAll(bool deleteEntries=false) = 0;
    virtual void ExecuteNow(TimedObject *o) = 0;
 protected:
    void DoExecute(TimedObject *o) { o->Execute(); }
@@ -47,6 +48,7 @@ protected:
 class TimedBySeconds : public TimedObject {
 public:
    TimedBySeconds(time_t seconds=15) : last(0), interval(seconds) {}
+   virtual ~TimedBySeconds() {}
    virtual bool Check();
    virtual void SetExecutingTime();
    void ChangeInterval(time_t seconds) { interval=seconds; }
@@ -57,10 +59,11 @@ protected:
 
 class SchedulerBySeconds : public Scheduler, public cThread {
 public:
-   SchedulerBySeconds(int granularityInSeconds=2) : running(false), granularity(granularityInSeconds) {}
+   SchedulerBySeconds(int granularityInSeconds=2);
    virtual ~SchedulerBySeconds();
    virtual void Add(TimedObject *o, bool initialExecute=true);
    virtual void Remove(TimedObject *o);
+   virtual void RemoveAll(bool deleteEntries=false);
    virtual void ExecuteNow(TimedObject *o);
 protected:
    std::list<TimedObject *> list;
@@ -69,6 +72,7 @@ protected:
    int granularity;
    cMutex schedulerMutex;
    cCondVar sleepVar;
+   bool havingObjects;
 };
 
 class IdTracker {

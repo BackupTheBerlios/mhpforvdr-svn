@@ -27,7 +27,7 @@
 enum LoadingState { LoadingStateError, LoadingStateWaiting, LoadingStateLoading, LoadingStateLoaded, LoadingStateHibernated };
 
 //the maximum number of apps which may concurrently be kept in hibernated state
-#define MAX_HIBERNATED_APPS 3
+#define MAX_HIBERNATED_APPS 4
 
 class ProgressIndicator {
 public:
@@ -37,8 +37,11 @@ public:
 };
 
 class MhpCarouselLoader;
+class MhpChannelWatch;
+class MhpCarouselPreloader;
 namespace Cache { class Cache; }
 template <class T> class SmartPtr;
+
 class MhpLoadingManager : public ApplicationInfo::cApplicationStatus {
 public:
    ~MhpLoadingManager();
@@ -61,6 +64,8 @@ private:
    static MhpLoadingManager *s_self;
    typedef std::map<ApplicationInfo::cApplication *, MhpCarouselLoader *> AppMap;
    AppMap apps;
+   MhpChannelWatch *watch;
+   MhpCarouselPreloader *preloader;
    int hibernatedCount;
    cMutex mutex;
    MhpCarouselLoader *loadingApp;

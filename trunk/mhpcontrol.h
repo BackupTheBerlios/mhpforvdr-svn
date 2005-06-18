@@ -13,13 +13,16 @@
 #ifndef __MHPCONTROL_H
 #define __MHPCONTROL_H
 
+#include <list>
 
 #include "mhploading.h"
 
 #include <vdr/player.h>
+#include <vdr/status.h>
 
 #include <libmhpoutput/output.h>
 #include <libait/applications.h>
+#include <libdvbsi/util.h>
 #include <libdsmccreceiver/receiver.h>
 #include <libdsmccreceiver/cache.h>
 
@@ -60,6 +63,32 @@ protected:
    ApplicationInfo::cTransportProtocol::Protocol protocol;
    time_t hibernatedTime;
    int totalSize;
+};
+
+class MhpChannelWatch : public cStatus {
+protected:
+  virtual void ChannelSwitch(const cDevice *Device, int ChannelNumber);
+};
+
+class MhpCarouselPreloader : public DvbSi::SchedulerBySeconds {
+public:
+   MhpCarouselPreloader();
+   void PreloadForTransportStream(ApplicationInfo::TransportStreamID newTs);
+protected:
+   class TimedPreloader : public DvbSi::TimedBySeconds {
+   public:
+      TimedPreloader(ApplicationInfo::TransportStreamID newTs);
+   protected:
+      virtual void Execute();
+   private:
+      bool loading;
+      std::list<ApplicationInfo::cApplication *> apps;
+      std::list<ApplicationInfo::cApplication *>::iterator currentPosition;
+      ApplicationInfo::TransportStreamID ts;
+   };
+private:
+   TimedPreloader *currentLoader;
+   ApplicationInfo::TransportStreamID ts;
 };
 
 class cSkinDisplayReplay;

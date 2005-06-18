@@ -108,8 +108,7 @@ void cApplicationMonitor::DataSwitch(DvbSi::Database *db) {
       delete request;
       request=0;
    }*/
-   if ( !(ts=Applications.GetTransportStream(db->getCurrentSource(), db->getNetworkId(), db->getPat().getTransportStreamId())) )
-      ts=Applications.AddTransportStream(db->getCurrentSource(), db->getNetworkId(), db->getPat().getTransportStreamId());
+   ts=Applications.GetTransportStream(db->getCurrentSource(), db->getNetworkId(), db->getPat().getTransportStreamId());
    delete request;
    request=0;
    request=db->retrievePMTServices(this);

@@ -64,8 +64,8 @@ public:
    
    cTransportStream *GetTransportStream(int source, int nid, int tid) 
          { return TransportStreams.GetTransportStream(source, nid, tid); }
-   cTransportStream *AddTransportStream(int source, int nid, int tid)
-         { return TransportStreams.AddTransportStream(source, nid, tid); }
+   cTransportStream *findTransportStream(int source, int nid, int tid)
+         { return TransportStreams.findTransportStream(source, nid, tid); }
    
 protected:
    cMutex mutex;

@@ -21,6 +21,11 @@ void TimedBySeconds::SetExecutingTime() {
    last=time(0);
 }
 
+SchedulerBySeconds::SchedulerBySeconds(int granularityInSeconds)
+   : running(false), granularity(granularityInSeconds), havingObjects(false)
+{
+}
+
 SchedulerBySeconds::~SchedulerBySeconds() {
    running=false;
    //In theory, the mutex must be locked when broadcasting.
@@ -34,21 +39,37 @@ SchedulerBySeconds::~SchedulerBySeconds() {
 void SchedulerBySeconds::Add(TimedObject *o, bool initialExecute) {
    cMutexLock lock(&schedulerMutex);
    list.push_back(o);
+   havingObjects=true;
    o->SetExecutingTime();
+
    if (initialExecute)
       DoExecute(o);
+
    if (!running) {
       running=true;
       Start();
-   }
+   } else
+      sleepVar.Broadcast();
 }
 
 void SchedulerBySeconds::Remove(TimedObject *o) {
    cMutexLock lock(&schedulerMutex);
    list.remove(o);
    if (!list.size())
-      running=false;
+      havingObjects=false;
 }
+
+
+void SchedulerBySeconds::RemoveAll(bool deleteEntries) {
+   cMutexLock lock(&schedulerMutex);
+   if (deleteEntries) {
+      for (std::list<TimedObject *>::iterator it=list.begin(); it != list.end(); ++it)
+         delete (*it);
+   }
+   list.clear();
+   havingObjects=false;
+}
+
 
 void SchedulerBySeconds::ExecuteNow(TimedObject *o) {
    cMutexLock lock(&schedulerMutex);
@@ -68,8 +89,12 @@ void SchedulerBySeconds::Action() {
          }
       }
       
-      for (int i=0; (i<granularity) && running; i++)
+      for (int i=0; (i<granularity) && running && havingObjects; i++)
          sleepVar.TimedWait(schedulerMutex, 1000);
+      
+      //suspend thread if no objects are scheduled
+      if (!havingObjects)
+         sleepVar.Wait(schedulerMutex);
    
    }
 }

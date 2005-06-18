@@ -33,10 +33,26 @@ class cTransportStream : public cListObject {
 public:
    cTransportStream(int source, int nid, int tid);
    
+   struct Data {
+      Data(int s, int n, int t) : source(s), nid(n), tid(t) {}
+      Data() : source(0), nid(0), tid(0) {}
+      int source;
+      int nid;
+      int tid;
+      bool operator==(const Data &other)
+         { return tid==other.tid && nid==other.nid && source==other.source; }
+      bool equals(int s, int n ,int t)
+         { return tid==t && nid==n && source==s; }
+      //default copy constructor and operator= are sufficient
+   };
+   typedef Data TransportStreamID;
+   
    bool operator==(cTransportStream &other)
-      { return tid==other.tid && nid==other.nid && source==other.source; }
+      { return id==other.id; }
+   bool operator==(TransportStreamID &otherID)
+      { return id==otherID; }
    bool equals(int s, int n ,int t)
-      { return tid==t && nid==n && source==s; }
+      { return id.equals(s,n,t); }
       
    struct Component {
       Component(int pi=0, int comp=0) : pid(pi), componentTag(comp) {}
@@ -80,13 +96,17 @@ public:
       std::list<Carousel> carousels;
    };
    
-   int GetSource() { return source; }
-   int GetNid() { return nid; }
-   int GetTid() { return tid; }
+   int GetSource() { return id.source; }
+   int GetNid() { return id.nid; }
+   int GetTid() { return id.tid; }
+   TransportStreamID GetID() { return id; }
    
+   //Returns either service found in service list or a newly created Service object
    Service *GetService(int sid);
    cChannel *GetChannel(Service *s)
       { return s->GetChannel(); }
+   //Returns service found in service list or NULL if not found
+   Service *findService(int sid);
    
    int GetPidForComponentTag(int serviceId, int componentTag);   
    int GetCarouselIdForPid(int pid);   
@@ -103,13 +123,12 @@ public:
    };
    
 protected:
-   Service *findService(int sid);
    std::list<Service *> services;
-   int source;
-   int nid;
-   int tid;
+   TransportStreamID id;
    cMutex mutex;
 };
+
+typedef cTransportStream::TransportStreamID TransportStreamID;
 
 
 //The way how an MHP application is broadcast/transported.
@@ -315,15 +334,28 @@ private:
 
 class cTransportStreams : public cList<cTransportStream> {
 public:
+   //Returns a cTransportStream found in list or NULL if not found
+   cTransportStream *findTransportStream(int source, int nid, int tid);
+   //Returns a cTransportStream found in list or a newly created object
    cTransportStream *GetTransportStream(int source, int nid, int tid);
-   cTransportStream *AddTransportStream(int source, int nid, int tid);
 };
 
 
 class cApplicationsDatabase : public cList<cApplication> {
 friend class cAIT;
 public:
+   //Returns application for given identifiers, or NULL if not found.
    cApplication *findApplication(int aid, int oid, int type);
+   //Fills list with applications found on given tranport stream.
+   //Returns true if information about that TS in known, or false if
+   //no information (AIT) has yet been received on that TS.
+   //If information is known, all applications signalled on the TS will be added to the list.
+   bool findApplicationsForTransportStream(std::list<cApplication *> addAppsToThisList, int source, int nid, int tid);
+   //Fills list with applications found on given service.
+   //Returns true if information about that service, or false if
+   //no information (AIT) has yet been received for that service on its transport stream.
+   //If information is known, all applications signalled on the TS will be added to the list.
+   bool findApplicationsForService(std::list<cApplication *> addAppsToThisList, int source, int nid, int tid, int sid);
 protected:
    void addApplication(cApplication *newApp);
    void tagForDeletion(cTransportStream::Service *service, int type);

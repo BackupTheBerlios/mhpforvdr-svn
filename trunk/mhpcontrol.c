@@ -15,6 +15,7 @@
 #include <vdr/skins.h>
 
 #include <libjava/javainterface.h>
+#include <libait/ait.h>
 #include <libmhpoutput/outputadministration.h>
 
 #include "mhpcontrol.h"
@@ -357,6 +358,8 @@ void MhpLoadingManager::CleanUp() {
 }
 
 MhpLoadingManager::MhpLoadingManager() : hibernatedCount(0), loadingApp(0) {
+   watch = new MhpChannelWatch();
+   preloader = new MhpCarouselPreloader();
 }
 
 MhpLoadingManager::~MhpLoadingManager() {
@@ -498,6 +501,78 @@ void MhpLoadingManager::OnceASecond(ProgressIndicator *pi) {
    }
 }
 
+/* --------- MhpChannelWatch ------------ */
+
+void MhpChannelWatch::ChannelSwitch(const cDevice *Device, int ChannelNumber) {
+}
+
+
+/* --------- MhpCarouselPreloader ------------- */
+
+MhpCarouselPreloader::MhpCarouselPreloader() 
+  : SchedulerBySeconds(10),
+    currentLoader(0)
+{
+}
+
+//!!
+//Attention: the implementation is currently simple, there will be only one TimedPreloader at a time.
+//This is sufficient as long as only the CurrentChannel is monitored!
+//If all devices are monitored and a channel switch on any device causes a call of this
+//method here, there must be a map Transport Stream -> TimedPreloader maintained here!!
+void MhpCarouselPreloader::PreloadForTransportStream(ApplicationInfo::TransportStreamID newTs) {
+   if (!(newTs == ts)) {
+      Remove(currentLoader);
+      delete currentLoader;
+      currentLoader=new TimedPreloader(newTs);
+   }
+}
+
+//Wait 30 seconds before starting prefetching.
+//This waiting period will be stopped as soon as the user switches to a different transponder.
+#define INITIAL_WAIT 30
+//Check status of loading app every 15 seconds.
+#define CHECK_PERIOD 15
+//Preload again to check for changes every ten minutes
+#define REPRELOAD_WAIT 10*60
+
+MhpCarouselPreloader::TimedPreloader::TimedPreloader(ApplicationInfo::TransportStreamID newTs)
+  : TimedBySeconds(INITIAL_WAIT),
+    loading(false), ts(newTs)
+{
+}
+
+//No need for a destructor. MhpLoadingManager will take care for hibernation/detaching.
+
+void MhpCarouselPreloader::TimedPreloader::Execute() {
+   if (loading) {
+      if (MhpLoadingManager::getManager()->getState((*currentPosition)) != LoadingStateLoading) {
+         //preload next in list
+         ++currentPosition;
+         //if end is reached, wait REPRELOAD_WAIT for the next round.
+         if (currentPosition == apps.end()) {
+            ChangeInterval(REPRELOAD_WAIT);
+            loading=false;
+         } else {
+            MhpLoadingManager::getManager()->Load((*currentPosition));
+            ChangeInterval(CHECK_PERIOD);
+            loading=true;
+         }
+      }
+   } else {
+      if (ApplicationInfo::Applications.findApplicationsForTransportStream(apps, ts.source, ts.nid, ts.tid) && apps.size()) {
+         currentPosition=apps.begin();
+         if (currentPosition != apps.end()) {
+            MhpLoadingManager::getManager()->Load((*currentPosition));
+            ChangeInterval(CHECK_PERIOD);
+            loading=true;
+         }
+      } else {
+         ChangeInterval(REPRELOAD_WAIT);
+         loading=false;
+      }
+   }
+}
 
 /* --------- MhpCarouselLoader ------------- */
 
