@@ -14,24 +14,36 @@ This plugin aims at an implementation of the
 Multimedia Home Platform (MHP) for VDR.
 
 
+STATUS of this file:
+   Updated 2 July 2005 for compilation from SVN
+
+
 Installation:
  
- The plugin requires four steps. Please do not forget step 3 and 4, which
+ The plugin requires five steps. Please do not forget step 2, 4 and 5, which
  are unusual for VDR plugins.
 
  1)The plugin has quite a few dependencies. Please check this list
    before compiling the plugin.
-   You need (hierarchically):
+   You need:
    
-   - The MPEG encoding for the traditional FF-card output will require some power
-     from your CPU, but it is not real time encoding, only one picture per change.
-     I am developing an a 1,2 GHz Celeron processor which is  more than sufficient,
-     so I expect really low power CPUs to work. Expensive drawing operations,
-     such as displaying 3.2 megapixel Jpegs on TV, are a different story.
-
-   - VDR 1.3.x series, tested with version 1.3.9, later versions are okay,
-     earlier versions are not recommended (it is a development series after all)
+   - VDR 1.3.x series, tested with version 1.3.23, later versions are okay,
+     earlier versions are not recommended/may not work (it is a development series after all)
+     
+   - A Java virtual machine based on GNU Classpath. 'Currently, the only supported VM is
    
+     - SableVM, current SVN snapshot.
+         Get the latest version from SVN, the 1.11 release of SableVM does not work:
+         
+         svn co svn://svn.sablevm.org/sablevm/trunk sablevm-trunk
+         svn co svn://svn.sablevm.org/sablevm-classpath/trunk sablevm-classpath-trunk
+         
+         Some dependencies (Jikes, libpopt) are already included in this package.
+         
+         Compile and install SableVM.
+         If you don't have GTK installed, you can savely disable
+         compilation of the GTK peer of Classpath, it is not needed.
+         
    - DirectFB (www.directfb.org), version 0.9.20, 0.9.21 or 0.9.22.
       Please note that DirectFB is primarily used for its graphics capabilities.
       You do _not_ need a working framebuffer or supported graphics card.
@@ -63,35 +75,28 @@ Installation:
      complains, do
      PKG_CONFIG_PATH=/usr/local/lib/pkgconfig/ ./configure
       
-   - Kaffe (www.kaffe.org), at least version 1.1.4,
-      with "unix-pthreads" threading system.
-   
-      Any version of Kaffe prior to 1.1.4 (particularly 1.1.3) and any version
-      with the "unix-jthreads" threading system will crash!
-      
-      So do
-      
-      ./configure --with-threads=unix-pthreads; make; make install
-      
-      (don't forget the unix-pthreads!)
-      If it complains about missing GNU MP, choose the suggested alternative.
-      (we do not need number crunching in MHP after all ;-)
-      
    - ffmpeg, both 0.4.8 and 0.4.9-pre1 are tested
      ./configure --enable-shared
 
+   - The MPEG encoding for the traditional FF-card output will require some power
+     from your CPU, but it is not real time encoding, only one picture per change.
+     I tested on a a 1,2 GHz Celeron processor which is  more than sufficient,
+     so I expect really low power CPUs to work. Expensive drawing operations,
+     such as displaying 3.2 megapixel Jpegs on TV, are a different story.
+
    Please compile and install all these packages.
-   Then edit Make.config and adapt the paths to your system.
-         
- 2)Now it is time to compile the plugin like all other plugins.
+   
+ 2)Edit Make.config and adapt the paths to your system.
+
+ 3)Now it is time to compile the plugin like all other plugins.
  
- 3)Some files (Java and native libraries from the MHP stack, fonts)
+ 4)Some files (Java and native libraries from the MHP stack, fonts)
    need to be installed to /usr/local/vdr/mhp.
    Descend into the plugin's main directory and execute (as root)
    
    "make install".
    
- 4)Command line arguments:
+ 5)Command line arguments:
    The plugin needs to know the VDR plugin directory.
    So if you start VDR with the "-L" option, start the plugin with the same option:
    "-P 'mhp -L /path/to/PLUGINS/lib'"

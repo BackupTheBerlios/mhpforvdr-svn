@@ -24,15 +24,13 @@ What is the architecture of this plugin?
  carousels.
  The MHP standards provide a broad range of APIs adapted to the set-top
  environment. It is the task of this implementation to provide these interfaces.
- The plugin makes use of the Kaffe Java implementation (because it is GPL,
- because I can read the code, because it works nicely).
- It links to the native kaffe libraries and starts the VM via JNI, this means
+ It links to the native libraries of the Java implementation and starts the VM via JNI, this means
  the VM in embedded into the VDR process. This way the implementation
  can communicate directly with VDR. Only few calls are executed via JNI
  Native -> Java, most of the control flow is executed in Java and the 
  Java stack accesses VDR/plugin code via JNI Java -> Native.
- Graphics in important for MHP, stuff like alpha blending, and Porter/Duff rules
- I had never heard of before. Fortunately Convergence wrote DirectFB for
+ Graphics are important for MHP, stuff like alpha blending, and Porter/Duff rules.
+ Fortunately Convergence wrote DirectFB for
  their commercial MHP implementation and provided it as free software. (Thank you!)
  So the display stack is based on DirectFB's graphics capabilities, i.e. all drawing
  is done on DirectFB image structures, in most/all cases in software, but MMX accelerated.
@@ -49,6 +47,45 @@ Architectural difficulties and differences
  of integration. The user enters a menu and explicitly starts an application if he wants.
  Unless he does so, applications are not executed in any way.
  
+A note on Java virtual machines
+ The Java implementation from SUN is the only feature-complete
+ Java implementation, but it is proprietary, does not allow replacing
+ some components, does not even allow you viewing its source
+ without somehow selling your soul.
+ GNU classpath is the free, high-quality implementation of the Java
+ class libraries which is used by this project. It does not implement
+ every feature, especially of the latest Java release, but MHP does not
+ require Java 5 but only 1.2, and for this purpose GNU CP already is
+ sufficient.
+ There are several free virtual machine implementations based on GNU CP.
+ - SableVM
+   A very elegant and clean implementation by a team from Université du
+   Québec à Montréal. A few patches were sent upstream and now SableVM
+   fully supports the required JNI invocation API calls and is currently
+   the only supported VM.
+   Does not have a JIT engine as of yet.
+ - Kaffe
+   A quite feature complete implementation with a long history but
+   little development and maintainership lately.
+   Up to spring 2005 the plugin was based on Kaffe, but after an upgrade
+   Kaffe stopped working. The source of Kaffe (some other parts probably as well)
+   is a complete mess to read, and I could not get it working.
+   I might re-add support one day.
+   Kaffe provides a JITter as well as a choice of advanced garbage collectors.
+ - JamVM
+   A compact, clean and lean VM, actively developed.
+   Unfortunately, the last time a has a look at the source the incovation
+   API was not supported, so no chance to use it until this is implemented.
+   Does not have a JIT engine as of yet.
+ - JC virtual machine
+   This implementation concentrates on ahead-of-time compilation to native
+   code. Such a feature is not really needed, but JC provides an interpreter
+   as well. JNI seems to be fully implemented, development is active.
+   If there had to be another VM added immediately, it would probably JC
+ - Apache Harmony
+   Apache Harmony is a very interesting project, and if there is working
+   code one day I will love to support it.
+   
 What are all those libs about?
 
    libdvbsi
@@ -96,6 +133,19 @@ What are all those libs about?
 
       Status: beta
    
+   libservice
+      The package javax.tv.service.selection provides access
+      to service selection (read channel switching) which is quite
+      different from VDR's point of view. This library is quite similar
+      to this API and tries to map it to VDR's native structure.
+      It is written quite specifically for this purpose and does
+      not contain much reusable code.
+      
+   libxmi
+      This is an external library packaged with the plugin for convenience.
+      It provides the necessary routines for non-trivial drawing primitives
+      like polygons, arcs, ovals.
+   
   
 The test applications
 
@@ -114,8 +164,11 @@ Compiling Java classes
 If you want to recompile the Java class files,
 you need
   jikes (http://oss.software.ibm.com/developerworks/opensource/jikes/)
+Jikes is already included in the SableVM package.
 Since this is Java, recompilation is only required when you change the source,
-the Java code comes precompiled.
+or if you install from SVN.
+For release packages, the Java code comes precompiled.
+
 
 
 Specifications
