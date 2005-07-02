@@ -7,10 +7,10 @@ VDRDIR = ../../../..
 
 ### The C++ compiler and options:
 
-CXX      ?= g++
-CXXFLAGS ?= -O2 -g -Wall -Woverloaded-virtual
+##CXX      ?= g++
+##CXXFLAGS ?= -O2 -g -Wall -Woverloaded-virtual
 
--include ../Make.config
+include ../Make.config
 
 
 

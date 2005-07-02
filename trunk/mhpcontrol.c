@@ -368,6 +368,8 @@ MhpLoadingManager::~MhpLoadingManager() {
       delete it->second;
    }
    apps.clear();
+   delete watch;
+   delete preloader;
 }
 
 /*void Add(ApplicationInfo::cApplication *a) {

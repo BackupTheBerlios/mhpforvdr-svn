@@ -24,6 +24,15 @@ import org.dvb.user.*;
 import org.dvb.io.ixc.IxcRegistry;
 import javax.tv.util.*;
 
+import java.io.File;
+import java.io.FileWriter;
+import java.io.FileReader;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.RandomAccessFile;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+
 /**
 * Xlet used to debug Java stack
 */
@@ -55,6 +64,7 @@ public class SimpleXlet implements Xlet, KeyListener {
         //testTimers();
         //testXMI();
         testStackTrace();
+        testJavaIO();
     }
     
     void testUI() {
@@ -88,9 +98,81 @@ public class SimpleXlet implements Xlet, KeyListener {
         scene.setVisible(true);
     }
     
+    public void pauseXlet() {
+    }
+
+    public void destroyXlet(boolean flag) throws XletStateChangeException {
+        System.out.println("destroyXlet");
+        if (scene != null) {
+            scene.setVisible(false);
+            scene.removeAll();
+            scene = null;
+        }
+        context.notifyDestroyed();
+    }
+    public void keyTyped(KeyEvent e) {
+    }
+
+    public void keyReleased(KeyEvent e) {
+    }
+
+    public void keyPressed(KeyEvent e) {
+        /*intColor++;
+        if (intColor == colors.length) {
+            intColor = 0;
+        }
+        label.setBackground(colors[intColor]);
+        label.repaint();*/
+    }
+    
+    //1.7.2005: test passed
     void testStackTrace() {
+      //This tests inofficial API
+      System.out.println("Testing retrieval of current application from stack");
       System.out.println("Current application: "+vdr.mhp.ApplicationManager.getManager().getApplicationFromStack());
-      org.havi.ui.HSceneFactory.getInstance().getBestScene(new org.havi.ui.HSceneTemplate());
+    }
+    
+    //1.7.2005: test passed
+    void testJavaIO() {
+       System.out.println("Testing dynamic java.io loading and path resolution");
+       File f=new File("TestText");
+       System.out.println("Can file \"TestText\" be read? "+f.canRead());
+       if (f.canRead()) {
+         try {
+         FileReader fr=new FileReader("TestText");
+         char[] ar=new char[25];
+         int read=fr.read(ar, 0, ar.length);
+         System.out.println("FileReader, read "+read+" characters: "+new String(ar));
+         fr.close();
+         
+         FileInputStream istr=new FileInputStream("TestText");
+         byte[] bar=new byte[25];
+         read=istr.read(bar, 0, bar.length);
+         System.out.println("FileInputStream, read "+read+" characters: "+new String(bar));
+         istr.close();
+         
+         RandomAccessFile raf=new RandomAccessFile("TestText", "r");
+         byte[] bar2=new byte[25];
+         read=raf.read(bar2);
+         System.out.println("RandomAccessFile, read "+read+" characters: "+new String(bar2));
+         raf.close();
+         
+         System.out.println("Now testing writing to home directory. This may not be allowed, raising an exception.");
+         FileOutputStream fostr=new FileOutputStream("TestOutput");
+         byte[] boar = { 'H', 'a', 'l', 'l', 'o' };
+         fostr.write(boar);
+         fostr.close();
+         
+         FileWriter writer=new FileWriter("TestOutput2");
+         writer.write("Hello world");
+         writer.close();
+         
+         } catch (FileNotFoundException e) {
+            e.printStackTrace();
+         } catch (IOException e) {
+            e.printStackTrace();
+         }
+       }
     }
 
     //18.04.2005: test passed
@@ -148,33 +230,6 @@ public class SimpleXlet implements Xlet, KeyListener {
         g.drawLine(0,0,50,50);*/
 
         scene.setVisible(true);
-    }
-
-    public void pauseXlet() {
-    }
-
-    public void destroyXlet(boolean flag) throws XletStateChangeException {
-        System.out.println("destroyXlet");
-        if (scene != null) {
-            scene.setVisible(false);
-            scene.removeAll();
-            scene = null;
-        }
-        context.notifyDestroyed();
-    }
-    public void keyTyped(KeyEvent e) {
-    }
-
-    public void keyReleased(KeyEvent e) {
-    }
-
-    public void keyPressed(KeyEvent e) {
-        /*intColor++;
-        if (intColor == colors.length) {
-            intColor = 0;
-        }
-        label.setBackground(colors[intColor]);
-        label.repaint();*/
     }
     
    //12.04.2005: test passed

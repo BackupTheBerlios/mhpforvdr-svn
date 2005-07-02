@@ -3,16 +3,9 @@
 #
 # $Id$
 
+include ../Make.config
+
 VDRDIR = ../../../..
-
-### The C++ compiler and options:
-
-CXX      ?= g++
-CXXFLAGS ?= -O2 -g -Wall -Woverloaded-virtual
-AR = ar
-ARFLAGS = ru
-RANLIB = ranlib
-
 
 ### The directory environment:
 

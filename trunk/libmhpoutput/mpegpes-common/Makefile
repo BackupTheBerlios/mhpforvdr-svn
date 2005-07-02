@@ -1,5 +1,5 @@
 
--include ../../Make.config
+include ../../Make.config
 
 COBJS = shm.o primary.o
 OBJS  = mpegpes.o

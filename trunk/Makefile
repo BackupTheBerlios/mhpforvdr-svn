@@ -17,7 +17,9 @@
 #           per default located in /usr/local/vdr/apps, with jikes,
 #           of you are located in the main directory of the plugin.
 #           Only the last parts of the path to Java files of the app must be typed.
-# testapps-install  copy the contents of testapps to /usr/local/vdr/apps
+# testapps-install  copy the contents of testapps to /usr/local/vdr/apps,
+#                   currently simply copies the whole dir to that location
+# testcase  Compile the "SimpleXlet" test suite found in testapps/
 
 
 
@@ -34,7 +36,7 @@ VERSION = $(shell grep 'static const char \*VERSION *=' $(PLUGIN).c | awk '{ pri
 ### The C++ compiler and options:
 
 CXX      ?= g++
-CXXFLAGS ?= -g -O0 -Wall -Woverloaded-virtual
+CXXFLAGS ?= -g -O0 -Wall -Woverloaded-virtual -fPIC
 
 -include mhp/Make.config
 

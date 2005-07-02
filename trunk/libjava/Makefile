@@ -5,8 +5,8 @@
 
 ### The C++ compiler and options:
 
-CXX      ?= g++
-CXXFLAGS ?= -O2 -g -Wall -Woverloaded-virtual
+##CXX      ?= g++
+##CXXFLAGS ?= -O2 -g -Wall -Woverloaded-virtual
 
 include ../Make.config
 
@@ -14,9 +14,13 @@ include ../Make.config
 
 ### The directory environment:
 
+EXTRA_CLASSPATH_PREFIX = $(MHPJARDIR)
+GLOBAL_EXTRA_CLASSPATH := $(EXTRA_CLASSPATH)
+
 INCLUDES += -I../$(VDRDIR)/include -I.. $(VM_INCLUDE_OPTIONS)
 DEFINES  += $(VM_DEFINES) -DPLUGINLIBDIR=\"$(PLUGINLIBDIR)\" \
-            -DMHPJARFILE=\"$(MHPJARFILE)\" -DMHPJARDIR=\"$(MHPJARDIR)\" -DMHPLIBDIR=\"$(MHPLIBDIR)\" \
+            -DGLOBAL_EXTRA_CLASSPATH=\"$(GLOBAL_EXTRA_CLASSPATH)\" \
+            -DMHPJARFILE=\"$(MHPJARFILE)\" -DMHPJARDIR=\"$(MHPJARDIR)\" -DMHPLIBDIR=\"$(MHPLIBDIR)\"
 
 ### The object files (add further files here):
 

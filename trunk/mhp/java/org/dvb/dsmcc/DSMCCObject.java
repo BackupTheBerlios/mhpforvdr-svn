@@ -2,6 +2,9 @@
 package org.dvb.dsmcc;
 
 import java.io.File;
+import vdr.mhp.io.PathConverter;
+import vdr.mhp.ApplicationManager;
+import org.dvb.application.MHPApplication;
 
 /*A DSMCCObject is an object which belongs to a DSMCC ServiceDomain. As soon as a 
 ServiceDomain has been attached to the  le system hierarchy, DSMCCObject objects can be 
@@ -53,7 +56,7 @@ public DSMCCObject(DSMCCObject dir, java.lang.String name) {
 /*
 Create a DSMCCObject object. Parameters: path - the path to the  le. */
 public DSMCCObject(java.lang.String path) {
-   super(getAppBaseDir(), path);
+   super(PathConverter.convert(path));
    carouselFile=new File(path);
 }
 
@@ -61,10 +64,11 @@ public DSMCCObject(java.lang.String path) {
 Create a DSMCCObject object. Parameters: path - the directory Path. name - the  
 lename. */
 public DSMCCObject(java.lang.String path, java.lang.String name) {
-   super(getAppBaseDir(), path+"/"+name);
+   super(PathConverter.convert(path, name), name);
    carouselFile=new File(path+"/"+path);
 }
 
+/*
 static java.io.File getAppBaseDir() {
    org.dvb.application.MHPApplication app=getApp();
    if (app==null)
@@ -76,6 +80,7 @@ static java.io.File getAppBaseDir() {
 static org.dvb.application.MHPApplication getApp() {
    return vdr.mhp.ApplicationManager.getManager().getApplicationFromStack();
 }
+*/
 
 /*
 This method is used to abort a load in progress. It can be used to abort either a synchronousLoad or an 
@@ -93,8 +98,14 @@ ObjectChangeEventListener to be noti ed . */
 public void addObjectChangeEventListener(ObjectChangeEventListener listener) {
    System.out.println("DSMCCObject.addObjectChangeEventListener "+listener);
    listeners=DSMCCEventMulticaster.add(listeners, listener);
+   MHPApplication app=ApplicationManager.getManager().getApplicationFromStack();
+   if (app==null) {
+      System.out.println("No application found in addObjectChangeEventListener, stack trace follows:");
+      new Exception().printStackTrace();
+      return;
+   }
    if (nativeData == 0)
-      nativeData=createListener(getApp().getNativeData(), (carouselFile.getPath()+'\0').getBytes());
+      nativeData=createListener(app.getNativeData(), (carouselFile.getPath()+'\0').getBytes());
 }
 
 /*

@@ -3,8 +3,26 @@
 
 JIKES = jikes
 
-#CLASSPATH = .:$(VM_CLASSPATH):thirdparty/log4j.jar:thirdparty/com_stevesoft_regex.jar:thirdparty/jmf.jar
-CLASSPATH = .:$(VM_CLASSPATH):thirdparty/jmf.jar
+##CLASSPATH = .:$(VM_CLASSPATH):thirdparty/log4j.jar:thirdparty/com_stevesoft_regex.jar:thirdparty/jmf.jar
+##for compile
+EXTRA_CLASSPATH_SEPARATOR = :
+EXTRA_CLASSPATH_PREFIX = ./thirdparty
+LOCAL_EXTRA_CLASSPATH := $(EXTRA_CLASSPATH)
+
+CLASSPATH = .:$(VM_CLASSPATH):$(LOCAL_EXTRA_CLASSPATH)
+
+
+## for thirdparty-install
+EXTRA_CLASSPATH_SEPARATOR = "" 
+        ##This is two quotation marks and a trailing blank!
+EXTRA_CLASSPATH_PREFIX = ./thirdparty
+INSTALL_EXTRA_CLASSPATH := $(EXTRA_CLASSPATH)
+
+## for getjikes
+EXTRA_CLASSPATH_SEPARATOR = :
+EXTRA_CLASSPATH_PREFIX = mhp/java
+TOPDIR_EXTRA_CLASSPATH := $(EXTRA_CLASSPATH)
+
 
 SUBDIRS = vdrsupport libcommoncode connector inputdriver
 
@@ -64,7 +82,7 @@ jarfile-install:
 	cp $(JARFILE) $(MHPJARFILE)
 	
 thirdparty-install: check-jmf
-	cp thirdparty/jmf.jar $(MHPJARDIR)
+	cp $(INSTALL_EXTRA_CLASSPATH) $(MHPJARDIR)
 
 check-jmf:
 	@if [ ! -e thirdparty/jmf.jar ]; then \
@@ -83,5 +101,5 @@ testcase:
 getjikes-for-topdir:
 	@echo
 	@echo "Use the following command to compile a local application stored under "$(BASEDIR)/apps/". Append \"MyApp/MyApp.java\":"
-	@echo '$(JIKES) -classpath mhp/java:$(VM_CLASSPATH):mhp/java/thirdparty/jmf.jar  $(BASEDIR)/apps/'
+	@echo '$(JIKES) -classpath mhp/java:$(VM_CLASSPATH):$(TOPDIR_EXTRA_CLASSPATH)  $(BASEDIR)/apps/'
 	@echo

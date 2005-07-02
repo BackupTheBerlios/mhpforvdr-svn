@@ -1,5 +1,5 @@
 
--include ../../../Make.config
+include ../../../Make.config
 
 OBJS =  \
 	font.o \

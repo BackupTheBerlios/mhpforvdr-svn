@@ -9,7 +9,7 @@ include ../Make.config
 ### The C++ compiler and options:
 
 CXX      ?= g++
-CXXFLAGS ?= -O2 -g -Wall -Woverloaded-virtual
+CXXFLAGS ?= -O2 -g -Wall -Woverloaded-virtual -fPIC
 AR = ar
 ARFLAGS = ru
 RANLIB = ranlib

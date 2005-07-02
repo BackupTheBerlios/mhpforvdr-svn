@@ -1,5 +1,5 @@
 
--include ../../Make.config
+include ../../Make.config
 
 OBJS  = sdl.o
 INCLUDES = -I$(DFB++_INCLUDES) -I$(DIRECTFB_INCLUDES)  -I../.. -I../../mhp/$(VDRDIR_RELATIVE)
