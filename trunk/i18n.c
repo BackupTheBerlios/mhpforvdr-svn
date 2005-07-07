@@ -86,7 +86,7 @@ const tI18nPhrase MhpI18nPhrases[] = {
     "", // Português
     "", // Français
     "", // Norsk
-    "Tuntemation kanava", // suomi
+    "Tuntematon kanava", // suomi
     "", // Polski
     "", // Español
     "", // ÅëëçíéêÜ (Greek)
@@ -132,7 +132,7 @@ const tI18nPhrase MhpI18nPhrases[] = {
     "", // Português
     "", // Français
     "", // Norsk
-    "Vaaditaan viritys:", // suomi
+    "Vaaditaan kanavanvaihto:", // suomi
     "", // Polski
     "", // Español
     "", // ÅëëçíéêÜ (Greek)
@@ -270,7 +270,7 @@ const tI18nPhrase MhpI18nPhrases[] = {
     "", // Português
     "", // Français
     "", // Norsk
-    "", // suomi
+    "Java-ympäristön käynnistäminen epäonnistui", // suomi
     "", // Polski
     "", // Español
     "", // ÅëëçíéêÜ (Greek)
@@ -293,7 +293,7 @@ const tI18nPhrase MhpI18nPhrases[] = {
     "", // Português
     "", // Français
     "", // Norsk
-    "", // suomi
+    "Ulostulojärjestelmässä virhe: laajennos toimintakyvytön", // suomi
     "", // Polski
     "", // Español
     "", // ÅëëçíéêÜ (Greek)
@@ -316,7 +316,7 @@ const tI18nPhrase MhpI18nPhrases[] = {
     "", // Português
     "", // Français
     "", // Norsk
-    "", // suomi
+    "Java-järjestelmässä virhe: laajennos toimintakyvytön", // suomi
     "", // Polski
     "", // Español
     "", // ÅëëçíéêÜ (Greek)
@@ -339,7 +339,7 @@ const tI18nPhrase MhpI18nPhrases[] = {
     "", // Português
     "", // Français
     "", // Norsk
-    "", // suomi
+    "Lataaminen epäonnistui", // suomi
     "", // Polski
     "", // Español
     "", // ÅëëçíéêÜ (Greek)
@@ -362,7 +362,7 @@ const tI18nPhrase MhpI18nPhrases[] = {
     "", // Português
     "", // Français
     "", // Norsk
-    "", // suomi
+    "Käynnistys epäonnistui", // suomi
     "", // Polski
     "", // Español
     "", // ÅëëçíéêÜ (Greek)
@@ -385,7 +385,7 @@ const tI18nPhrase MhpI18nPhrases[] = {
     "", // Português
     "", // Français
     "", // Norsk
-    "", // suomi
+    "<tuntemation>", // suomi
     "", // Polski
     "", // Español
     "", // ÅëëçíéêÜ (Greek)
