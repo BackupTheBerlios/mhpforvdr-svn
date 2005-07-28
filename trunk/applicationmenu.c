@@ -31,7 +31,7 @@ cLocalApplication::cLocalApplication(char *name, char *basePath, char *initialCl
    AddName("deu", name); //TODO: change "deu" to real VDR language
 }
 
-MhpApplicationMenuItem::MhpApplicationMenuItem(ApplicationInfo::cApplication *a) : app(a) {
+MhpApplicationMenuItem::MhpApplicationMenuItem(ApplicationInfo::cApplication::Ptr a) : app(a) {
    char *buffer = NULL;
    
    const char *name;
@@ -57,39 +57,40 @@ MhpApplicationMenuLabel::MhpApplicationMenuLabel(const char *text) {
    SetText(buffer,false);
 }
 
-MhpApplicationMenu::MhpApplicationMenu(cList<ApplicationInfo::cApplication> *l) : cOsdMenu(tr("MHP Applications")) {
-   if (ApplicationInfo::Applications.Count()) {
+MhpApplicationMenu::MhpApplicationMenu(std::list<ApplicationInfo::cApplication::Ptr> *l) : cOsdMenu(tr("MHP Applications")) {
+   std::list<ApplicationInfo::cApplication::Ptr> apps;
+   if (ApplicationInfo::Applications.findApplications(apps)) {
       bool labelSet=false;
-      for (ApplicationInfo::cApplication *a=ApplicationInfo::Applications.First(); a; a=ApplicationInfo::Applications.Next(a)) {
-         if (GetReceptionState(a->GetChannel()) == StateCanBeReceived)
-            Add(new MhpApplicationMenuItem(a));
+      for (std::list<ApplicationInfo::cApplication::Ptr>::iterator it=apps.begin(); it != apps.end(); ++it) {
+         if (GetReceptionState((*it)->GetChannel()) == StateCanBeReceived)
+            Add(new MhpApplicationMenuItem(*it));
       }
-      for (ApplicationInfo::cApplication *a=ApplicationInfo::Applications.First(); a; a=ApplicationInfo::Applications.Next(a)) {
-         if (GetReceptionState(a->GetChannel()) == StateNeedsTuning) {
+      for (std::list<ApplicationInfo::cApplication::Ptr>::iterator it=apps.begin(); it != apps.end(); ++it) {
+         if (GetReceptionState((*it)->GetChannel()) == StateNeedsTuning) {
             if (!labelSet) {
                Add(new MhpApplicationMenuLabel(tr("Tuning required:")));
                labelSet=true;
             }
-            Add(new MhpApplicationMenuItem(a));
+            Add(new MhpApplicationMenuItem(*it));
          }
       }
       labelSet=false;
-      for (ApplicationInfo::cApplication *a=ApplicationInfo::Applications.First(); a; a=ApplicationInfo::Applications.Next(a)) {
-         if (GetReceptionState(a->GetChannel()) == StateCanTemporarilyNotBeReceived) {
+      for (std::list<ApplicationInfo::cApplication::Ptr>::iterator it=l->begin(); it != l->end(); ++it) {
+         if (GetReceptionState((*it)->GetChannel()) == StateCanTemporarilyNotBeReceived) {
             if (!labelSet) {
                Add(new MhpApplicationMenuLabel(tr("Currently not available:")));
                labelSet=true;
             }
-            Add(new MhpApplicationMenuItem(a));
+            Add(new MhpApplicationMenuItem(*it));
          }
       }
    } else {
       Add(new MhpApplicationMenuLabel(tr("No MHP applications available")));
    }
-   if (l->Count()) {
+   if (l->size()) {
       Add(new MhpApplicationMenuLabel(tr("Local applications:")));
-      for (ApplicationInfo::cApplication *a=l->First(); a; a=l->Next(a))
-         Add(new MhpApplicationMenuItem(a));
+      for (std::list<ApplicationInfo::cApplication::Ptr>::iterator it=l->begin(); it != l->end(); ++it)
+         Add(new MhpApplicationMenuItem(*it));
    }
 }
 

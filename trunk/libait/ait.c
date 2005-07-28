@@ -50,7 +50,7 @@ void cApplicationMonitor::Result(DvbSi::Request *r) {
       tags[2]=SI::StreamIdentifierDescriptorTag;
       for (DvbSi::PMTServicesRequest::iterator it=((DvbSi::PMTServicesRequest *)request)->list.begin(); it != ((DvbSi::PMTServicesRequest *)request)->list.end(); ++it) {
          pmt=(*it);
-         cTransportStream::Service *service=ts->GetService(pmt.getServiceId());
+         cTransportStream::ApplicationService *service=ts->GetService(pmt.getServiceId());
          //printf("Having Service %d\n", pmt.getServiceId());
          if (service->pmtVersion==pmt.getVersionNumber())
             continue;
@@ -176,7 +176,7 @@ void cAIT::ProcessAIT(int aitPid) {
    cApplication               *a;
    bool                        foundTransportProtocol;
    
-   cTransportStream::Service *service=ts->GetServiceForAitPid(aitPid);
+   cTransportStream::ApplicationService *service=ts->GetServiceForAitPid(aitPid);
    
    if (!service->GetChannel())
       return; //may happen if VDR does not know channel
@@ -307,7 +307,7 @@ void cAIT::ProcessAIT(int aitPid) {
    //database->TransportProtocols.deleteNonUsed();
 }
 
-cTransportProtocol *cAIT::FindTransportProtocol(cTransportStream::Service *service, int label, SI::DescriptorLoop *commonDescriptors, SI::DescriptorLoop *specificLoop) {
+cTransportProtocol *cAIT::FindTransportProtocol(cTransportStream::ApplicationService *service, int label, SI::DescriptorLoop *commonDescriptors, SI::DescriptorLoop *specificLoop) {
    SI::Loop::Iterator it;
    SI::MHP_TransportProtocolDescriptor *transport=0;
    //read common loop

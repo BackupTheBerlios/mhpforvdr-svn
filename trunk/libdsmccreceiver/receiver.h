@@ -9,6 +9,7 @@
 
 #include <libdsmcc/biop.h>
 #include <libdsmcc/dsmcc.h>
+#include <libservice/transportstream.h>
 
 #include "cache.h"
 
@@ -116,7 +117,11 @@ public:
    DsmccStream& operator=(const DsmccStream &source);
    int pid;
    int assoc_tag;
-   bool receiving; //stream has been added with AddPid
+   // NotReceiving: not activated, not received
+   // ActivatedNotReceiving: Activated, but currently not received (intermediate state)
+   // Receiving: Activated and received
+   enum ReceptionStatus { NotReceiving, ActivatedNotReceiving, Receiving };
+   ReceptionStatus status; //stream has been added with AddPid
    Dsmcc::ObjectCarousel *carousel;
 };
 typedef std::list<DsmccStream> DsmccStreamList;
@@ -129,9 +134,13 @@ private:
 protected:
    virtual void Process(u_short Pid, u_char Tid, const u_char *Data, int Length);
    virtual void Action();
+   virtual void SetStatus(bool On);
    void ActivateStream(DsmccStream *str);
    void RemoveStream(DsmccStream *str);
+   void SuspendStream(DsmccStream *str);
    std::string name;
+   Service::TransportStreamID ts;
+   bool filterOn;
    
    std::list<Dsmcc::ObjectCarousel *> carousels;
    cMutex carouselMutex;
@@ -151,7 +160,7 @@ protected:
 
 public:
    //Public API
-   cDsmccReceiver(const char *channel);
+   cDsmccReceiver(const char *channel, Service::TransportStreamID tsid);
    ~cDsmccReceiver();
    
    //Public API
@@ -190,8 +199,17 @@ public:
    //For use by ObjectCarousel only
    void AddStreamForTap(int assoc_tag, Dsmcc::ObjectCarousel *car);
    
+   //Return whether the receiver is attached to a device, and this device
+   //is tuned to the transport stream the receiver was created for.
+   bool IsReceiving() { return filterOn; }
+   
+   //Return channel name
    const char *Name(void) { return name.c_str(); }
-   bool Active() { return running; }
+   
+   //Return the transport stream id this receiver is created for
+   Service::TransportStreamID GetTransportStreamID() { return ts; }
+   
+   //bool Active() { return running; }
 };
 
 #endif

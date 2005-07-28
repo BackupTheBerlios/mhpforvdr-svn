@@ -19,15 +19,13 @@
 #include <vdr/thread.h>
 
 #include <libait/applications.h>
+#include <libservice/transportstream.h>
 
 //Put this into an extra header because mhpcontrol.h has many header dependencies
 //Implementation is in mhpcontrol.c
 
 
 enum LoadingState { LoadingStateError, LoadingStateWaiting, LoadingStateLoading, LoadingStateLoaded, LoadingStateHibernated };
-
-//the maximum number of apps which may concurrently be kept in hibernated state
-#define MAX_HIBERNATED_APPS 4
 
 class ProgressIndicator {
 public:
@@ -39,6 +37,7 @@ public:
 class MhpCarouselLoader;
 class MhpChannelWatch;
 class MhpCarouselPreloader;
+class MhpServiceSelectionProvider;
 namespace Cache { class Cache; }
 template <class T> class SmartPtr;
 
@@ -48,24 +47,35 @@ public:
    static MhpLoadingManager *getManager();
    static void CleanUp();
    
-   void Load(ApplicationInfo::cApplication *a);
-   void Stop(ApplicationInfo::cApplication *a);
-   LoadingState getState(ApplicationInfo::cApplication *a);
-   SmartPtr<Cache::Cache> getCache(ApplicationInfo::cApplication *a);
+   //Loads the given application.
+   void Load(ApplicationInfo::cApplication::Ptr a, bool foreground = true);
    
+   //Stop loading the given application
+   void Stop(ApplicationInfo::cApplication::Ptr a);
+   
+   //Get state for given application
+   LoadingState getState(ApplicationInfo::cApplication::Ptr a);
+   
+   //Get the cache the given application is stored in, if it is being loaded
+   SmartPtr<Cache::Cache> getCache(ApplicationInfo::cApplication::Ptr a);
+   
+   void ChannelSwitch(const class cDevice *device, Service::TransportStreamID oldTs, Service::TransportStreamID newTs);
    void OnceASecond(ProgressIndicator *pi);
 protected:
    MhpLoadingManager();
    //ApplicationStatus interface
-   virtual void NewApplication(ApplicationInfo::cApplication *app);
-   virtual void ApplicationRemoved(ApplicationInfo::cApplication *app);
+   virtual void NewApplication(ApplicationInfo::cApplication::Ptr app);
+   virtual void ApplicationRemoved(ApplicationInfo::cApplication::Ptr app);
+   void Load(MhpCarouselLoader *l, bool foreground);
+   void Stop(MhpCarouselLoader *l);
 private:
-   //void Hibernate(ApplicationInfo::cApplication *a);
+   //void Hibernate(ApplicationInfo::cApplication::Ptr a);
    static MhpLoadingManager *s_self;
-   typedef std::map<ApplicationInfo::cApplication *, MhpCarouselLoader *> AppMap;
+   typedef std::map<ApplicationInfo::cApplication::Ptr , MhpCarouselLoader *> AppMap;
    AppMap apps;
    MhpChannelWatch *watch;
    MhpCarouselPreloader *preloader;
+   MhpServiceSelectionProvider *selectionProvider;
    int hibernatedCount;
    cMutex mutex;
    MhpCarouselLoader *loadingApp;

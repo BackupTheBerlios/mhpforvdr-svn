@@ -27,7 +27,7 @@
 
 
 //static function
-void MhpControl::Start(ApplicationInfo::cApplication *a) {
+void MhpControl::Start(ApplicationInfo::cApplication::Ptr a) {
    if (!MhpOutput::Administration::CheckSystem()) {
       MhpMessages::DisplayMessage(MhpMessages::OutputSystemError);
       CheckMessage();
@@ -59,10 +59,9 @@ void MhpMessages::DisplayMessage(Messages m) {
 }
 
 
-MhpControl::MhpControl(ApplicationInfo::cApplication *a) 
- : cControl (player=new MhpPlayer(this)) 
-{   
-   app=a;
+MhpControl::MhpControl(ApplicationInfo::cApplication::Ptr a) 
+ : cControl (player=new MhpPlayer(this)), app(a)
+{
    monitor=0;   
    status=Waiting;
    
@@ -312,11 +311,11 @@ void MhpControl::StartMhp() {
    
 }
 
-void MhpControl::cMyApplicationStatus::NewApplication(ApplicationInfo::cApplication *app) {
+void MhpControl::cMyApplicationStatus::NewApplication(ApplicationInfo::cApplication::Ptr app) {
    JavaInterface::NewApplication(app);
 }
 
-void MhpControl::cMyApplicationStatus::ApplicationRemoved(ApplicationInfo::cApplication *app) {
+void MhpControl::cMyApplicationStatus::ApplicationRemoved(ApplicationInfo::cApplication::Ptr app) {
    JavaInterface::ApplicationRemoved(app);
 }
 
@@ -358,8 +357,9 @@ void MhpLoadingManager::CleanUp() {
 }
 
 MhpLoadingManager::MhpLoadingManager() : hibernatedCount(0), loadingApp(0) {
-   watch = new MhpChannelWatch();
    preloader = new MhpCarouselPreloader();
+   watch = new MhpChannelWatch(preloader);
+   selectionProvider = new MhpServiceSelectionProvider(watch);
 }
 
 MhpLoadingManager::~MhpLoadingManager() {
@@ -368,71 +368,47 @@ MhpLoadingManager::~MhpLoadingManager() {
       delete it->second;
    }
    apps.clear();
+   delete selectionProvider;
    delete watch;
    delete preloader;
 }
 
-/*void Add(ApplicationInfo::cApplication *a) {
+/*void Add(ApplicationInfo::cApplication::Ptr a) {
    AppMap::Iterator it=apps.find(a);
    if (it == apps.end()) {
       apps[a]=new MhpCarouselLoader(a);
    }
 }*/
 
-void MhpLoadingManager::Load(ApplicationInfo::cApplication *a) {
+void MhpLoadingManager::Load(ApplicationInfo::cApplication::Ptr a, bool foreground) {
    printf("MhpLoadingManager::Load\n");
    cMutexLock lock(&mutex);
    AppMap::iterator it=apps.find(a);
    if (it == apps.end()) {
       MhpCarouselLoader *loader=new MhpCarouselLoader(a);
       apps[a]=loader;
-      loadingApp=loader;
+      if (foreground) {
+         loadingApp=loader;
+         loader->SetForeground();
+      }
       loader->Start();
    } else {
-      switch (it->second->getState()) {
-      case LoadingStateWaiting:
-         loadingApp=it->second;
-         it->second->Start();
-         break;
-      case LoadingStateHibernated:
-         loadingApp=it->second;
-         it->second->WakeUp();
-         break;
-      default:
-         break;
-      }
+      Load(it->second, foreground);
    }
 }
 
-void MhpLoadingManager::Stop(ApplicationInfo::cApplication *a) {
+void MhpLoadingManager::Stop(ApplicationInfo::cApplication::Ptr a) {
    printf("MhpLoadingManager::Stop\n");
    cMutexLock lock(&mutex);
    AppMap::iterator it=apps.find(a);
    if (it != apps.end()) {
-      //manage hibernating
-      MhpCarouselLoader *l=it->second;
-      if (l==loadingApp)
-         loadingApp=0;
-      l->Hibernate();
-      if (++hibernatedCount >= MAX_HIBERNATED_APPS) {
-         MhpCarouselLoader *oldest=0;
-         time_t oldestTime=0;
-         for (it=apps.begin();it!=apps.end();++it) {
-            if (it->second->getState()==LoadingStateHibernated && it->second->getHibernationTime()>oldestTime) {
-               oldest=it->second;
-               oldestTime=oldest->getHibernationTime();
-            }
-         }
-         oldest->Stop();
-         hibernatedCount--;
-      }
    }
 }
 
 /*void Hibernate() {
 }*/
 
-LoadingState MhpLoadingManager::getState(ApplicationInfo::cApplication *a) {
+LoadingState MhpLoadingManager::getState(ApplicationInfo::cApplication::Ptr a) {
    printf("MhpLoadingManager::getState\n");
    cMutexLock lock(&mutex);
    AppMap::iterator it=apps.find(a);
@@ -442,7 +418,7 @@ LoadingState MhpLoadingManager::getState(ApplicationInfo::cApplication *a) {
    return LoadingStateWaiting;
 }
 
-SmartPtr<Cache::Cache> MhpLoadingManager::getCache(ApplicationInfo::cApplication *a) {
+SmartPtr<Cache::Cache> MhpLoadingManager::getCache(ApplicationInfo::cApplication::Ptr a) {
    cMutexLock lock(&mutex);
    AppMap::iterator it=apps.find(a);
    if (it != apps.end()) {
@@ -451,16 +427,70 @@ SmartPtr<Cache::Cache> MhpLoadingManager::getCache(ApplicationInfo::cApplication
    return SmartPtr<Cache::Cache>(0);
 }
 
-void MhpLoadingManager::NewApplication(ApplicationInfo::cApplication *app) {
+void MhpLoadingManager::NewApplication(ApplicationInfo::cApplication::Ptr app) {
 }
 
-void MhpLoadingManager::ApplicationRemoved(ApplicationInfo::cApplication *app) {
+void MhpLoadingManager::ApplicationRemoved(ApplicationInfo::cApplication::Ptr app) {
    cMutexLock lock(&mutex);
    AppMap::iterator it=apps.find(app);
    if (it != apps.end()) {
       it->second->Stop();
       apps.erase(it);
    }   
+}
+
+void MhpLoadingManager::ChannelSwitch(const cDevice *device, Service::TransportStreamID oldTs, Service::TransportStreamID newTs) {
+   cMutexLock lock(&mutex);
+   for (AppMap::iterator it=apps.begin(); it != apps.end(); ++it) {
+      if (it->second->ChannelSwitchedAway(device, oldTs, newTs)) {
+         //it is cleaner to stop/hibernate first, then to retry loading if needed.
+         Stop(it->second);
+         if (it->second->IsForeground()) {
+            Load(it->second, false);
+         }
+      }
+   }
+}
+
+void MhpLoadingManager::Load(MhpCarouselLoader *l, bool foreground) {
+   switch (l->getState()) {
+   case LoadingStateWaiting:
+   case LoadingStateError:
+      if (foreground) {
+         loadingApp=l;
+         l->SetForeground();
+      }
+      l->Start();
+      break;
+   case LoadingStateHibernated:
+      if (foreground) {
+         loadingApp=l;
+         l->SetForeground();
+      }
+      l->WakeUp();
+      break;
+   default:
+      break;
+   }
+}
+
+void MhpLoadingManager::Stop(MhpCarouselLoader *l) {
+   //manage hibernating
+   if (l==loadingApp)
+      loadingApp=0;
+   l->Hibernate();
+   if (++hibernatedCount >= MAX_HIBERNATED_APPS) {
+      MhpCarouselLoader *oldest=0;
+      time_t oldestTime=0;
+      for (AppMap::iterator it=apps.begin();it!=apps.end();++it) {
+         if (it->second->getState()==LoadingStateHibernated && it->second->getHibernationTime()>oldestTime) {
+            oldest=it->second;
+            oldestTime=oldest->getHibernationTime();
+         }
+      }
+      oldest->Stop();
+      hibernatedCount--;
+   }
 }
 
 void MhpLoadingManager::OnceASecond(ProgressIndicator *pi) {
@@ -505,7 +535,34 @@ void MhpLoadingManager::OnceASecond(ProgressIndicator *pi) {
 
 /* --------- MhpChannelWatch ------------ */
 
+/*
+  This class observes the channel switches. The information is
+  delegated to other classes were the following action is taken:
+  - switches on the same transponder are handled by DsmccReceiver.
+    If it is a transponder switch, look for a different device or hibernate
+  - independent from this, inform the MhpCarouselPreloader of the channel
+    switch. This class will take care for preloading the apps on the new
+    transponder
+*/
+
+MhpChannelWatch::MhpChannelWatch(MhpCarouselPreloader* preloader) 
+  : preloader(preloader)
+{
+}
+
 void MhpChannelWatch::ChannelSwitch(const cDevice *Device, int ChannelNumber) {
+   if (ChannelNumber) {
+      cChannel *chan=Channels.GetByNumber(ChannelNumber);
+      ApplicationInfo::cTransportStream *str=ApplicationInfo::Applications.findTransportStream(chan->Source(), chan->Nid(), chan->Tid());
+      printf("MhpChannelWatch: Switch to stream %p, %d-%d-%d\n", str, str->GetSource(), str->GetNid(), str->GetTid());
+      if (str) {
+         Service::TransportStreamID oldTs=ts;
+         ts=str->GetTransportStreamID();
+         MhpLoadingManager::getManager()->ChannelSwitch(Device, oldTs, ts);
+         preloader->PreloadForTransportStream(oldTs, ts);
+      }
+   } else {
+   }
 }
 
 
@@ -517,16 +574,18 @@ MhpCarouselPreloader::MhpCarouselPreloader()
 {
 }
 
-//!!
-//Attention: the implementation is currently simple, there will be only one TimedPreloader at a time.
-//This is sufficient as long as only the CurrentChannel is monitored!
-//If all devices are monitored and a channel switch on any device causes a call of this
-//method here, there must be a map Transport Stream -> TimedPreloader maintained here!!
-void MhpCarouselPreloader::PreloadForTransportStream(ApplicationInfo::TransportStreamID newTs) {
-   if (!(newTs == ts)) {
+/*
+  Attention: the implementation is currently simple, there will be only one TimedPreloader at a time.
+  This is sufficient as long as only the CurrentChannel is monitored!
+  If all devices are monitored and a channel switch on any device causes a call of this
+  method here, there must be a map Transport Stream -> TimedPreloader maintained here!!
+*/
+void MhpCarouselPreloader::PreloadForTransportStream(Service::TransportStreamID oldTs, Service::TransportStreamID newTs) {
+   if (newTs != oldTs) {
       Remove(currentLoader);
       delete currentLoader;
       currentLoader=new TimedPreloader(newTs);
+      Add(currentLoader, false); //no initial execution
    }
 }
 
@@ -538,7 +597,7 @@ void MhpCarouselPreloader::PreloadForTransportStream(ApplicationInfo::TransportS
 //Preload again to check for changes every ten minutes
 #define REPRELOAD_WAIT 10*60
 
-MhpCarouselPreloader::TimedPreloader::TimedPreloader(ApplicationInfo::TransportStreamID newTs)
+MhpCarouselPreloader::TimedPreloader::TimedPreloader(Service::TransportStreamID newTs)
   : TimedBySeconds(INITIAL_WAIT),
     loading(false), ts(newTs)
 {
@@ -556,16 +615,19 @@ void MhpCarouselPreloader::TimedPreloader::Execute() {
             ChangeInterval(REPRELOAD_WAIT);
             loading=false;
          } else {
-            MhpLoadingManager::getManager()->Load((*currentPosition));
+            printf("MhpCarouselPreloader: Preloading next application %p, %s\n", (*currentPosition).getPointer(), (*currentPosition)->GetNumberOfNames() ? (*currentPosition)->GetName(0)->name.c_str() : "<unknown>");
+            MhpLoadingManager::getManager()->Load((*currentPosition), false);
             ChangeInterval(CHECK_PERIOD);
             loading=true;
          }
       }
    } else {
-      if (ApplicationInfo::Applications.findApplicationsForTransportStream(apps, ts.source, ts.nid, ts.tid) && apps.size()) {
+      printf("MhpCarouselPreloader: Beginning preloading\n");
+      if (ApplicationInfo::Applications.findApplicationsForTransportStream(apps, ts.source, ts.onid, ts.tid) && apps.size()) {
          currentPosition=apps.begin();
          if (currentPosition != apps.end()) {
-            MhpLoadingManager::getManager()->Load((*currentPosition));
+            printf("MhpCarouselPreloader: Preloading next application %p, %s\n", (*currentPosition).getPointer(), (*currentPosition)->GetNumberOfNames() ? (*currentPosition)->GetName(0)->name.c_str() : "<unknown>");
+            MhpLoadingManager::getManager()->Load((*currentPosition), false);
             ChangeInterval(CHECK_PERIOD);
             loading=true;
          }
@@ -576,11 +638,49 @@ void MhpCarouselPreloader::TimedPreloader::Execute() {
    }
 }
 
+
+/* --------- MhpServiceSelectionProvider ------------- */
+
+MhpServiceSelectionProvider::MhpServiceSelectionProvider(MhpChannelWatch *watch)
+  : watch(watch)
+{
+}
+
+void MhpServiceSelectionProvider::SelectService(cChannel *service) {
+   //TODO: This needs more thought, or testing
+   printf("MhpServiceSelectionProvider::SelectService(): Selection channel %s\n", (const char*)service->ToText());
+   if (!service) {
+      Service::ServiceStatus::MsgServiceEvent(Service::ServiceStatus::MessageContentNotFound, Service::Service(service));
+      return;
+   }
+   if (cDevice::PrimaryDevice()->SwitchChannel(service, true)) {
+      Service::ServiceStatus::MsgServiceEvent(Service::ServiceStatus::MessageServiceSelected, Service::Service(service));
+   } else {
+      Service::ServiceStatus::MsgServiceEvent(Service::ServiceStatus::MessageInsufficientResources, Service::Service(service));
+   }
+}
+
+void MhpServiceSelectionProvider::StopPresentation() {
+   //TODO: Find out what to do here
+   printf("MhpServiceSelectionProvider::StopPresentation(): Doing nothing\n");
+   Service::ServiceStatus::MsgServiceEvent(Service::ServiceStatus::MessageUserStop, Service::Service(Channels.GetByNumber(cDevice::CurrentChannel())));
+}
+
+
+
 /* --------- MhpCarouselLoader ------------- */
 
+/*
+   This class wraps all direct access to cDsmccReceiver. It knows about devices, transport streams,
+   components of an application, different TransportProtocols.
+   Although the infrastructure supports multiple carousels per receiver, here there is always only
+   one carousel and one receiver.
+   All methods are invoked exclusively by the MhpLoadingManager, so many sanity/status checks
+   are already done.
+*/
 
-MhpCarouselLoader::MhpCarouselLoader(ApplicationInfo::cApplication *a) 
-  : app(a), receiver(0), carousel(0), state(LoadingStateWaiting), hibernatedTime(0), totalSize(0)
+MhpCarouselLoader::MhpCarouselLoader(ApplicationInfo::cApplication::Ptr a) 
+  : app(a), receiver(0), carousel(0), filterDevice(0), state(LoadingStateWaiting), hibernatedTime(0), totalSize(0), foreground(false)
 {
    protocol=app->GetTransportProtocol()->GetProtocol();
 }
@@ -641,13 +741,16 @@ void MhpCarouselLoader::Start() {
 }
 
 void MhpCarouselLoader::Stop() {
+   //detaches itself
    delete receiver;
    receiver=0;
+   filterDevice=0;
    //unless hibernated, deleted by receiver
    if (state==LoadingStateHibernated)
       delete carousel;
    carousel=0;
    state=LoadingStateWaiting;
+   foreground=false;
 }
 
 void MhpCarouselLoader::Hibernate() {
@@ -655,8 +758,11 @@ void MhpCarouselLoader::Hibernate() {
          && protocol != ApplicationInfo::cTransportProtocol::Local) {
       state=LoadingStateHibernated;
       carousel=receiver->HibernateCarousel(carousel->getId());
+      //detaches itself
       delete receiver;
       receiver=0;
+      filterDevice=0;
+      foreground=false;
       hibernatedTime=time(0);
    }
 }
@@ -672,11 +778,24 @@ void MhpCarouselLoader::WakeUp() {
 void MhpCarouselLoader::StartObjectCarousel(Dsmcc::ObjectCarousel *hibernated) {
    ApplicationInfo::cTransportProtocolViaOC *tp=dynamic_cast<ApplicationInfo::cTransportProtocolViaOC*>(app->GetTransportProtocol());
    //find device
-   cDevice *dev=cDevice::GetDevice(app->GetChannel(), 0);
+   filterDevice=cDevice::GetDevice(app->GetChannel(), 0);
+   if (!filterDevice) {
+      esyslog("Failed to find device for object carousel of application %s on channel %s", 
+               app->GetNumberOfNames() ? app->GetName(0)->name.c_str() : "<unknown>",
+               app->GetChannel() ? (const char*)app->GetChannel()->ToText() : "<null>");
+      //if this is foreground, an unavailable channel is an error.
+      //If this is background, however, an unavailable channel is a common situation
+      //if the carousel is hibernated and reeattached by background activities.
+      if (foreground && hibernated)
+         return; //dont change status
+      else
+         state=LoadingStateError;
+      return;
+   }
    //identify service
-   ApplicationInfo::cTransportStream::Service *service=app->GetService();
+   ApplicationInfo::cTransportStream::ApplicationService *service=app->GetService();
    //create receiver
-   receiver=new cDsmccReceiver(service->GetChannel()->Name());
+   receiver=new cDsmccReceiver(service->GetChannel()->Name(), service->GetTransportStream()->GetTransportStreamID());
    //add possible streams
    std::list<ApplicationInfo::cTransportStream::Component>::iterator it;
    for (it=service->GetComponents()->begin(); it != service->GetComponents()->end(); ++it) {
@@ -693,7 +812,7 @@ void MhpCarouselLoader::StartObjectCarousel(Dsmcc::ObjectCarousel *hibernated) {
    //identify the stream carrying the DSI (assoc_tag has already been added above)
    receiver->AddStream(tp->GetPid(), 0, carousel);
    //attach to device
-   dev->AttachFilter(receiver);
+   filterDevice->AttachFilter(receiver);
    //make the receiver receive the main stream
    receiver->ActivateStream(tp->GetPid());
    state=LoadingStateLoading;   
@@ -716,6 +835,11 @@ ApplicationInfo::cApplication::ApplicationName *MhpCarouselLoader::getName() {
    else
       return 0;
 }
+
+bool MhpCarouselLoader::ChannelSwitchedAway(const cDevice *device, Service::TransportStreamID oldTs, Service::TransportStreamID newTs) {
+   return filterDevice==device && oldTs != newTs;
+}
+
 
 
 

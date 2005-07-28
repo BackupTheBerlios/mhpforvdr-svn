@@ -14,29 +14,20 @@
 #include <vdr/channels.h>
 
 #include <mhpcontrol.h>
+#include <libait/ait.h>
 
 #include "servicecontext.h"
 
 namespace Service {
 
-Transponder::Transponder(int source, int onid, int tid)
-  : source(source), onid(onid), tid(tid)
-{
-}
-
-Transponder::Transponder(cChannel *channel) {
-   source=channel->Source();
-   onid=channel->Nid();
-   tid=channel->Tid();
-}
-
-Service::Service(int source, int onid, int tid, int sid)
-  : Transponder(source, onid, tid), sid(sid)
-{
+TransportStream::TransportStream(cChannel *channel) {
+   data.source=channel->Source();
+   data.onid=channel->Nid();
+   data.tid=channel->Tid();
 }
 
 Service::Service(cChannel *channel)
-  : Transponder(channel)
+  : TransportStream(channel)
 {
    sid=channel->Sid();
 }
@@ -49,8 +40,9 @@ Context *Context::getContext() {
    return s_self;
 }
 
-void Context::getApplications(std::list<ApplicationInfo::cApplication *> apps) {
-   //TODO
+void Context::getApplications(std::list<ApplicationInfo::cApplication::Ptr> &apps) {
+   if (currentChannel)
+      ApplicationInfo::Applications.findApplicationsForTransportStream(apps, currentChannel->Source(), currentChannel->Nid(), currentChannel->Tid());
 }
 
 cChannel *Context::getService() {
@@ -60,7 +52,7 @@ cChannel *Context::getService() {
 
 bool Context::isPresenting() {
    //Please note that this access of cControl::Control out of VDR's main thread is
-   //not thread-safe possibly illegal.
+   //not thread-safe and possibly illegal.
    cControl *c=cControl::Control();
    return (c==0 || typeid(*cControl::Control()) != typeid(MhpControl));
 }

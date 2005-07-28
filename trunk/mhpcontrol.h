@@ -25,6 +25,7 @@
 #include <libdvbsi/util.h>
 #include <libdsmccreceiver/receiver.h>
 #include <libdsmccreceiver/cache.h>
+#include <libservice/servicecontext.h>
 
 
 class MhpControl;
@@ -39,9 +40,12 @@ private:
    MhpControl *control;
 };
 
+//the maximum number of apps which may concurrently be kept in hibernated state
+#define MAX_HIBERNATED_APPS 15
+
 class MhpCarouselLoader {
 public:
-   MhpCarouselLoader(ApplicationInfo::cApplication *a);
+   MhpCarouselLoader(ApplicationInfo::cApplication::Ptr a);
    ~MhpCarouselLoader();
    LoadingState getState();
    float getProgress(int &currentSize, int &totalSize);
@@ -53,52 +57,72 @@ public:
    ApplicationInfo::cApplication::ApplicationName *getName();
    //only meaningful if hibernated
    time_t getHibernationTime() { return hibernatedTime; }
+    //reset to false at Stop() and Hibernate()
+   void SetForeground() { foreground = true; }
+   bool IsForeground() { return foreground; }
+   bool ChannelSwitchedAway(const cDevice *device, Service::TransportStreamID oldTs, Service::TransportStreamID newTs);
 protected:
    void StartObjectCarousel(Dsmcc::ObjectCarousel *hibernated = 0);
    void StartLocalApp();
-   ApplicationInfo::cApplication *app;
+   ApplicationInfo::cApplication::Ptr app;
    cDsmccReceiver *receiver;
    Dsmcc::ObjectCarousel *carousel;
+   cDevice *filterDevice;
    LoadingState state;
    ApplicationInfo::cTransportProtocol::Protocol protocol;
    time_t hibernatedTime;
    int totalSize;
+   bool foreground;
 };
 
 class MhpChannelWatch : public cStatus {
+public:
+   MhpChannelWatch(MhpCarouselPreloader* preloader);
+   Service::TransportStreamID getCurrentTransportStream() { return ts; }
 protected:
   virtual void ChannelSwitch(const cDevice *Device, int ChannelNumber);
+  MhpCarouselPreloader* preloader;
+  Service::TransportStreamID ts;
 };
 
 class MhpCarouselPreloader : public DvbSi::SchedulerBySeconds {
 public:
    MhpCarouselPreloader();
-   void PreloadForTransportStream(ApplicationInfo::TransportStreamID newTs);
+   void PreloadForTransportStream(Service::TransportStreamID oldTs, Service::TransportStreamID newTs);
 protected:
    class TimedPreloader : public DvbSi::TimedBySeconds {
    public:
-      TimedPreloader(ApplicationInfo::TransportStreamID newTs);
+      TimedPreloader(Service::TransportStreamID newTs);
    protected:
       virtual void Execute();
    private:
       bool loading;
-      std::list<ApplicationInfo::cApplication *> apps;
-      std::list<ApplicationInfo::cApplication *>::iterator currentPosition;
-      ApplicationInfo::TransportStreamID ts;
+      std::list<ApplicationInfo::cApplication::Ptr > apps;
+      std::list<ApplicationInfo::cApplication::Ptr >::iterator currentPosition;
+      Service::TransportStreamID ts;
    };
 private:
    TimedPreloader *currentLoader;
-   ApplicationInfo::TransportStreamID ts;
+   Service::TransportStreamID ts;
+};
+
+class MhpServiceSelectionProvider : public Service::ServiceSelectionProvider {
+public:
+   MhpServiceSelectionProvider(MhpChannelWatch *watch);
+   virtual void SelectService(cChannel *service);
+   virtual void StopPresentation();
+protected:
+   MhpChannelWatch *watch;
 };
 
 class cSkinDisplayReplay;
 class MhpControl : public cControl, public ProgressIndicator {
 public:
-   MhpControl(ApplicationInfo::cApplication *a);
+   MhpControl(ApplicationInfo::cApplication::Ptr a);
    virtual ~MhpControl();
    
    //entry point, from MhpApplicationMenu
-   static void Start(ApplicationInfo::cApplication *a);
+   static void Start(ApplicationInfo::cApplication::Ptr a);
    
    //cControl interface
    virtual void Hide(void);
@@ -116,10 +140,10 @@ public:
 private:
    class cMyApplicationStatus : public ApplicationInfo::cApplicationStatus {
    protected:
-      virtual void NewApplication(ApplicationInfo::cApplication *app);
-      virtual void ApplicationRemoved(ApplicationInfo::cApplication *app);
+      virtual void NewApplication(ApplicationInfo::cApplication::Ptr app);
+      virtual void ApplicationRemoved(ApplicationInfo::cApplication::Ptr app);
    };
-   ApplicationInfo::cApplication *app;
+   ApplicationInfo::cApplication::Ptr app;
    cMyApplicationStatus *monitor;
    MhpPlayer *player;
    enum MhpControlStatus { Waiting, Running, Stopped } status;

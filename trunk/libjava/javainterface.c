@@ -30,16 +30,17 @@ bool JavaInterface::InitializeSystem() {
    return self()->InitializeVM();
 }
 
-bool JavaInterface::StartApplication(ApplicationInfo::cApplication *app) {
+//See note on memory management of the cApplication::Ptrs in mhp/native/de/application.c
+bool JavaInterface::StartApplication(ApplicationInfo::cApplication::Ptr app) {
    JNI::ReturnType ret;
    self()->CheckAttachThread();
-   return self()->methods->startApplication.CallMethod(ret, JNI::Int, (void *)app) && ret.TypeInt == 0;
+   return self()->methods->startApplication.CallMethod(ret, JNI::Int, (void *)new ApplicationInfo::cApplication::Ptr(app)) && ret.TypeInt == 0;
 }
 
-bool JavaInterface::StopApplication(ApplicationInfo::cApplication *app) {
+bool JavaInterface::StopApplication(ApplicationInfo::cApplication::Ptr app) {
    JNI::ReturnType ret;
    self()->CheckAttachThread();
-   return self()->methods->stopApplication.CallMethod(ret, JNI::Int, (void *)app) && ret.TypeInt == 0;
+   return self()->methods->stopApplication.CallMethod(ret, JNI::Int, (void *)new ApplicationInfo::cApplication::Ptr(app)) && ret.TypeInt == 0;
 }
 
 bool JavaInterface::StopApplications() {
@@ -48,29 +49,29 @@ bool JavaInterface::StopApplications() {
    return self()->methods->stopApplications.CallMethod(ret, JNI::Int) && ret.TypeInt == 0;
 }
 
-bool JavaInterface::PauseApplication(ApplicationInfo::cApplication *app) {
+bool JavaInterface::PauseApplication(ApplicationInfo::cApplication::Ptr app) {
    JNI::ReturnType ret;
    self()->CheckAttachThread();
-   return self()->methods->pauseApplication.CallMethod(ret, JNI::Int, (void *)app) && ret.TypeInt == 0;
+   return self()->methods->pauseApplication.CallMethod(ret, JNI::Int, (void *)new ApplicationInfo::cApplication::Ptr(app)) && ret.TypeInt == 0;
 }
 
-bool JavaInterface::ResumeApplication(ApplicationInfo::cApplication *app) {
+bool JavaInterface::ResumeApplication(ApplicationInfo::cApplication::Ptr app) {
    JNI::ReturnType ret;
    self()->CheckAttachThread();
-   return self()->methods->resumeApplication.CallMethod(ret, JNI::Int, (void *)app) && ret.TypeInt == 0;
+   return self()->methods->resumeApplication.CallMethod(ret, JNI::Int, (void *)new ApplicationInfo::cApplication::Ptr(app)) && ret.TypeInt == 0;
 }
 
 
-bool JavaInterface::NewApplication(ApplicationInfo::cApplication *app) {
+bool JavaInterface::NewApplication(ApplicationInfo::cApplication::Ptr app) {
    JNI::ReturnType ret;
    self()->CheckAttachThread();
-   return self()->methods->newApplication.CallMethod(ret, JNI::Int, (void *)app) && ret.TypeInt == 0;
+   return self()->methods->newApplication.CallMethod(ret, JNI::Int, (void *)new ApplicationInfo::cApplication::Ptr(app)) && ret.TypeInt == 0;
 }
 
-bool JavaInterface::ApplicationRemoved(ApplicationInfo::cApplication *app) {
+bool JavaInterface::ApplicationRemoved(ApplicationInfo::cApplication::Ptr app) {
    JNI::ReturnType ret;
    self()->CheckAttachThread();
-   return self()->methods->applicationRemoved.CallMethod(ret, JNI::Int, (void *)app) && ret.TypeInt == 0;
+   return self()->methods->applicationRemoved.CallMethod(ret, JNI::Int, (void *)new ApplicationInfo::cApplication::Ptr(app)) && ret.TypeInt == 0;
 }
 
 bool JavaInterface::ProcessKey(eKeys Key) {

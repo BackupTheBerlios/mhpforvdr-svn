@@ -11,6 +11,8 @@
 #ifndef __APPLICATIONMENU_H
 #define __APPLICATIONMENU_H
 
+#include <list>
+
 #include <vdr/osd.h>
 #include <vdr/tools.h>
 #include <libait/ait.h>
@@ -26,10 +28,10 @@ protected:
 
 class MhpApplicationMenuItem : public cOsdItem {
 public:
-   MhpApplicationMenuItem(ApplicationInfo::cApplication *a);
-   ApplicationInfo::cApplication *GetApplication() { return app; }
+   MhpApplicationMenuItem(ApplicationInfo::cApplication::Ptr a);
+   ApplicationInfo::cApplication::Ptr GetApplication() { return app; }
 private:
-   ApplicationInfo::cApplication *app;
+   ApplicationInfo::cApplication::Ptr app;
 };
 
 class MhpApplicationMenuLabel : public cOsdItem {
@@ -39,7 +41,7 @@ public:
 
 class MhpApplicationMenu : public cOsdMenu {
 public:
-   MhpApplicationMenu(cList<ApplicationInfo::cApplication> *localApps);
+   MhpApplicationMenu(std::list<ApplicationInfo::cApplication::Ptr> *localApps);
 protected:
    virtual eOSState ProcessKey(eKeys Key);
    

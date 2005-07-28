@@ -16,34 +16,18 @@
 #include <vdr/channels.h>
 #include <vdr/tools.h>
 #include <vdr/status.h>
+
 #include <libait/applications.h>
 
+#include "transportstream.h"
+
 namespace Service {
-
-
-class Transponder {
-public:
-   Transponder(int source, int onid, int tid);
-   Transponder(cChannel *channel);
-   //void SetChannel(cChannel *channel);
-private:
-   int source;
-   int onid;
-   int tid;
-};
-
-class Service : protected Transponder {
-public:
-   Service(int source, int onid, int tid, int sid);
-   Service(cChannel *channel);
-private:
-   int sid;
-};
 
 
    //This class provides the actual implementation of channel switching.
    //As other parts may be concerned, this is moved to a higher layer.
    //The implementor will inform the ContextStatus listeners!
+   //See documentation of identically named methods below.
 class ServiceSelectionProvider {
 public:
    virtual void SelectService(cChannel *service) = 0;
@@ -54,7 +38,7 @@ class Context : public cStatus {
 public:
    static Context *getContext();
    //void getServices(std::list<Service> services);
-   void getApplications(std::list<ApplicationInfo::cApplication *> apps);
+   void getApplications(std::list<ApplicationInfo::cApplication::Ptr> &apps);
    cChannel *getService();
    bool isPresenting();
       //Tries to switch to given service - including tuning!

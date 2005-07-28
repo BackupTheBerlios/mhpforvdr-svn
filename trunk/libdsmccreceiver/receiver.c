@@ -2,6 +2,7 @@
 #include <zlib.h>
 #include <unistd.h>
 #include <vdr/receiver.h>
+#include <vdr/channels.h>
 
 #include <libdsmcc/descriptor.h>
 #include "cache.h"
@@ -454,14 +455,14 @@ void ObjectCarousel::WakeUp(cDsmccReceiver *rec) {
 DsmccStream::DsmccStream() {
    pid = 0;
    carousel=0;
-   receiving=false;
+   status=NotReceiving;
    assoc_tag=0;
 }
 
 DsmccStream::DsmccStream(int pi, int as_t, Dsmcc::ObjectCarousel *car) {
    pid = pi;
    carousel=car;
-   receiving=false;
+   status=NotReceiving;
    assoc_tag=as_t;
 }
 
@@ -473,7 +474,7 @@ DsmccStream& DsmccStream::operator=(const DsmccStream &source) {
    //the CharArray has copy-on-write functionality - no need to care about memcpy'ing/delete'ing
    pid = source.pid;
    carousel=source.carousel;
-   receiving=source.receiving;
+   status=source.status;
    assoc_tag=source.assoc_tag;
    return *this;
 }
@@ -481,9 +482,11 @@ DsmccStream& DsmccStream::operator=(const DsmccStream &source) {
 
 /*---------------------------- cDsmccReceiver ----------------------------*/
 
-cDsmccReceiver::cDsmccReceiver(const char *channel) {
+cDsmccReceiver::cDsmccReceiver(const char *channel, Service::TransportStreamID tsid) {
    running=false;
+   filterOn=false;
    name = channel ? channel : "Unknown";
+   ts=tsid;
 }
 
 cDsmccReceiver::~cDsmccReceiver() {
@@ -494,6 +497,35 @@ cDsmccReceiver::~cDsmccReceiver() {
 
    for (std::list<Dsmcc::ObjectCarousel*>::iterator it=carousels.begin(); it != carousels.end(); ++it)
       delete (*it);
+}
+
+void cDsmccReceiver::SetStatus(bool On) {
+   cFilter::SetStatus(On);
+
+   if (On) {
+      //If we are on the same transponder, restore all streams.
+      //Otherwise, higher levels should take appropriate action (Hibernation, Deletion)
+      const cChannel *newChan=cFilter::Channel();
+      filterOn=ts.equals(newChan->Source(), newChan->Nid(), newChan->Tid());
+      if (filterOn) {
+         streamListMutex.Lock();
+         for (DsmccStreamList::iterator sit=streams.begin(); sit!=streams.end(); ) {
+            if (sit->status==DsmccStream::ActivatedNotReceiving)
+               ActivateStream(&(*sit));
+         }
+         streamListMutex.Unlock();
+      }
+   } else {
+      filterOn=false;
+      //SetStatus will remove all filters when On=false.
+      //Sync internal list to this situation
+      streamListMutex.Lock();
+      for (DsmccStreamList::iterator sit=streams.begin(); sit!=streams.end(); ) {
+         if (sit->status==DsmccStream::Receiving)
+            SuspendStream(&(*sit));
+      }
+      streamListMutex.Unlock();
+   }
 }
 
 Dsmcc::ObjectCarousel *cDsmccReceiver::AddCarousel(unsigned long id) {
@@ -644,25 +676,62 @@ void cDsmccReceiver::AddStreamForTap(int assoc_tag, Dsmcc::ObjectCarousel *car) 
    SetStatus(true);
 }*/
 
+//Moves stream to status Receiving, or, if filter is not attached, ActivatedNotReceiving
 void cDsmccReceiver::ActivateStream(DsmccStream *str) {
    //called by above functions only, mutex is locked
-   if (!str->receiving) {
-      str->receiving=true;
+   switch (str->status) {
+   case DsmccStream::NotReceiving:
+   case DsmccStream::ActivatedNotReceiving:
+      if (!filterOn) {
+         str->status=DsmccStream::ActivatedNotReceiving;
+         return;
+      }
+      str->status=DsmccStream::Receiving;
       printf("Added filter for PID %d\n", str->pid);
-      //TIDs are 0x3B for DII, DSI, 0x3C for DDB
+      //TableIDs are 0x3B for DII, DSI, 0x3C for DDB
       Add(str->pid, 0x3B);
       Add(str->pid, 0x3C);
+      break;
+   case DsmccStream::Receiving:
+      break;
    }
 }
 
+//Moves stream to status NotReceiving
 void cDsmccReceiver::RemoveStream(DsmccStream *str) {
    //called by above functions only, mutex is locked
-   if (str->receiving) {
-      str->receiving=false;
+   switch (str->status) {
+   case DsmccStream::NotReceiving:
+      break;
+   case DsmccStream::ActivatedNotReceiving:
+      str->status=DsmccStream::NotReceiving;
+      break;
+   case DsmccStream::Receiving:
+      str->status=DsmccStream::NotReceiving;
       printf("Removed filter for PID %d\n", str->pid);
-      //TIDs are 0x3B for DII, DSI, 0x3C for DDB
+      //TableIDs are 0x3B for DII, DSI, 0x3C for DDB
       Del(str->pid, 0x3B);
       Del(str->pid, 0x3C);
+      break;
+   }
+}
+
+//Moves stream to status ActivatedNotReceiving
+void cDsmccReceiver::SuspendStream(DsmccStream *str) {
+   //called by above functions only, mutex is locked
+   switch (str->status) {
+   case DsmccStream::NotReceiving:
+      str->status=DsmccStream::ActivatedNotReceiving;
+      break;
+   case DsmccStream::ActivatedNotReceiving:
+      break;
+   case DsmccStream::Receiving:
+      str->status=DsmccStream::ActivatedNotReceiving;
+      printf("(Temporarily) Removed filter for PID %d\n", str->pid);
+      //TableIDs are 0x3B for DII, DSI, 0x3C for DDB
+      Del(str->pid, 0x3B);
+      Del(str->pid, 0x3C);
+      break;
    }
 }
 
@@ -699,7 +768,7 @@ void cDsmccReceiver::Action() {
 }
 
 void cDsmccReceiver::Process(u_short Pid, u_char Tid, const u_char *Data, int Length) {
-   Dsmcc::ObjectCarousel *car;
+   Dsmcc::ObjectCarousel *car=0;
    
    streamListMutex.Lock();
    DsmccStreamList::iterator it;

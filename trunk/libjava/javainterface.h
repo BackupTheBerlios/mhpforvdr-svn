@@ -14,9 +14,9 @@
 
 #include <vdr/keys.h>
 #include <vdr/thread.h>
+#include <libait/applications.h>
 #include "jniinterface.h"
 
-namespace ApplicationInfo { class cApplication; }
 
 class JavaStartException {
 };
@@ -74,14 +74,14 @@ public:
    //check that the VM has cleanly started
    static bool CheckStart();
    //interface to ApplicationManager (Java) via JNI
-   static bool StartApplication(ApplicationInfo::cApplication *app);
-   static bool StopApplication(ApplicationInfo::cApplication *app);
+   static bool StartApplication(ApplicationInfo::cApplication::Ptr app);
+   static bool StopApplication(ApplicationInfo::cApplication::Ptr app);
    static bool StopApplications();
-   static bool PauseApplication(ApplicationInfo::cApplication *app);
-   static bool ResumeApplication(ApplicationInfo::cApplication *app);
+   static bool PauseApplication(ApplicationInfo::cApplication::Ptr app);
+   static bool ResumeApplication(ApplicationInfo::cApplication::Ptr app);
    
-   static bool NewApplication(ApplicationInfo::cApplication *app);
-   static bool ApplicationRemoved(ApplicationInfo::cApplication *app);
+   static bool NewApplication(ApplicationInfo::cApplication::Ptr app);
+   static bool ApplicationRemoved(ApplicationInfo::cApplication::Ptr app);
    
    static bool ProcessKey(eKeys Key);
    

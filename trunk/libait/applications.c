@@ -17,46 +17,46 @@ namespace ApplicationInfo {
 /* --------- cTransportStream ------------- */
 
 cTransportStream::cTransportStream(int s, int n, int t)
- : id(s,n,t)
+ : Service::TransportStream(s,n,t)
 {
 }
 
-cTransportStream::Service *cTransportStream::GetService(int sid) {
+cTransportStream::ApplicationService *cTransportStream::GetService(int sid) {
    cMutexLock lock(&mutex);
-   Service *s=findService(sid);
+   ApplicationService *s=findService(sid);
    if (!s) {
-      s=new Service(this, sid);
+      s=new ApplicationService(this, sid);
       services.push_back(s);
    }
    return s;
 }
 
-cTransportStream::Service *cTransportStream::findService(int sid) {
-   for (std::list<Service *>::iterator it=services.begin(); it != services.end(); ++it) {
+cTransportStream::ApplicationService *cTransportStream::findService(int sid) {
+   for (std::list<ApplicationService *>::iterator it=services.begin(); it != services.end(); ++it) {
       if ( (*it)->sid==sid )
          return (*it);
    }
    return 0;
 }
 
-void cTransportStream::Service::AddAitPid(int pid) {
+void cTransportStream::ApplicationService::AddAitPid(int pid) {
    cTransportStreamMutexLock lock(ts);
    aitables.push_back(pid);
 }
 
-void cTransportStream::Service::AddComponentTag(int pid, int componentTag) {
+void cTransportStream::ApplicationService::AddComponentTag(int pid, int componentTag) {
    cTransportStreamMutexLock lock(ts);
    Component comp(pid, componentTag);
    components.push_back(comp);
 }
 
-void cTransportStream::Service::AddCarouselId(int pid, int carouselId) {
+void cTransportStream::ApplicationService::AddCarouselId(int pid, int carouselId) {
    cTransportStreamMutexLock lock(ts);
    Carousel car(pid, carouselId);
    carousels.push_back(car);
 }
 
-int cTransportStream::Service::GetPidForComponentTag(int componentTag) {
+int cTransportStream::ApplicationService::GetPidForComponentTag(int componentTag) {
    cTransportStreamMutexLock lock(ts);
    for (std::list<Component>::iterator it=components.begin(); it != components.end(); ++it) {
       if ( (*it).componentTag == componentTag )
@@ -65,7 +65,7 @@ int cTransportStream::Service::GetPidForComponentTag(int componentTag) {
    return 0;
 }
 
-int cTransportStream::Service::GetCarouselIdForPid(int pid) {
+int cTransportStream::ApplicationService::GetCarouselIdForPid(int pid) {
    cTransportStreamMutexLock lock(ts);
    for (std::list<Carousel>::iterator it=carousels.begin(); it != carousels.end(); ++it) {
       if ( (*it).pid == pid )
@@ -74,7 +74,7 @@ int cTransportStream::Service::GetCarouselIdForPid(int pid) {
    return 0;
 }
 
-void cTransportStream::Service::Reset() {
+void cTransportStream::ApplicationService::Reset() {
    cTransportStreamMutexLock lock(ts);
    aitables.clear();
    components.clear();
@@ -83,14 +83,14 @@ void cTransportStream::Service::Reset() {
 
 int cTransportStream::GetPidForComponentTag(int serviceId, int componentTag) {
    cMutexLock lock(&mutex);
-   Service *s=findService(serviceId);
+   ApplicationService *s=findService(serviceId);
    return s ? s->GetPidForComponentTag(componentTag) : 0;
 }
    
 int cTransportStream::GetCarouselIdForPid(int pid) {
    cMutexLock lock(&mutex);
-   for (std::list<Service *>::iterator it=services.begin(); it != services.end(); ++it) {   
-      Service *s=(*it);
+   for (std::list<ApplicationService *>::iterator it=services.begin(); it != services.end(); ++it) {   
+      ApplicationService *s=(*it);
       for (std::list<Carousel>::iterator it=s->carousels.begin(); it != s->carousels.end(); ++it) {
          if ( (*it).pid == pid )
             return (*it).carouselId;
@@ -100,7 +100,7 @@ int cTransportStream::GetCarouselIdForPid(int pid) {
 }
 
 cChannel *cTransportStream::GetChannelForAitPid(int aitPid) {
-   Service *s=GetServiceForAitPid(aitPid);
+   ApplicationService *s=GetServiceForAitPid(aitPid);
    if (!s)
       return 0;
    cChannel *c=s->GetChannel(); //may be 0 if VDR does not know channel
@@ -109,10 +109,10 @@ cChannel *cTransportStream::GetChannelForAitPid(int aitPid) {
    return c;
 }
 
-cTransportStream::Service *cTransportStream::GetServiceForAitPid(int aitPid) {
+cTransportStream::ApplicationService *cTransportStream::GetServiceForAitPid(int aitPid) {
    cMutexLock lock(&mutex);
-   for (std::list<Service *>::iterator it=services.begin(); it != services.end(); ++it) {
-      Service *s=(*it);
+   for (std::list<ApplicationService *>::iterator it=services.begin(); it != services.end(); ++it) {
+      ApplicationService *s=(*it);
       for (std::list<int>::iterator it=s->aitables.begin(); it != s->aitables.end(); ++it) {
          if ( (*it) == aitPid ) {
             return s;
@@ -279,7 +279,7 @@ cChannel *cApplication::GetChannel() {
    return service ? service->GetChannel() : 0;
 }
 
-cTransportStream::Service *cApplication::GetService() {
+cTransportStream::ApplicationService *cApplication::GetService() {
    return service;
 }
 
@@ -390,78 +390,79 @@ void cApplication::AddProfileVersion(cApplication::ProfileVersion &pv) {
    profileVersions.Add(p);
 }
 
-void cApplication::SetService(cTransportStream::Service *ser) {
+void cApplication::SetService(cTransportStream::ApplicationService *ser) {
    service=ser;
 }
 
 
 /* --------- cApplicationsDatabase ------------- */
 
-cApplication *cApplicationsDatabase::findApplication(int aid, int oid, int type) {
-   for (cApplication *a=First(); a; a=Next(a)) {
+cApplication::Ptr cApplicationsDatabase::findApplication(int aid, int oid, int type) {
+   for (AppList::iterator it=apps.begin(); it != apps.end(); ++it) {
       //0xffff and 0xfffe are wildcards as described in spec, page 214
-      if ( a->GetOid() == oid 
-           &&  (a->GetAid() == aid || aid == 0xffff || (aid == 0xfffe && 0x4000<=a->GetAid()<=0x7fff))
-           && a->GetApplicationType() == type )
-         return a;
+      if ( (*it)->GetOid() == oid 
+           &&  ((*it)->GetAid() == aid || aid == 0xffff || (aid == 0xfffe && 0x4000<=(*it)->GetAid()<=0x7fff))
+           && (*it)->GetApplicationType() == type )
+         return (*it);
    }
    return 0;
 }
 
-bool cApplicationsDatabase::findApplicationsForTransportStream(std::list<cApplication *> addAppsToThisList, int source, int nid, int tid) {
+bool cApplicationsDatabase::findApplications(std::list<cApplication::Ptr > &addAppsToThisList) {
+   addAppsToThisList=apps;
+   return apps.size();
+}
+
+bool cApplicationsDatabase::findApplicationsForTransportStream(std::list<cApplication::Ptr > &addAppsToThisList, int source, int nid, int tid) {
    cTransportStream *ts = TransportStreams.GetTransportStream(source, nid, tid);
    if (ts == 0)
       return false;
-   for (cApplication *a=First(); a; a=Next(a)) {
-      if (a->GetService()->GetTransportStream() == ts)
-         addAppsToThisList.push_back(a);
+   for (AppList::iterator it=apps.begin(); it != apps.end(); ++it) {
+      if ((*it)->GetService()->GetTransportStream() == ts)
+         addAppsToThisList.push_back(*it);
    }
    return true;
 }
 
-bool cApplicationsDatabase::findApplicationsForService(std::list<cApplication *> addAppsToThisList, int source, int nid, int tid, int sid) {
+bool cApplicationsDatabase::findApplicationsForService(std::list<cApplication::Ptr > &addAppsToThisList, int source, int nid, int tid, int sid) {
    cTransportStream *ts = TransportStreams.GetTransportStream(source, nid, tid);
    if (ts == 0)
       return false;
-   cTransportStream::Service *service = ts->findService(sid);
+   cTransportStream::ApplicationService *service = ts->findService(sid);
    if (service == 0)
       return false;
 
-   for (cApplication *a=First(); a; a=Next(a)) {
-      if (a->GetService() == service)
-         addAppsToThisList.push_back(a);
+   for (AppList::iterator it=apps.begin(); it != apps.end(); ++it) {
+      if ((*it)->GetService() == service)
+         addAppsToThisList.push_back(*it);
    }
    return true;
 }
 
 void cApplicationsDatabase::addApplication(cApplication *newApp) {
-   cApplication *a;
-   if ( (a=findApplication(newApp->GetAid(), newApp->GetOid(), newApp->GetApplicationType())) ) {
+   cApplication::Ptr a=findApplication(newApp->GetAid(), newApp->GetOid(), newApp->GetApplicationType());
+   if (a) {
       a->tagged=false;
       delete newApp; //already in list
    } else {
-      Add(newApp);
-      cApplicationStatus::MsgNewApplication(newApp);
+      a=newApp;
+      apps.push_back(a);
+      cApplicationStatus::MsgNewApplication(a);
    }
 }
 
-void cApplicationsDatabase::tagForDeletion(cTransportStream::Service *s, int type) {
-   for (cApplication *a=First(); a; a=Next(a)) {
-      if (a->GetService() == s && a->GetApplicationType() == type)
-         a->tagged=true;
+void cApplicationsDatabase::tagForDeletion(cTransportStream::ApplicationService *s, int type) {
+   for (AppList::iterator it=apps.begin(); it != apps.end(); ++it) {
+      if ((*it)->GetService() == s && (*it)->GetApplicationType() == type)
+         (*it)->tagged=true;
    }
 }
 
 void cApplicationsDatabase::deleteTagged() {
-   for (cApplication *a=First(); a; a=Next(a)) {
-      if (a->tagged) {
-         Del(a, false);
-         cApplicationStatus::MsgApplicationRemoved(a);
-         //Leak removed applications for now.
-         //Currently applications are stored as pointers in Java code.
-         //TODO: Add some sort of lightweight reference counting?
-         //delete a;
-         printf("Warning: Leaking removed ApplicationInfo::cApplication object in %s.\n", __FUNCTION__);
+   for (AppList::iterator it=apps.begin(); it != apps.end(); ++it) {
+      if ((*it)->tagged) {
+         it=apps.erase(it);
+         cApplicationStatus::MsgApplicationRemoved(*it);
       }
    }
 }
@@ -503,13 +504,13 @@ cApplicationStatus::~cApplicationStatus() {
    list.Del(this, false);
 }
 
-void cApplicationStatus::MsgNewApplication(cApplication *app) {
+void cApplicationStatus::MsgNewApplication(cApplication::Ptr app) {
    for (cApplicationStatus *s=list.First(); s; s=list.Next(s)) {
       s->NewApplication(app);
    }
 }
 
-void cApplicationStatus::MsgApplicationRemoved(cApplication *app) {
+void cApplicationStatus::MsgApplicationRemoved(cApplication::Ptr app) {
    for (cApplicationStatus *s=list.First(); s; s=list.Next(s)) {
       s->ApplicationRemoved(app);
    }

@@ -77,8 +77,8 @@ public:
    ~cAIT();
    void ProcessAIT(int aitPid);
 protected:
-   cTransportProtocol *FindTransportProtocol(cTransportStream::Service *service, int label, SI::DescriptorLoop *commonDescriptors, SI::DescriptorLoop *specificLoop);
-   //cTransportProtocol *FillTransportProtocol(cTransportStream::Service *service, int aitPid, SI::MHP_TransportProtocolDescriptor *Descriptor);
+   cTransportProtocol *FindTransportProtocol(cTransportStream::ApplicationService *service, int label, SI::DescriptorLoop *commonDescriptors, SI::DescriptorLoop *specificLoop);
+   //cTransportProtocol *FillTransportProtocol(cTransportStream::ApplicationService *service, int aitPid, SI::MHP_TransportProtocolDescriptor *Descriptor);
 private:
    cApplications *database;
    cTransportStream *ts;
