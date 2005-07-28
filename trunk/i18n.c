@@ -385,7 +385,7 @@ const tI18nPhrase MhpI18nPhrases[] = {
     "", // Português
     "", // Français
     "", // Norsk
-    "<tuntemation>", // suomi
+    "<tuntematon>", // suomi
     "", // Polski
     "", // Español
     "", // ÅëëçíéêÜ (Greek)
