@@ -4,21 +4,13 @@
 # $Id$
 
 include ../Make.config
-
-
-### The C++ compiler and options:
-
-CXX      ?= g++
-CXXFLAGS ?= -O2 -g -Wall -Woverloaded-virtual -fPIC
-AR = ar
-ARFLAGS = ru
-RANLIB = ranlib
+PLUGINDIR_RELATIVE = ../
 
 
 ### The directory environment:
 
 
-INCLUDES += -I../$(VDRDIR)/include  -I$(DIRECTFB_INCLUDES) -I..
+INCLUDES += -I$(DIRECTFB_INCLUDES) $(STANDARD_INCLUDE_OPTIONS)
 
 DEFINES += 
 

@@ -3,7 +3,8 @@
 #
 # $Id$
 
--include Make.config
+include Make.config
+PLUGINDIR_RELATIVE = .
 
 # ***Documentation***
 # Useful commands available in this Makefile:
@@ -35,17 +36,10 @@ VERSION = $(shell grep 'static const char \*VERSION *=' $(PLUGIN).c | awk '{ pri
 
 ### The C++ compiler and options:
 
-CXX      ?= g++
-CXXFLAGS ?= -g -O0 -Wall -Woverloaded-virtual -fPIC
-
--include mhp/Make.config
+##CXXFLAGS += -g -O0
 
 ### The directory environment:
 
-#set in Make.config
-#DVBDIR = ../../../../DVB
-#VDRDIR = ../../..
-#LIBDIR = ../../lib
 TMPDIR = /tmp
 
 ### Allow user defined options to overwrite defaults:
@@ -63,28 +57,32 @@ PACKAGE = vdr-$(ARCHIVE)
 
 ### Includes and Defines (add further entries here):
 
-INCLUDES += -I$(VDRDIR)/include -I$(DVBDIR)/include -I$(DIRECTFB_INCLUDES) -I.
-#INCLUDES += -I$(VDRDIR)/include -I$(DVBDIR)/include -I$(KAFFE_INCLUDES) -I$(KAFFE_INCLUDES2) -I$(DIRECTFB_INCLUDES) -I.
+INCLUDES += $(STANDARD_INCLUDE_OPTIONS) -I$(DVBDIR)/include -I$(DIRECTFB_INCLUDES) $(VM_INCLUDE_OPTIONS)
 
 DEFINES += -DPLUGIN_NAME_I18N='"$(PLUGIN)"' -DBASEDIR='"$(BASEDIR)"' -DLOCALAPPSDIR='"$(LOCALAPPSDIR)"' \
-           -DMHPDIR='"$(MHPDIR)"' -DPLUGINLIBDIR=\"$(PLUGINLIBDIR)\"
+           -DMHPDIR='"$(MHPDIR)"' -DPLUGINLIBDIR=\"$(VDR_PLUGINLIBDIR)\"
+           
 
-#the --whole-archive option makes ld add all symbols of the static library to the plugin
-#instead of only the ones the plugin uses. This is necessary because the libraries loaded
-#by the MHP stack will make use of these libraries.
+##The --whole-archive option makes ld add all symbols of the static library to the binary
+##instead of only the ones actually used in this binary. This is necessary because other
+##dynamic objects (the libraries for JNI, output) will link to this library and use additional symbols.
 
-LIBS += -Wl,--whole-archive libdsmccreceiver/libdsmccreceiver.a libdsmcc/libdsmcc.a -lz \
-        libmhpoutput/libmhpoutput.a  -Wl,--no-whole-archive -lm -lavcodec \
-        libait/libait.a -Wl,--whole-archive libdvbsi/libdvbsi.a libservice/libservice.a -Wl,--no-whole-archive \
-        libjava/libjava.a  -ldfb++ -ldirectfb $(VM_LINK_PATH)
+LIBS_PLUGIN += $(MAIN_LIB_OPTIONS)
+LIBS_LIBRARY += -lm -lavcodec -lz -Wl,--whole-archive \
+        libdsmccreceiver/libdsmccreceiver.a libdsmcc/libdsmcc.a  libmhpoutput/libmhpoutput.a  \
+        libait/libait.a libdvbsi/libdvbsi.a libservice/libservice.a  libjava/libjava.a \
+        -Wl,--no-whole-archive -ldfb++ -ldirectfb $(VM_LINK_PATH)
         
 ### The object files (add further files here):
 
-OBJS = $(PLUGIN).o applicationmenu.o mhpcontrol.o i18n.o
+OBJS_PLUGIN = $(PLUGIN).o
+OBJS_LIBRARY = mhpcontrol.o applicationmenu.o i18n.o
+OBJS = $(OBJS_PLUGIN) $(OBJS_LIBRARY)
 
 ### The subdirectories:
 
 SUBDIRS = libdsmcc libdsmccreceiver libait libmhpoutput libdvbsi libjava libservice mhp
+SUBPLUGINDIRS = libmhpoutput mhp
 LIBXMI = libxmi
 
 ### Implicit rules:
@@ -106,21 +104,33 @@ $(DEPFILE): Makefile
 
 ### Targets:
 
-all: libvdr-$(PLUGIN).so reminder
+all: libvdr-$(PLUGIN).so subplugins reminder
 
 ai: all install
 
 jai: java all install
 
-libvdr-$(PLUGIN).so: subdirs $(OBJS)
-	$(CXX) $(CXXFLAGS) -shared -export-dynamic $(OBJS) $(LIBS) -o $@
+libvdr-$(PLUGIN).so: $(MAIN_LIBRARY) $(OBJS_PLUGIN)
+	$(CXX) $(CXXFLAGS) -shared $(OBJS_PLUGIN) $(LIBS_PLUGIN) -o $@
 	@cp $@ $(LIBDIR)/$@.$(VDRVERSION)
+	
+$(MAIN_LIBRARY): subdirs $(OBJS_LIBRARY)
+	$(CXX) $(CXXFLAGS) -shared -export-dynamic $(OBJS_LIBRARY) $(LIBS_LIBRARY) -o $@
 
 subdirs: libxmi
 	@for i in $(SUBDIRS) ;\
 	do \
 	    ( cd $$i;\
               $(MAKE) all;\
+       ) \
+	|| exit 1;\
+	done
+	
+subplugins:
+	@for i in $(SUBPLUGINDIRS) ;\
+	do \
+	    ( cd $$i;\
+              $(MAKE) subplugins;\
        ) \
 	|| exit 1;\
 	done
@@ -154,9 +164,13 @@ libxmi-clean:
         ) \
    
 #includes java-install
-install:
+install: library-install
 	$(MAKE) -C mhp/ install
 	$(MAKE) -C libmhpoutput/ install
+
+library-install:
+	@install -d $(MHPLIBDIR)
+	@install -v $(MAIN_LIBRARY) $(MHPLIBDIR)
   
 dist: distclean
 	@-rm -rf $(TMPDIR)/$(ARCHIVE)

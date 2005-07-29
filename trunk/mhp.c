@@ -37,15 +37,15 @@ static const char *MAINMENUENTRY  = "MHP";
 class cPluginMhp : public cPlugin {
 private:
   // Add any member variables or functions you may need here.
-  cList<ApplicationInfo::cApplication> localApps;
+  std::list<ApplicationInfo::cApplication::Ptr> localApps;
   const char *localAppPath;
   const char *outputSystem;
   const char *debugLocalApp;
-  const char *VDRPluginPath;
+  //const char *VDRPluginPath;
   //const char *mhpLibDir;
   void InitializeLocalApps();
   bool startedDebugApp;
-  LibraryPreloader ownPlugin;
+  //LibraryPreloader ownPlugin;
 public:
   cPluginMhp(void);
   virtual ~cPluginMhp();
@@ -71,7 +71,7 @@ cPluginMhp::cPluginMhp(void)
   outputSystem="mpegpes";
   MhpConfigPath=0;
   debugLocalApp=0;
-  VDRPluginPath=PLUGINLIBDIR;
+  //VDRPluginPath=PLUGINLIBDIR;
   startedDebugApp=false;
   //mhpLibDir=MHPDIR;
 }
@@ -90,9 +90,9 @@ cPluginMhp::~cPluginMhp()
 const char *cPluginMhp::CommandLineHelp(void)
 {
   // Return a string that describes all known command line options.
-  return "  -L DIR,   --lib=DIR       The plugin directory\n"
+  return /*"  -L DIR,   --lib=DIR       The plugin directory\n"
          "                            as given to VDR with the -L option\n"
-         "                            (required if set for VDR!)\n"
+         "                            (required if set for VDR!)\n"*/
          "  -a DIR    --apppath=DIR   The path to local applications\n"
          "                            (default: /usr/local/vdr/apps)\n"
          "  -o NAME   --output=NAME   The output module:\n"
@@ -113,7 +113,7 @@ bool cPluginMhp::ProcessArgs(int argc, char *argv[])
   // Implement command line argument processing here if applicable.
   //TODO: make localAppPath, mhpLibDir configurable
    static struct option long_options[] = {
-       { "lib",      required_argument,       NULL, 'L' },
+       //{ "lib",      required_argument,       NULL, 'L' },
        { "apppath",  required_argument,       NULL, 'a' },
        { "output",   required_argument,       NULL, 'o' },
        { "config",   required_argument,       NULL, 'c' },
@@ -130,10 +130,10 @@ bool cPluginMhp::ProcessArgs(int argc, char *argv[])
             break;
          /*case 'm':
             mhpLibDir=optarg;
-            break;*/
+            break;
          case 'L':
             VDRPluginPath=optarg;
-            break;
+            break;*/
          case 'o':
             outputSystem=optarg;
             break;
@@ -159,6 +159,7 @@ bool cPluginMhp::Initialize(void)
 {
    // Initialize any background activities the plugin shall perform.
    
+/*
    //VDR loads plugins without the RTDL_GLOBAL flag in dlopen.
    //Dynamic modules dlopen'ed by the plugin, however, will link against symbols from
    //the plugin itself, so it is necessary to reload its symbols globally.
@@ -174,6 +175,7 @@ bool cPluginMhp::Initialize(void)
       return false;
    }
    free(buffer);
+*/
 
    JavaInterface::InitializeSystem();
    InitializeLocalApps();
@@ -215,7 +217,7 @@ void cPluginMhp::InitializeLocalApps() {
                   tp->SetPath(localAppPath);
                }
                ApplicationInfo::cApplication *app=new cLocalApplication(entry->d_name, entry->d_name, entry->d_name, tp);
-               localApps.Add(app);
+               localApps.push_back(app);
                //close(filedes);
             }
          }

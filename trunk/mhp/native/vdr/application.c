@@ -22,60 +22,69 @@ jbyteArray copyConstCharIntoByteArray(JNIEnv* env, const char *str) {
 }
 
 
+/*
+   cApplications are passed around as SmartPtrs. They cannot be passed to Java, only pointers can.
+   When a native pointer is passed to Java, it it a pointer to a SmartPtr.
+   Currently, these pointer (created in this file in getApplicationPointer, and in libjava/javainterface.c)
+   are _not_ deleted, which means they and the wrapped objects are leaked. This is not critical,
+   but a low priority TODO for the future.
+*/
+
+
 //MHPApplication
 jint Java_org_dvb_application_MHPApplication_getAid(JNIEnv* env, jclass clazz, jlong nativeData) {
-   return ((ApplicationInfo::cApplication *)nativeData)->GetAid();
+   return (*(ApplicationInfo::cApplication::Ptr *)nativeData)->GetAid();
 }
 
 jint Java_org_dvb_application_MHPApplication_getOid(JNIEnv* env, jclass clazz, jlong nativeData) {
-   return ((ApplicationInfo::cApplication *)nativeData)->GetOid();
+   return (*(ApplicationInfo::cApplication::Ptr *)nativeData)->GetOid();
 }
 
 jbyteArray Java_org_dvb_application_MHPApplication_carouselRoot(JNIEnv* env, jobject obj, jlong nativeData) {
-   ApplicationInfo::cTransportProtocol *tp=((ApplicationInfo::cApplication *)nativeData)->GetTransportProtocol();
+   ApplicationInfo::cTransportProtocol *tp=(*(ApplicationInfo::cApplication::Ptr *)nativeData)->GetTransportProtocol();
    if (tp->HasFileSystemRepresentation())
       return copyConstCharIntoByteArray(env, tp->GetFileSystemRepresentation());
    return env->NewByteArray(0);
 }
 
 jboolean Java_org_dvb_application_MHPApplication_isServiceBound(JNIEnv* env, jobject obj, jlong nativeData) {
-   return ((ApplicationInfo::cApplication *)nativeData)->GetServiceBound();
+   return (*(ApplicationInfo::cApplication::Ptr *)nativeData)->GetServiceBound();
 }
 
 jlong Java_org_dvb_application_MHPApplication_channel(JNIEnv* env, jobject obj, jlong nativeData) {
-   return (jlong )((ApplicationInfo::cApplication *)nativeData)->GetChannel();
+   return (jlong )(*(ApplicationInfo::cApplication::Ptr *)nativeData)->GetChannel();
 }
 
 jbyteArray Java_org_dvb_application_MHPApplication_name(JNIEnv* env, jobject obj, jlong nativeData) {
-   int num=((ApplicationInfo::cApplication *)nativeData)->GetNumberOfNames();
+   int num=(*(ApplicationInfo::cApplication::Ptr *)nativeData)->GetNumberOfNames();
    if (num)
-      return copyConstCharIntoByteArray(env, ((ApplicationInfo::cApplication *)nativeData)->GetName(0)->name.c_str()); //return first name
+      return copyConstCharIntoByteArray(env, (*(ApplicationInfo::cApplication::Ptr *)nativeData)->GetName(0)->name.c_str()); //return first name
    return copyConstCharIntoByteArray(env, "Unknown");
 }
 
 jbyteArray Java_org_dvb_application_MHPApplication_nameForLanguage(JNIEnv* env, jobject obj, jlong nativeData, jbyteArray iso639code) {
-   int num=((ApplicationInfo::cApplication *)nativeData)->GetNumberOfNames();
+   int num=(*(ApplicationInfo::cApplication::Ptr *)nativeData)->GetNumberOfNames();
    for (int i=0;i<num;i++) {
-      ApplicationInfo::cApplication::ApplicationName *name=((ApplicationInfo::cApplication *)nativeData)->GetName(i);
+      ApplicationInfo::cApplication::ApplicationName *name=(*(ApplicationInfo::cApplication::Ptr *)nativeData)->GetName(i);
       if (strcasecmp(name->iso639Code, (const char*)iso639code) == 0)
-         return copyConstCharIntoByteArray(env, ((ApplicationInfo::cApplication *)nativeData)->GetName(i)->name.c_str());
+         return copyConstCharIntoByteArray(env, (*(ApplicationInfo::cApplication::Ptr *)nativeData)->GetName(i)->name.c_str());
    }
    return NULL; //exception will be thrown
 }
 
 jint Java_org_dvb_application_MHPApplication_priority(JNIEnv* env, jobject obj, jlong nativeData) {
-   return ((ApplicationInfo::cApplication *)nativeData)->GetPriority();
+   return (*(ApplicationInfo::cApplication::Ptr *)nativeData)->GetPriority();
 }
 
 jint Java_org_dvb_application_MHPApplication_componentTag(JNIEnv* env, jobject obj, jlong nativeData, jstring index) {
-   ApplicationInfo::cTransportProtocolViaOC *tp=dynamic_cast<ApplicationInfo::cTransportProtocolViaOC*>(((ApplicationInfo::cApplication *)nativeData)->GetTransportProtocol());
+   ApplicationInfo::cTransportProtocolViaOC *tp=dynamic_cast<ApplicationInfo::cTransportProtocolViaOC*>((*(ApplicationInfo::cApplication::Ptr *)nativeData)->GetTransportProtocol());
    if (tp)
       return tp->GetComponentTag();
    return 0;
 }
 
 jint Java_org_dvb_application_MHPApplication_type(JNIEnv* env, jclass clazz, jlong nativeData) {
-   return (int)((ApplicationInfo::cApplication *)nativeData)->GetApplicationType();
+   return (int)(*(ApplicationInfo::cApplication::Ptr *)nativeData)->GetApplicationType();
 }
 
 jboolean Java_org_dvb_application_MHPApplication_startable(JNIEnv* env, jobject obj, jlong nativeData) {
@@ -88,27 +97,29 @@ jboolean Java_org_dvb_application_MHPApplication_startable(JNIEnv* env, jobject 
 
 //DVBJApplication
 jbyteArray Java_org_dvb_application_DVBJApplication_baseDir(JNIEnv* env, jobject obj, jlong nativeData) {
-   return copyConstCharIntoByteArray(env, ((ApplicationInfo::cApplication *)nativeData)->GetBaseDir());
+   return copyConstCharIntoByteArray(env, (*(ApplicationInfo::cApplication::Ptr *)nativeData)->GetBaseDir());
 }
 
 jbyteArray Java_org_dvb_application_DVBJApplication_classPath(JNIEnv* env, jobject obj, jlong nativeData) {
-   return copyConstCharIntoByteArray(env, ((ApplicationInfo::cApplication *)nativeData)->GetClassPath());
+   return copyConstCharIntoByteArray(env, (*(ApplicationInfo::cApplication::Ptr *)nativeData)->GetClassPath());
 }
 
 jbyteArray Java_org_dvb_application_DVBJApplication_initialClass(JNIEnv* env, jobject obj, jlong nativeData) {
-   return copyConstCharIntoByteArray(env, ((ApplicationInfo::cApplication *)nativeData)->GetInitialClass());
+   return copyConstCharIntoByteArray(env, (*(ApplicationInfo::cApplication::Ptr *)nativeData)->GetInitialClass());
 }
 
 jlong Java_org_dvb_application_DVBJApplication_getApplicationPointer(JNIEnv* env, jclass clazz, jlong nativeData, jint oid, jint aid) {
-   return (jlong )((ApplicationInfo::cApplicationsDatabase*)nativeData)->findApplication(aid, oid, ApplicationInfo::cApplication::DVBJApplication);
+   return (jlong) new ApplicationInfo::cApplication::Ptr (
+   ((ApplicationInfo::cApplicationsDatabase*)nativeData)->findApplication(aid, oid, ApplicationInfo::cApplication::DVBJApplication)
+   );
 }
 
 jint Java_org_dvb_application_DVBJApplication_numberOfParameters(JNIEnv* env, jobject obj, jlong nativeData) {
-   return ((ApplicationInfo::cApplication *)nativeData)->GetNumberOfParameters();
+   return (*(ApplicationInfo::cApplication::Ptr *)nativeData)->GetNumberOfParameters();
 }
 
 jbyteArray Java_org_dvb_application_DVBJApplication_parameter(JNIEnv* env, jobject obj, jlong nativeData, jint index) {
-   return copyConstCharIntoByteArray(env, ((ApplicationInfo::cApplication *)nativeData)->GetParameter(index));
+   return copyConstCharIntoByteArray(env, (*(ApplicationInfo::cApplication::Ptr *)nativeData)->GetParameter(index));
 }
 
 
@@ -121,15 +132,15 @@ jint Java_org_dvb_application_AppsDatabase_getSize(JNIEnv* env, jobject obj, jlo
 //ApplicationManager$LoadingManagerInterface
 //The $, unicode 0x24, is mangled to _00024
 void Java_vdr_mhp_ApplicationManager_00024LoadingManagerInterface_load(JNIEnv* env, jclass clazz, jlong nativeData) {
-   MhpLoadingManager::getManager()->Load((ApplicationInfo::cApplication *)nativeData);
+   MhpLoadingManager::getManager()->Load(*(ApplicationInfo::cApplication::Ptr *)nativeData);
 }
 
 void Java_vdr_mhp_ApplicationManager_00024LoadingManagerInterface_stop(JNIEnv* env, jclass clazz, jlong nativeData) {
-   MhpLoadingManager::getManager()->Stop((ApplicationInfo::cApplication *)nativeData);
+   MhpLoadingManager::getManager()->Stop(*(ApplicationInfo::cApplication::Ptr *)nativeData);
 }
 
 jboolean Java_vdr_mhp_ApplicationManager_00024LoadingManagerInterface_isAcquired(JNIEnv* env, jclass clazz, jlong nativeData) {
-   return MhpLoadingManager::getManager()->getState((ApplicationInfo::cApplication *)nativeData) == LoadingStateLoaded;
+   return MhpLoadingManager::getManager()->getState(*(ApplicationInfo::cApplication::Ptr *)nativeData) == LoadingStateLoaded;
 }
 
 //the standard is not very explicit about the mangling of JNI methods, but this is definitely the way to go.
@@ -219,7 +230,7 @@ jlong Java_org_dvb_dsmcc_DSMCCObject_createListener(JNIEnv* env, jobject obj, jl
    
    DSMCCObjectListener *l=new DSMCCObjectListener();
    l->dsmccObject.SetObject(obj);
-   l->cache=MhpLoadingManager::getManager()->getCache((ApplicationInfo::cApplication *)nativeApp);
+   l->cache=MhpLoadingManager::getManager()->getCache(*(ApplicationInfo::cApplication::Ptr *)nativeApp);
    
    if (l->cache)
       l->cache->addListener(path, l);

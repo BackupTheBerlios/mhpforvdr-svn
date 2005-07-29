@@ -75,6 +75,7 @@ public:
    void Activate(Player *player, bool On);
 protected:
    virtual void Action();
+   bool Initialize();
    IDirectFBSurface *primarySurface;
    bool init;
    AVCodec *avCodec;

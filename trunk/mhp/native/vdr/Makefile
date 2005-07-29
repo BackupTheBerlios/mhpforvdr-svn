@@ -1,5 +1,6 @@
 
 include ../../../Make.config
+PLUGINDIR_RELATIVE = ../../..
 
 OBJS =  \
 	syslog.o \
@@ -9,19 +10,17 @@ OBJS =  \
 	service.o \
 	storage.o
    
-LIBS = 
+LIBS = $(MAIN_LIB_OPTIONS)
 #CXXFLAGS += -O0
-##these objects do not form a shared or static library, they are included in this lib
-#ADD_OBJS= ../../lib/inputdriver/vdrinput.o \
 
 CXXFLAGS += -DMHPLIBDIR=\"$(MHPLIBDIR)\" -DMHPDATADIR=\"$(MHPDATADIR)\" -DMHPFONTDIR=\"$(MHPFONTDIR)\" 
 
-INCLUDES = $(VM_INCLUDE_OPTIONS) -I ../../lib -I ../../.. -I../../../$(VDRDIR_RELATIVE)
+INCLUDES = $(VM_INCLUDE_OPTIONS) $(STANDARD_INCLUDE_OPTIONS)
 
 %.o: %.c
-	$(CXX) $(CXXFLAGS) -c $(DEFINES) $(INCLUDES) $<
+	$(CXX) $(CXXFLAGS) -w -c $(DEFINES) $(INCLUDES) $<
    
-all: libvdrmhp.so
+all: libmhpjni_dvb.so
 
 # Dependencies:
 
@@ -32,7 +31,7 @@ $(DEPFILE): Makefile
 
 -include $(DEPFILE)
 
-libvdrmhp.so: $(OBJS)
+libmhpjni_dvb.so: $(OBJS)
 	$(CXX) $(CXXFLAGS) -shared $(OBJS) $(ADDOBJS) $(LIBS) -o $@
    
 clean:

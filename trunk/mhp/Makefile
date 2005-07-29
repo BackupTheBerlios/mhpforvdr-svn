@@ -3,8 +3,6 @@
 
 SUBDIRS = native java ttf-bitstream-vera-1.10
 
-OBJS = DirectFB/libkawt.so de/libvdrmhp.so
-
 all: subdirs
 
 subdirs:
@@ -16,6 +14,9 @@ subdirs:
 	|| exit 1;\
 	done
    
+subplugins:
+	$(MAKE) -C native subplugins
+   
 clean:
 	@for i in $(SUBDIRS) ;\
 	do \
@@ -25,7 +26,7 @@ clean:
 	done
 	@-rm -f *.so core* *~
 
-install: all
+install: all subplugins
 	@for i in $(SUBDIRS) ;\
 	do \
 	    ( cd $$i;\

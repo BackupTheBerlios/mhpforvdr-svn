@@ -55,7 +55,7 @@ protected:
 private:
    //static void adjustLibraryPath();
    bool preloadLibs();
-   LibraryPreloader preloadedLib;
+   //LibraryPreloader preloadedLib;
    bool error;
    pthread_t startingThreadPid;
    //bool doShutdown;
@@ -317,10 +317,10 @@ bool cJavaVM::preloadLibs() {
    //This lib is linked to the plugin the normal -l way, and since the plugin is loaded
    //without RTDL_GLOBAL, need to reload the library as well (plugin is reloaded in mhp.c)
    error=false;
-   if (!preloadedLib.Load(SABLEVM_SODIR "/libsablevm.so")) {
+   /*if (!preloadedLib.Load(SABLEVM_SODIR "/libsablevm.so")) {
       error=true;
       return false;
-   }
+   }*/
    return true;
 }
 

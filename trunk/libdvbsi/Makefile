@@ -4,14 +4,13 @@
 # $Id$
 
 include ../Make.config
-
-VDRDIR = ../../../..
+PLUGINDIR_RELATIVE = ../
 
 
 ### The directory environment:
 
 
-INCLUDES += -I$(VDRDIR)/include -I..
+INCLUDES += $(STANDARD_INCLUDE_OPTIONS)
 
 DEFINES += 
 

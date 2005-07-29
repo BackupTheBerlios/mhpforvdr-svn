@@ -1,11 +1,14 @@
 
 -include ../../Make.config
 
-SUBDIRS = DirectFB de
+SUBDIRS = DirectFB vdr
 
-OBJS = DirectFB/libdirectfbawt.so de/libvdrmhp.so
+OBJS = DirectFB/libmhpjni_directfbawt.so vdr/libmhpjni_dvb.so
 
-all: subdirs
+
+all:
+	@echo "\"make all\" does nothing in this directory. Make \"subplugins\" to compile subdirs."
+subplugins: subdirs
 
 subdirs:
 	@for i in $(SUBDIRS) ;\

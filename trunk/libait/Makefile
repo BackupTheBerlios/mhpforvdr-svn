@@ -4,13 +4,12 @@
 # $Id$
 
 include ../Make.config
-
-VDRDIR = ../../../..
+PLUGINDIR_RELATIVE = ../
 
 ### The directory environment:
 
 
-INCLUDES += -I$(VDRDIR)/include -I..
+INCLUDES += $(STANDARD_INCLUDE_OPTIONS)
 
 DEFINES += 
 
@@ -21,6 +20,8 @@ LIBS +=
 OBJS = ait.o applications.o
 
 ### Implicit rules:
+
+all-redirect: all
 
 %.o: %.c
 	$(CXX) $(CXXFLAGS) -c $(DEFINES) $(INCLUDES) $<

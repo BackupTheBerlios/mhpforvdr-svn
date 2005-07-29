@@ -3,7 +3,6 @@
 #
 # $Id$
 
-VDRDIR = ../../../..
 
 ### The C++ compiler and options:
 
@@ -11,13 +10,13 @@ VDRDIR = ../../../..
 ##CXXFLAGS ?= -O2 -g -Wall -Woverloaded-virtual
 
 include ../Make.config
-
+PLUGINDIR_RELATIVE = ../
 
 
 ### The directory environment:
 
 
-INCLUDES += -I$(VDRDIR)/include -I$(DIRECTFB_INCLUDES) -I..
+INCLUDES += $(STANDARD_INCLUDE_OPTIONS) -I$(DIRECTFB_INCLUDES)
 
 DEFINES += -DMHPLIBDIR=\"$(MHPLIBDIR)\" 
 
@@ -27,9 +26,16 @@ LIBS +=
 
 OBJS = output.o outputadministration.o avcodecsupport.o
 
-MODULES = mpegpes-$(DIRECTFB_VERSION) sdl
-#DIRECTFB_VERSION is defined in Make.config, the value is taken from the directfb-config program
-#Edit Make.config if this fails for some reason.
+MODULES =
+
+ifeq ($(COMPILE_DIRECTFB_BACKEND),YES)
+   MODULES += mpegpes-$(DIRECTFB_VERSION)
+   ## DIRECTFB_VERSION is defined in Make.config, the value is taken from the directfb-config program
+   ## Edit Make.config if this fails for some reason.
+endif
+ifeq ($(HAVE_SDL),YES)
+   MODULES += sdl
+endif
 
 CLEAN_SUBDIRS = mpegpes-[0-9]* sdl
 
@@ -38,7 +44,7 @@ CLEAN_SUBDIRS = mpegpes-[0-9]* sdl
 all-redirect: all
 
 %.o: %.c
-	$(CXX) $(CXXFLAGS) -c $(DEFINES) $(INCLUDES) $<
+	$(CXX) $(CXXFLAGS) -O0 -c $(DEFINES) $(INCLUDES) $<
 
 # Dependencies:
 
@@ -51,7 +57,9 @@ $(DEPFILE): Makefile
 
 ### Targets:
 
-all: libmhpoutput.a modules
+all: libmhpoutput.a 
+
+subplugins: modules
 
 install: modules-install
 

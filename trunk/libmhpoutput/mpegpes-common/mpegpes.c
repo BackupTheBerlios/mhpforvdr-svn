@@ -129,6 +129,10 @@ MpegPesSystem::~MpegPesSystem() {
 }
 
 bool MpegPesSystem::Initialize(const char *arg) {
+   //Initialize Encoder (libavcodec etc.)
+   if (!Encoder::Initialize())
+      return false;
+
    //check here for possible libavcodec errors
    if (!avCodec)
       return false;
@@ -184,10 +188,20 @@ bool MpegPesSystem::Initialize(const char *arg) {
    //dripFeed=new AVCodecDripFeed();
 }
 
-                     
+
 /*** Encoder ***/
 
-Encoder::Encoder() : init(false), running(false), open(false) {
+Encoder::Encoder()
+ : primarySurface(0), init(false), avCodec(0),
+   running(false), open(false), avContext(0),
+   avFrame1(0), avFrame2(0), avFrameRGB(0),
+   mpegBuffer(0), mpegBufferSize(0), mpegSize(0)
+{
+   //Do everything in Initialize. 
+   //There we can call virtual functions and return a success value.
+}
+
+bool Encoder::Initialize() {
    AVCodecInitialisation::Check();
 
    width=MhpOutput::System::self()->GetDisplayWidth();
@@ -196,7 +210,7 @@ Encoder::Encoder() : init(false), running(false), open(false) {
    /* find the mpeg1 video encoder */
    if (!(avCodec = avcodec_find_encoder(CODEC_ID_MPEG2VIDEO)) ) {
        esyslog("MhpOutput: Encoder: Fatal: codec not found.");
-       return;
+       return false;
    }
 
    mpegSize = 0;
@@ -269,6 +283,7 @@ Encoder::Encoder() : init(false), running(false), open(false) {
    //These two set a constant quality - better use VBR
    //avFrame->quality = 1; //1, 31
    //avContext->flags |= CODEC_FLAG_QSCALE;
+   return true;
 }
 
 Encoder::~Encoder() {
@@ -466,8 +481,10 @@ void Encoder::UpdateRegion(DFBRegion *region) {
    //There are two buffers so that always one is available for _writing_.
    //Reading may wait, but writing is a bit time-critical (called effectively
    //from the high-level drawing process)
-   if (!d)
+   if (!d) {
+      printf("Encoder::UpdateRegion: ERROR!! No d.\n");
       return;
+   }
    
    //Locking is probably unnecessary. Anyway, it does not do what you would expect
    //from a Lock() function, i.e. it does not lock in the mutex sense.
@@ -692,6 +709,5 @@ void *mpegpes_allocate(int width, int height) {
 }//end of "C"
 
 MHPOUTPUTPLUGINCREATOR(MhpOutput::MpegPesSystem)
-
 
 

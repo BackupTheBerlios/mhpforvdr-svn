@@ -1,12 +1,13 @@
 
 include ../../Make.config
+PLUGINDIR_RELATIVE = ../..
 
 COBJS = shm.o primary.o
 OBJS  = mpegpes.o
-INCLUDES = -I$(DFB++_INCLUDES) -I$(DIRECTFB_INCLUDES)  -I../.. -I../../mhp/$(VDRDIR_RELATIVE)
+INCLUDES = -I$(DFB++_INCLUDES) -I$(DIRECTFB_INCLUDES) $(STANDARD_INCLUDE_OPTIONS)
 CINCLUDES = -I$(DIRECTFB_INCLUDES) -I$(DIRECTFB_INCLUDES_INTERNAL) -Idfb_config
 CFLAGS += -D_REENTRANT -fPIC -DPIC -ffast-math -D_GNU_SOURCE
-LIBS = $(DIRECTFB_LIBS)
+LIBS = $(DIRECTFB_LIBS) $(MAIN_LIB_OPTIONS)
 
 
 
@@ -16,7 +17,7 @@ primary.o:
 	$(CC) $(CFLAGS) -c $(DEFINES) $(CINCLUDES) primary.c
    
 %.o: %.c
-	$(CXX) $(CXXFLAGS) -c $(DEFINES) $(INCLUDES) $<
+	$(CXX) $(CXXFLAGS) -O0 -c $(DEFINES) $(INCLUDES) $<
    
 all: libmhpoutputmpegpes.so
 
@@ -37,7 +38,7 @@ $(DEPFILE): Makefile
 #	$(AR) $(ARFLAGS) $@ $(OBJS) 
    
 libmhpoutputmpegpes.so: $(OBJS) $(COBJS)
-	$(CXX) $(CFLAGS) -shared $(OBJS) $(COBJS) $(LIBS) -o $@
+	$(CXX) $(CFLAGS) -shared -export-dynamic $(OBJS) $(COBJS) $(LIBS) -o $@
    
 clean:
 	@-rm -f $(OBJS) $(COBJS) $(DEPFILE) *.so *.tgz core* *~ *.a

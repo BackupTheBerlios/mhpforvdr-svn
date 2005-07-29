@@ -26,8 +26,6 @@ TOPDIR_EXTRA_CLASSPATH := $(EXTRA_CLASSPATH)
 
 SUBDIRS = vdrsupport libcommoncode connector inputdriver
 
-OBJS = DirectFB/libkawt.so de/libvdrmhp.so
-
 JAVAFILELIST = ./javafilelist
 CLASSFILELIST = ./classfilelist
 
