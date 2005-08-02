@@ -37,10 +37,10 @@ class ImageWidget extends HComponent implements KeyListener, FilenameFilter, Ima
       try {
          File dir=new File("images");
          files=dir.list(this);
-         /*System.out.print("Having the following images: ");
+         System.out.print("Having the following images: ");
          for (int i=0;i<files.length;i++)
             System.out.print(files[i]);
-         System.out.println("");*/
+         System.out.println("");
       } catch (SecurityException ex) {
          ex.printStackTrace();
       }

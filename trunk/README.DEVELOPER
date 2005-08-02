@@ -86,6 +86,18 @@ A note on Java virtual machines
    Apache Harmony is a very interesting project, and if there is working
    code one day I will love to support it.
    
+A note on the binary objects (dynamic libraries) of this plugin
+ The actual plugin library libvdr-mhp.so which is loaded by VDR is only
+ made of the source file mhp.c. The large part of the plugin's functionality
+ can be found in libmhpforvdr.so which is installed per default in /usr/local/vdr/mhp/lib.
+ The plugin object links to this library.
+ There are some "subplugins", dynamic libraries dlopen'ed by 
+ the plugin - or rather by code from libmhpvdr.so.
+ These are the output modules found under libmhpoutput, and the libraries loaded
+ by the Java stack providing those functions called via JNI from the Java side.
+ All these libraries also link libmhpforvdr.so and find the functions they need
+ when they call back to the main plugin.
+   
 What are all those libs about?
 
    libdvbsi

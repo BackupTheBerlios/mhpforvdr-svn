@@ -20,17 +20,18 @@ STATUS of this file:
 
 Installation:
  
- The plugin requires five steps. Please do not forget step 2, 4 and 5, which
+ The plugin requires four steps. Please do not forget step 2, 4 and 5, which
  are unusual for VDR plugins.
 
  1)The plugin has quite a few dependencies. Please check this list
    before compiling the plugin.
    You need:
    
-   - VDR 1.3.x series, tested with version 1.3.23, later versions are okay,
-     earlier versions are not recommended/may not work (it is a development series after all)
+   - VDR 1.3.x series, tested with version 1.3.27, later versions are okay,
+     earlier versions are not officially test/not recommended/
+     may work, may not work (it is a development series after all)
      
-   - A Java virtual machine based on GNU Classpath. 'Currently, the only supported VM is
+   - A Java virtual machine based on GNU Classpath. Currently, the only supported VM is
    
      - SableVM, current SVN snapshot.
          Get the latest version from SVN, the 1.11 release of SableVM does not work:
@@ -95,12 +96,6 @@ Installation:
    Descend into the plugin's main directory and execute (as root)
    
    "make install".
-   
- 5)Command line arguments:
-   The plugin needs to know the VDR plugin directory.
-   So if you start VDR with the "-L" option, start the plugin with the same option:
-   "-P 'mhp -L /path/to/PLUGINS/lib'"
-   If you don't do this, it won't work and you will reminded by an error message in the syslog.
    
    Now enjoy...
 
