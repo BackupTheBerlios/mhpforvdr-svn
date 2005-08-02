@@ -40,7 +40,7 @@ MhpApplicationMenuItem::MhpApplicationMenuItem(ApplicationInfo::cApplication::Pt
    else
       name=tr("<No name available>");
       
-   if (typeid(*app) == typeid(cLocalApplication))
+   if (app->GetTransportProtocol()->GetProtocol() == ApplicationInfo::cTransportProtocol::Local)
       asprintf(&buffer, "%s", name);
    else {
       cChannel *chan=app->GetChannel();
@@ -104,7 +104,7 @@ eOSState MhpApplicationMenu::ProcessKey(eKeys Key) {
          cOsdItem *item=Get(Current());
          if (typeid(*item) == typeid(MhpApplicationMenuItem)) {
             MhpApplicationMenuItem *appitem=static_cast<MhpApplicationMenuItem *>(item);
-            if (typeid(*appitem->GetApplication()) == typeid(cLocalApplication)) {
+            if (appitem->GetApplication()->GetTransportProtocol()->GetProtocol() == ApplicationInfo::cTransportProtocol::Local) {
                MhpControl::Start(appitem->GetApplication());
             } else {
                if (GetReceptionState(appitem->GetApplication()->GetChannel())<=StateNeedsTuning) {
