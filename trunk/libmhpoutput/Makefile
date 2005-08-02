@@ -44,7 +44,7 @@ CLEAN_SUBDIRS = mpegpes-[0-9]* sdl
 all-redirect: all
 
 %.o: %.c
-	$(CXX) $(CXXFLAGS) -O0 -c $(DEFINES) $(INCLUDES) $<
+	$(CXX) $(CXXFLAGS) -c $(DEFINES) $(INCLUDES) $<
 
 # Dependencies:
 

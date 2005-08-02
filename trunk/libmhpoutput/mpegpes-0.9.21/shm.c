@@ -161,7 +161,7 @@ system_thread_init()
 }
 
 static bool
-system_input_filter( InputDevice   *device,
+system_input_filter( CoreInputDevice   *device,
                      DFBInputEvent *event )
 {
      return false;

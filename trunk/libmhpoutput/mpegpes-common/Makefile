@@ -17,7 +17,7 @@ primary.o:
 	$(CC) $(CFLAGS) -c $(DEFINES) $(CINCLUDES) primary.c
    
 %.o: %.c
-	$(CXX) $(CXXFLAGS) -O0 -c $(DEFINES) $(INCLUDES) $<
+	$(CXX) $(CXXFLAGS) -c $(DEFINES) $(INCLUDES) $<
    
 all: libmhpoutputmpegpes.so
 

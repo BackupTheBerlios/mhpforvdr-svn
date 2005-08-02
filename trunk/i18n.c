@@ -288,7 +288,7 @@ const tI18nPhrase MhpI18nPhrases[] = {
   { "Error in output system: Plugin disabled", // English
     "Fehler im Ausgabesystem: Plugin deaktiviert", // Deutsch
     "", // Slovenski
-    "", // Italiano
+    "Errore nel sistema di output: Plugin disabilitato", // Italiano
     "", // Nederlands
     "", // Português
     "", // Français
@@ -311,7 +311,7 @@ const tI18nPhrase MhpI18nPhrases[] = {
   { "Error in Java system: Plugin disabled", // English
     "Fehler im Java-System: Plugin deaktiviert", // Deutsch
     "", // Slovenski
-    "", // Italiano
+    "Errore nel sistema Java: Plugin disabilitato", // Italiano
     "", // Nederlands
     "", // Português
     "", // Français
@@ -334,7 +334,7 @@ const tI18nPhrase MhpI18nPhrases[] = {
   { "Loading failed", // English
     "Laden fehlgeschlagen", // Deutsch
     "", // Slovenski
-    "", // Italiano
+    "Caricamento non riuscito", // Italiano
     "", // Nederlands
     "", // Português
     "", // Français
@@ -357,7 +357,7 @@ const tI18nPhrase MhpI18nPhrases[] = {
   { "Starting failed", // English
     "Starten fehlgeschlagen", // Deutsch
     "", // Slovenski
-    "", // Italiano
+    "Avvio non riuscito", // Italiano
     "", // Nederlands
     "", // Português
     "", // Français
@@ -380,7 +380,7 @@ const tI18nPhrase MhpI18nPhrases[] = {
   { "<unknown name>", // English
     "<Unbekannter Name>", // Deutsch
     "", // Slovenski
-    "", // Italiano
+    "<Nome sconosciuto>", // Italiano
     "", // Nederlands
     "", // Português
     "", // Français

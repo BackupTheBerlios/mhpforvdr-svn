@@ -19,7 +19,7 @@ import java.security.PrivilegedAction;
 public class ApplicationManager {
 
 static {
-   System.loadLibrary("mhpjni_vdr");
+   System.loadLibrary("mhpjni_dvb");
 }
 
 //return values in this class:
