@@ -250,8 +250,13 @@ bool Encoder::Initialize() {
    avContext->pix_fmt=PIX_FMT_YUV420P;
    
    //PAL hax exactly 25 frames / s, NTSC has 30000 frames per 1001 seconds (~29.97)
+   #if (LIBAVCODEC_BUILD >= 4754)
+   avContext->time_base.den = (MhpOutput::System::self()->GetVideoSystem() == vsPAL ? 25 : 30000);
+   avContext->time_base.num =(MhpOutput::System::self()->GetVideoSystem() == vsPAL ? 1 : 1001);
+   #else
    avContext->frame_rate = (MhpOutput::System::self()->GetVideoSystem() == vsPAL ? 25 : 30000);
    avContext->frame_rate_base=(MhpOutput::System::self()->GetVideoSystem() == vsPAL ? 1 : 1001);
+   #endif
    
    avContext->gop_size = 0; //only I-frames   
    avContext->me_method = ME_ZERO; /*motion estimation type*/

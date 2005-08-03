@@ -12,7 +12,7 @@ const tI18nPhrase MhpI18nPhrases[] = {
   { "MHP", // English
     "MHP", // Deutsch
     "", // Slovenski
-    "", // Italiano
+    "MHP", // Italiano
     "", // Nederlands
     "", // Português
     "", // Français
@@ -35,7 +35,7 @@ const tI18nPhrase MhpI18nPhrases[] = {
   { "An MHP implementation", // English
     "Eine MHP-Implementierung", // Deutsch
     "", // Slovenski
-    "", // Italiano
+    "Una implementazione MHP", // Italiano
     "", // Nederlands
     "", // Português
     "", // Français
@@ -58,7 +58,7 @@ const tI18nPhrase MhpI18nPhrases[] = {
   { "<No name available>", // English
     "<Kein Name verfügbar>", // Deutsch
     "", // Slovenski
-    "", // Italiano
+    "<Nessun nome disponibile>", // Italiano
     "", // Nederlands
     "", // Português
     "", // Français
@@ -81,7 +81,7 @@ const tI18nPhrase MhpI18nPhrases[] = {
   { "Unknown channel", // English
     "Unbekannter Kanal", // Deutsch
     "", // Slovenski
-    "", // Italiano
+    "Canale sconosciuto", // Italiano
     "", // Nederlands
     "", // Português
     "", // Français
@@ -103,8 +103,8 @@ const tI18nPhrase MhpI18nPhrases[] = {
   },
   { "MHP Applications", // English
     "MHP-Anwendungen", // Deutsch
-    "", // Slovenski                                                                                                                                                              
-    "", // Italiano
+    "", // Slovenski
+    "Applicazioni MHP", // Italiano
     "", // Nederlands
     "", // Português
     "", // Français
@@ -127,7 +127,7 @@ const tI18nPhrase MhpI18nPhrases[] = {
   { "Tuning required:", // English
     "Kanalwechsel erforderlich:", // Deutsch
     "", // Slovenski
-    "", // Italiano
+    "Sintonizzazione richiesta:", // Italiano
     "", // Nederlands
     "", // Português
     "", // Français
@@ -150,7 +150,7 @@ const tI18nPhrase MhpI18nPhrases[] = {
   { "Currently not available:", // English
     "Zur Zeit nicht verfügbar:", // Deutsch
     "", // Slovenski
-    "", // Italiano
+    "Attualmente non disponibile:", // Italiano
     "", // Nederlands
     "", // Português
     "", // Français
@@ -173,7 +173,7 @@ const tI18nPhrase MhpI18nPhrases[] = {
   { "No MHP applications available", // English
     "Keine MHP-Anwendungen verfügbar", // Deutsch
     "", // Slovenski
-    "", // Italiano
+    "Nessuna applicazione MHP disponibile", // Italiano
     "", // Nederlands
     "", // Português
     "", // Français
@@ -196,7 +196,7 @@ const tI18nPhrase MhpI18nPhrases[] = {
   { "Local applications:", // English
     "Lokale Anwendungen:", // Deutsch
     "", // Slovenski
-    "", // Italiano
+    "Applicazioni locali:", // Italiano
     "", // Nederlands
     "", // Português
     "", // Français
@@ -219,7 +219,7 @@ const tI18nPhrase MhpI18nPhrases[] = {
   { "Cannot receive application!", // English
     "Anwendung nicht empfangbar!", // Deutsch
     "", // Slovenski
-    "", // Italiano
+    "Impossibile ricevere l'applicazione!", // Italiano
     "", // Nederlands
     "", // Português
     "", // Français
@@ -242,7 +242,7 @@ const tI18nPhrase MhpI18nPhrases[] = {
   { "Loading files...", // English
     "Dateien werden geladen...", // Deutsch
     "", // Slovenski
-    "", // Italiano
+    "Caricamento dati...", // Italiano
     "", // Nederlands
     "", // Português
     "", // Français
@@ -265,7 +265,7 @@ const tI18nPhrase MhpI18nPhrases[] = {
   { "Error while starting Java environment", // English
     "Fehler beim Starten der Java-Umgebung", // Deutsch
     "", // Slovenski
-    "", // Italiano
+    "Errore durante l'avvio dell'ambiente Java", // Italiano
     "", // Nederlands
     "", // Português
     "", // Français
