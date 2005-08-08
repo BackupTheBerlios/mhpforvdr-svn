@@ -400,6 +400,29 @@ const tI18nPhrase MhpI18nPhrases[] = {
 #endif
 #endif
   },
+  { "This application has already been started", // English
+    "Diese Anwendung wurde bereits gestartet", // Deutsch
+    "", // Slovenski
+    "", // Italiano
+    "", // Nederlands
+    "", // Português
+    "", // Français
+    "", // Norsk
+    "", // suomi
+    "", // Polski
+    "", // Español
+    "", // ÅëëçíéêÜ (Greek)
+    "", // Svenska
+    "", // Romaneste
+    "", // Magyar
+    "", // Català
+#if VDRVERSNUM >= 10302
+    "", // ÀãááÚØÙ (Russian)
+#if VDRVERSNUM >= 10307
+    "", // Hrvatski (Croatian)
+#endif
+#endif
+  },
   { "", // English
     "", // Deutsch
     "", // Slovenski

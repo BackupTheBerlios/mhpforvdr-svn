@@ -15,16 +15,20 @@
 //Put this into an extra header because mhpcontrol.h has many header dependencies
 //Implementation is in mhpcontrol.c
 
-class MhpMessages {
+namespace Mhp {
+
+class Messages {
 public:
-   enum Messages { NoMessage, LoadingFailed, StartingFailed, OutputSystemError, JavaSystemError, JavaStartError };
-   static void DisplayMessage(Messages message);
+   enum Message { NoMessage, LoadingFailed, StartingFailed, OutputSystemError, JavaSystemError, JavaStartError, AlreadyRunning };
+   static void DisplayMessage(Message message);
 private:
-   friend class MhpControl;
-   static Messages message;   
+   friend class Control;
+   static Message message;   
 };
 
-extern const char *MhpConfigPath;
+extern const char *ConfigPath;
+
+}
 
 
 

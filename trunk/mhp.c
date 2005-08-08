@@ -69,7 +69,7 @@ cPluginMhp::cPluginMhp(void)
   // VDR OBJECTS TO EXIST OR PRODUCE ANY OUTPUT!
   localAppPath=LOCALAPPSDIR;
   outputSystem="mpegpes";
-  MhpConfigPath=0;
+  Mhp::ConfigPath=0;
   debugLocalApp=0;
   //VDRPluginPath=PLUGINLIBDIR;
   startedDebugApp=false;
@@ -83,7 +83,7 @@ cPluginMhp::~cPluginMhp()
   JavaInterface::ShutdownMHP();
   DvbSi::Database::CleanUp();
   JavaInterface::CleanUp();
-  MhpLoadingManager::getManager()->CleanUp();
+  Mhp::LoadingManager::getManager()->CleanUp();
   MhpOutput::Administration::CleanUp();
 }
 
@@ -138,7 +138,7 @@ bool cPluginMhp::ProcessArgs(int argc, char *argv[])
             outputSystem=optarg;
             break;
          case 'c':
-            MhpConfigPath=optarg;
+            Mhp::ConfigPath=optarg;
             break;
          case 'D':
             debugLocalApp=optarg;
@@ -177,16 +177,15 @@ bool cPluginMhp::Initialize(void)
    free(buffer);
 */
 
-   JavaInterface::InitializeSystem();
    InitializeLocalApps();
    
-   if (MhpConfigPath==0) {
+   if (Mhp::ConfigPath==0) {
       char *c;
       asprintf(&c, "%s%s", VideoDirectory, "/mhp");
-      MhpConfigPath=c;
+      Mhp::ConfigPath=c;
    }
-   MakeDirs(MhpConfigPath, true);
-   if (!DirectoryOk(MhpConfigPath, true))
+   MakeDirs(Mhp::ConfigPath, true);
+   if (!DirectoryOk(Mhp::ConfigPath, true))
       esyslog("MHP: Config directory is not accessible. Settings will not be stored.");
    
    return true;
@@ -226,69 +225,21 @@ void cPluginMhp::InitializeLocalApps() {
    }
 }
 
-/*
- //Debug
- #include "mhpcontrol.h"
- #include <libdvbsi/database.h>
- #include <typeinfo>
- class List : public DvbSi::Listener, public DvbSi::DataSwitchListener {
- public:
- protected:
-    virtual void DataSwitch(DvbSi::Database *db) {
-       this->db=db;
-       printf("adding request\n");
-       db->retrieveServiceTable(this); //1
-       db->retrieveNetworks(this); //1
-       db->retrieveBouquets(this); //6
-       db->retrieveTDT(this); //1
-       db->retrieveTOT(this); //1
-       db->retrieveActualServices(this); //1
-       db->retrieveActualNetwork(this); //1
-       db->retrieveServices(this, 1, new DvbSi::IdTracker(1201), new DvbSi::IdTracker()); //6
-       db->retrieveActualTransportStream(this); //1
-       db->retrievePMTServices(this); //1
-       db->retrievePMTElementaryStreams(this, 28113); //1
-       db->retrieveEventTable(this, false); //1
-       db->retrieveEventTableOther(this, false); //1
-       db->retrieveScheduledEvents(this, 33, 898); //
-       db->retrievePresentFollowingEvent(this, 33, 46, false); //
-       db->retrieveTransportStreamDescription(this);
-    }
-    virtual void Result(DvbSi::Request *req) {
-       printf(" Received result, code %d, %s\n", req->getResultCode(), typeid(*req).name());
-       delete req;
-       if (req->getAppData() == (void *)1) {
-          printf("Received second request\n");
-          return;
-       }
-       DvbSi::ActualServicesRequest *areq=(DvbSi::ActualServicesRequest *)req;
-       
-       db->retrievePresentFollowingEvent(this, areq->list.front().getTransportStreamId(),
-                28113, true, DvbSi::FromCacheOrStream, (void *)1);
-    }
-    DvbSi::Database *db;
- };
-*/ 
-
 bool cPluginMhp::Start(void)
 {
    RegisterI18n(MhpI18nPhrases);
+   
+   JavaInterface::InitializeSystem();
+   
    //Cannot call this in Initialize(), it may use VDR structures like devices
    printf("Init output\n");
    MhpOutput::Administration::Init(outputSystem);
    
-   // Start any background activities the plugin shall perform.
    printf("Start monitoring\n");
    ApplicationInfo::Applications.StartMonitoring();
    
-/*   if (debugLocalApp) {
-      cKeyMacro *macro=new cKeyMacro();
-      macro->Parse(strdup("User9 @mhp"));
-      KeyMacros.Add(macro);
-      cRemote::Put(kOk);
-      cRemote::Put(kUser9);
-   }
-*/
+   Mhp::LoadingManager::getManager()->Initialize();
+
    return true;
 }
 
@@ -300,27 +251,7 @@ void cPluginMhp::Housekeeping(void)
 cOsdObject *cPluginMhp::MainMenuAction(void)
 {
   // Perform the action when selected from the main VDR menu.
-   
-   //Debug
-   //For fast debugging with test applications, no need to start them from the menu
-   //Need to do this here, only way to enter main thread
-/*   if (!startedDebugApp && debugLocalApp) {
-      startedDebugApp=true;
-      printf("Start app\n");
-      ApplicationInfo::cApplication *app;
-      for (app=localApps.First(); app; app=localApps.Next(app)) {
-         //if (app->GetName(0)->name=="HaviExample") {
-         //if (app->GetName(0)->name=="SimpleXlet") {
-         if (app->GetName(0)->name==debugLocalApp) {
-            MhpControl::Start(app);
-            break;
-         }
-      }
-      if (app==localApps.Last())
-         printf("Did not find debug application %s. Path for local applications is %s\n", debugLocalApp, localAppPath);
-   }
-*/
-   return new MhpApplicationMenu(&localApps);
+  return new MhpApplicationMenu(&localApps);
 }
 
 cMenuSetupPage *cPluginMhp::SetupMenu(void)

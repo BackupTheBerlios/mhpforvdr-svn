@@ -10,8 +10,8 @@ extern "C" {
 jbyteArray copyConstCharIntoByteArray(JNIEnv* env, const char *str);
 
 jbyteArray Java_org_dvb_user_UserPreferenceManager_getSettingsFilePath(JNIEnv* env, jobject obj) {
-   char file[strlen(MhpConfigPath)+14];
-   sprintf(file, "%s%s", MhpConfigPath, "/preferences");
+   char file[strlen(Mhp::ConfigPath)+14];
+   sprintf(file, "%s%s", Mhp::ConfigPath, "/preferences");
    return copyConstCharIntoByteArray(env, file);
 }
 

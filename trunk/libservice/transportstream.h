@@ -23,6 +23,10 @@ public:
    int source;
    int onid;
    int tid;
+   //The variables are publicly accessible, but provide accessor methods as well
+   int GetSource() const { return source; }
+   int GetNid() const { return onid; }
+   int GetTid() const { return tid; }
    bool operator==(const TransportStreamID &other) const
       { return tid==other.tid && onid==other.onid && source==other.source; }
    bool operator!=(const TransportStreamID &other) const

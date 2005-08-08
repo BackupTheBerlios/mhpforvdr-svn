@@ -12,11 +12,6 @@
 #ifndef MHP_MHPLOADING_H
 #define MHP_MHPLOADING_H
 
-#include <map>
-#include <string>
-#include <time.h>
-
-#include <vdr/thread.h>
 
 #include <libait/applications.h>
 #include <libservice/transportstream.h>
@@ -24,6 +19,10 @@
 //Put this into an extra header because mhpcontrol.h has many header dependencies
 //Implementation is in mhpcontrol.c
 
+namespace Cache { class Cache; }
+template <class T> class SmartPtr;
+
+namespace Mhp {
 
 enum LoadingState { LoadingStateError, LoadingStateWaiting, LoadingStateLoading, LoadingStateLoaded, LoadingStateHibernated };
 
@@ -34,54 +33,60 @@ public:
    virtual void HideProgress() = 0;
 };
 
-class MhpCarouselLoader;
-class MhpChannelWatch;
-class MhpCarouselPreloader;
-class MhpServiceSelectionProvider;
-namespace Cache { class Cache; }
-template <class T> class SmartPtr;
-
-class MhpLoadingManager : public ApplicationInfo::cApplicationStatus {
+class LoadingManager {
 public:
-   ~MhpLoadingManager();
-   static MhpLoadingManager *getManager();
-   static void CleanUp();
+   virtual ~LoadingManager();
+   static LoadingManager *getManager();
+   virtual void Initialize() = 0;
+   virtual void CleanUp() = 0;
    
    //Loads the given application.
-   void Load(ApplicationInfo::cApplication::Ptr a, bool foreground = true);
+   virtual void Load(ApplicationInfo::cApplication::Ptr a, bool foreground = true) = 0;
    
    //Stop loading the given application
-   void Stop(ApplicationInfo::cApplication::Ptr a);
+   virtual void Stop(ApplicationInfo::cApplication::Ptr a) = 0;
    
    //Get state for given application
-   LoadingState getState(ApplicationInfo::cApplication::Ptr a);
+   virtual LoadingState getState(ApplicationInfo::cApplication::Ptr a) = 0;
    
    //Get the cache the given application is stored in, if it is being loaded
-   SmartPtr<Cache::Cache> getCache(ApplicationInfo::cApplication::Ptr a);
+   virtual SmartPtr<Cache::Cache> getCache(ApplicationInfo::cApplication::Ptr a) = 0;
    
-   void ChannelSwitch(const class cDevice *device, Service::TransportStreamID oldTs, Service::TransportStreamID newTs);
-   void OnceASecond(ProgressIndicator *pi);
+   virtual void ProgressInfo(ProgressIndicator *pi) = 0;
+   virtual void ChannelSwitch(const class cDevice *device, Service::TransportStreamID oldTs, Service::TransportStreamID newTs) = 0;
 protected:
-   MhpLoadingManager();
-   //ApplicationStatus interface
-   virtual void NewApplication(ApplicationInfo::cApplication::Ptr app);
-   virtual void ApplicationRemoved(ApplicationInfo::cApplication::Ptr app);
-   void Load(MhpCarouselLoader *l, bool foreground);
-   void Stop(MhpCarouselLoader *l);
-private:
-   //void Hibernate(ApplicationInfo::cApplication::Ptr a);
-   static MhpLoadingManager *s_self;
-   typedef std::map<ApplicationInfo::cApplication::Ptr , MhpCarouselLoader *> AppMap;
-   AppMap apps;
-   MhpChannelWatch *watch;
-   MhpCarouselPreloader *preloader;
-   MhpServiceSelectionProvider *selectionProvider;
-   int hibernatedCount;
-   cMutex mutex;
-   MhpCarouselLoader *loadingApp;
+   LoadingManager();
+   static LoadingManager *s_self;
 };
 
+class RunningManager {
+public:
+   virtual ~RunningManager();
+   static RunningManager *getManager();
+   virtual void Initialize() = 0;
+   virtual void CleanUp() = 0;
+   
+   //Start the given application
+   virtual void Start(ApplicationInfo::cApplication::Ptr a) = 0;
+   
+   //Stop the given application, return control to VDR if no other application remains running
+   virtual void Stop(ApplicationInfo::cApplication::Ptr a) = 0;
+   
+   //Stop all applications, return control to VDR
+   virtual void Stop() = 0;
+   
+   //Inform manager that the given application has been started
+   virtual void ApplicationStarted(ApplicationInfo::cApplication::Ptr a) = 0;
+   
+   //Inform manager that the given application is no longer running;
+   //the manager may return control to VDR if no other application remains running
+   virtual void ApplicationStopped(ApplicationInfo::cApplication::Ptr a) = 0;
+protected:
+   RunningManager();
+   static RunningManager *s_self;
+};
 
+}
 
 #endif
 

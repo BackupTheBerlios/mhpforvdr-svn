@@ -54,7 +54,7 @@ bool Context::isPresenting() {
    //Please note that this access of cControl::Control out of VDR's main thread is
    //not thread-safe and possibly illegal.
    cControl *c=cControl::Control();
-   return (c==0 || typeid(*cControl::Control()) != typeid(MhpControl));
+   return (c==0 || typeid(*cControl::Control()) != typeid(Mhp::Control));
 }
 
       //Tries to switch to given service - including tuning!

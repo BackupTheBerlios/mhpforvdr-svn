@@ -503,13 +503,18 @@ void cDsmccReceiver::SetStatus(bool On) {
    cFilter::SetStatus(On);
 
    if (On) {
+      //Filter is activated. There might previously have been a channel switch:
       //If we are on the same transponder, restore all streams.
       //Otherwise, higher levels should take appropriate action (Hibernation, Deletion)
+      #if VDRVERSNUM <= 10327
+      #error "Unfortunately, VDR versions up to 1.3.27 contain a bug that prevents this code from working properly. Please use VDR version 1.3.28 or later.
+      #endif
       const cChannel *newChan=cFilter::Channel();
       filterOn=ts.equals(newChan->Source(), newChan->Nid(), newChan->Tid());
+      printf("cDsmccReceiver::SetStatus, filterOn is %d, ts is %d-%d-%d, new is %d-%d-%d\n", filterOn, ts.GetSource(), ts.GetNid(), ts.GetTid(), newChan->Source(), newChan->Nid(), newChan->Tid());
       if (filterOn) {
          streamListMutex.Lock();
-         for (DsmccStreamList::iterator sit=streams.begin(); sit!=streams.end(); ) {
+         for (DsmccStreamList::iterator sit=streams.begin(); sit!=streams.end(); ++sit) {
             if (sit->status==DsmccStream::ActivatedNotReceiving)
                ActivateStream(&(*sit));
          }
@@ -519,8 +524,9 @@ void cDsmccReceiver::SetStatus(bool On) {
       filterOn=false;
       //SetStatus will remove all filters when On=false.
       //Sync internal list to this situation
+      printf("cDsmccReceiver::SetStatus, filterOn is false\n");
       streamListMutex.Lock();
-      for (DsmccStreamList::iterator sit=streams.begin(); sit!=streams.end(); ) {
+      for (DsmccStreamList::iterator sit=streams.begin(); sit!=streams.end(); ++sit) {
          if (sit->status==DsmccStream::Receiving)
             SuspendStream(&(*sit));
       }

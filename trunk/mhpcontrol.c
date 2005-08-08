@@ -22,47 +22,22 @@
 #include "mhpmessages.h"
 #include "i18n.h"
 
+namespace Mhp {
 
-/* --------- MhpControl ------------- */
+/* --------- Control ------------- */
 
 
-//static function
-void MhpControl::Start(ApplicationInfo::cApplication::Ptr a) {
-   if (!MhpOutput::Administration::CheckSystem()) {
-      MhpMessages::DisplayMessage(MhpMessages::OutputSystemError);
-      CheckMessage();
-      return;
-   }
-   if (!JavaInterface::CheckSystem()) {
-      MhpMessages::DisplayMessage(MhpMessages::JavaSystemError);
-      CheckMessage();
-      return;
-   }
-   
-   //we can allow any status of the MhpControl object here,
-   //old object is deleted by cControl::Launch, stopping everything.
-   
-   //When created, MhpControl will create an MhpPlayer.
-   //As soon as VDR attached this player, MhpPlayer::Activate is called,
-   //which in turn will call MhpControl::StartMhp().
-   printf("MhpControl::Start(): Launching control\n");
-   cControl::Launch(new MhpControl(a));
-}
-
-MhpMessages::Messages MhpMessages::message = MhpMessages::NoMessage;
-const char *MhpConfigPath = 0;
+Messages::Message Messages::message = Messages::NoMessage;
+const char *ConfigPath = 0;
 
 //static function
-//Called from the Java stack
-void MhpMessages::DisplayMessage(Messages m) {
+void Messages::DisplayMessage(Message m) {
    message=m;
 }
 
-
-MhpControl::MhpControl(ApplicationInfo::cApplication::Ptr a) 
- : cControl (player=new MhpPlayer(this)), app(a)
+Control::Control() 
+ : cControl (player=new Player(this)), app(0)
 {
-   monitor=0;   
    status=Waiting;
    
    display=0;
@@ -72,12 +47,12 @@ MhpControl::MhpControl(ApplicationInfo::cApplication::Ptr a)
    appName=unknownName=tr("<unknown name>");
 }
 
-MhpControl::~MhpControl() {
+Control::~Control() {
    Hide();
    Stop();
 }
 
-void MhpControl::Hide(void) {
+void Control::Hide(void) {
    if (visible) {
       delete display;
       display=0;
@@ -86,23 +61,17 @@ void MhpControl::Hide(void) {
    }
 }
 
-void MhpControl::Stop() {
-   printf("MhpControl::Stop()\n");
-   delete monitor;
-   monitor=0;
-   if (status==Running)
-      JavaInterface::StopApplications();
-   //detach main thread from VM - doesn't work with kaffe anyway, but I hope it will one day
-   JavaInterface::CheckDetachCurrentThread();
-   //set status to Stopped so that osEnd is returned if ProcessKey is called again
+void Control::Stop() {
+   printf("Control::Stop()\n");
+   //set status to Stopped so that osEnd is returned when ProcessKey is called again
    //(asynchronous stop)
    status=Stopped;
    delete player;
    player=0;
-   MhpMessages::message=MhpMessages::NoMessage;
+   Messages::message=Messages::NoMessage;
 }
 
-eOSState MhpControl::ProcessKey(eKeys Key) {
+eOSState Control::ProcessKey(eKeys Key) {
    //status shall be set to Waiting if and only if returning osEnd
    switch (status) {
    case Stopped:
@@ -125,7 +94,7 @@ eOSState MhpControl::ProcessKey(eKeys Key) {
          } else
             doShow=true;
       default:
-         LoadingManager::getManager()->OnceASecond(this);
+         ControlLoadingManager::getManager()->ProgressInfo(this);
          CheckMessage();
       }
       break;
@@ -134,12 +103,12 @@ eOSState MhpControl::ProcessKey(eKeys Key) {
       switch (Key) {
       case kBack:
          printf("Status Running, kBack\n");
-         Hide();
-         Stop();
+         RunningManager::getManager()->Stop(app);
+         ((ControlRunningManager *)RunningManager::getManager())->ShutdownControl();
          status=Waiting;
          return osEnd;
       case kNone:
-         MhpLoadingManager::getManager()->OnceASecond(this);
+         LoadingManager::getManager()->ProgressInfo(this);
          CheckMessage();
          break;
       default:
@@ -150,32 +119,34 @@ eOSState MhpControl::ProcessKey(eKeys Key) {
    return osContinue;
 }
 
-void MhpControl::CheckMessage() {
-   switch (MhpMessages::message) {
-   case MhpMessages::NoMessage:
+void Control::CheckMessage() {
+   switch (Messages::message) {
+   case Messages::NoMessage:
       break;
-   case MhpMessages::LoadingFailed:
+   case Messages::LoadingFailed:
       Skins.Message(mtError, tr("Loading failed"));
       break;
-   case MhpMessages::StartingFailed:
+   case Messages::StartingFailed:
       Skins.Message(mtError, tr("Starting failed"));
       break;
-   case MhpMessages::OutputSystemError:
+   case Messages::OutputSystemError:
       Skins.Message(mtError, tr("Error in output system: Plugin disabled"));
       break;
-  case MhpMessages::JavaSystemError:
+  case Messages::JavaSystemError:
       Skins.Message(mtError, tr("Error in Java system: Plugin disabled"));
       break;
-  case MhpMessages::JavaStartError:
+  case Messages::JavaStartError:
       Skins.Message(mtError, tr("Error while starting Java environment"));
       break;
+  case Messages::AlreadyRunning:
+      Skins.Message(mtInfo, tr("The application has already been started"));
    }
-   MhpMessages::message=MhpMessages::NoMessage;
+   Messages::message=Messages::NoMessage;
 
 }
 
 
-void MhpControl::ShowProgress(float progress, int currentSize, int totalSize) {
+void Control::ShowProgress(float progress, int currentSize, int totalSize) {
    if (!doShow)
       return;
    if (!visible) {
@@ -200,36 +171,40 @@ void MhpControl::ShowProgress(float progress, int currentSize, int totalSize) {
    
 }
 
-void MhpControl::SetApplicationName(const std::string &a) {
+void Control::SetApplicationName(const std::string &a) {
    appName=a;
 }
 
-void MhpControl::HideProgress() {
+void Control::HideProgress() {
    Hide();
    appName=unknownName;
 }
 
+void Control::SetApplication(ApplicationInfo::cApplication::Ptr a) {
+   app=a;
+}
 
 //#include <dfb++/dfb++.h>
 //#include <libmhpoutput/output.h>
-void MhpControl::StartMhp() {
-   printf("MhpControl::StartMhp()\n");
+void Control::StartMhp() {
+   printf("Control::StartMhp()\n");
+   if (status==Stopped)
+      return;
    //Check that everything essential is working, as far as we can see it.
-   if (!JavaInterface::CheckStart()) {
+   /*if (!JavaInterface::CheckStart()) {
       Hide();
-      MhpMessages::DisplayMessage(MhpMessages::JavaStartError);
+      Messages::DisplayMessage(Messages::JavaStartError);
       CheckMessage();
       Stop();
       return;
-   }
+   }*/
    //Now the ApplicationManager in the Java stack will take control.
-   //It will interact with the MhpLoadingManager if necessary, 
+   //It will interact with the ControlLoadingManager if necessary, 
    //also starting DSMCC downloads.
-   //MhpControl's ProcessKey will call MhpLoadingManager::OnceASecond
+   //Control's ProcessKey will call ControlLoadingManager::ProgressInfo
    //to take care for OSD progress display if necessary.
-   if (JavaInterface::StartApplication(app)) {
+   if (app && JavaInterface::StartApplication(app)) {
       status=Running;
-      monitor=new cMyApplicationStatus();
       //Actually activate output on TV
       player->ActivateParent();
    }
@@ -267,7 +242,8 @@ void MhpControl::StartMhp() {
       
       DFBFontDescription fdesc;fdesc.flags=DFDESC_HEIGHT;fdesc.height=25;
       IDirectFBFont *font=MhpOutput::System::self()->Interface()->CreateFont("/usr/local/vdr/mhp/data/fonts/vera.ttf", fdesc);
-      //IDirectFBSurface *s=l->GetSurface();
+      //IDirec   printf("RunningManager: Notified about start of application %p\n", a.getPointer());
+tFBSurface *s=l->GetSurface();
       printf("Starting to draw\n");
       s->SetDrawingFlags(DSDRAW_BLEND);
       s->SetColor(255, 0, 0, 255);
@@ -311,58 +287,218 @@ void MhpControl::StartMhp() {
    
 }
 
-void MhpControl::cMyApplicationStatus::NewApplication(ApplicationInfo::cApplication::Ptr app) {
-   JavaInterface::NewApplication(app);
-}
-
-void MhpControl::cMyApplicationStatus::ApplicationRemoved(ApplicationInfo::cApplication::Ptr app) {
-   JavaInterface::ApplicationRemoved(app);
-}
+/* --------- Player ------------- */
 
 
-/* --------- MhpPlayer ------------- */
-
-
-MhpPlayer::~MhpPlayer() {
+Player::~Player() {
    Detach();
 }
 
-void MhpPlayer::Activate(bool On) {
-   //printf("MhpPlayer::Activate %d\n", On);
+void Player::Activate(bool On) {
+   //printf("Player::Activate %d\n", On);
    if (On) {
       //intercept activation to display loading progress
       control->StartMhp();
    } else 
-      Player::Activate(On);
+      MhpOutput::Player::Activate(On);
 }
 
-void MhpPlayer::ActivateParent() {
-   Player::Activate(true);
+void Player::ActivateParent() {
+   MhpOutput::Player::Activate(true);
 }
 
 
-/* --------- MhpLoadingManager ------------- */
+/* --------- RunningManager and ControlRunningManager ------------- */
 
+/*
+   The running manager handles the starting of applications initiated
+   from the ApplicationMenu or possibly other parts of the VDR plugin in contrast
+   two the facilities provided by the ApplicationManager and the org.dvb.application
+   package on the Java side. This Java code keeps the state machine for applications
+   and is perfectly capable of initiating loading and starting itself. It will
+   however inform the RunningManager about starting and stopping.
+   The RunningManager keeps a list of running applications, creates and launches the
+   cControl object when the first application is started and deletes it when
+   the last application is stopped.
+   In theory multiple applications can run concurrently, but this will only be
+   initiated from the Java stack. The running manager has the notion of a
+   foreground application which is launched from the ApplicationMenu. Launching
+   another application via the RunningManager will therefore cause the currently running
+   one to be stopped.
+   
+   This policy may be adapted to future needs.
+*/
 
-MhpLoadingManager *MhpLoadingManager::s_self=0;
+RunningManager *RunningManager::s_self=0;
 
-MhpLoadingManager *MhpLoadingManager::getManager() {
+RunningManager *RunningManager::getManager() {
    if (!s_self)
-      s_self=new MhpLoadingManager;
+      s_self=new ControlRunningManager;
    return s_self;
 }
 
-void MhpLoadingManager::CleanUp() {
-   delete s_self;
+RunningManager::RunningManager() {
+   s_self = this;
 }
 
-MhpLoadingManager::MhpLoadingManager() : hibernatedCount(0), loadingApp(0) {
-   preloader = new MhpCarouselPreloader();
-   watch = new MhpChannelWatch(preloader);
-   selectionProvider = new MhpServiceSelectionProvider(watch);
+RunningManager::~RunningManager() {
+   s_self = 0;
 }
 
-MhpLoadingManager::~MhpLoadingManager() {
+ControlRunningManager::ControlRunningManager() 
+  : foregroundApp(0), control(0)
+{
+}
+
+ControlRunningManager::~ControlRunningManager() {
+}
+
+void ControlRunningManager::Initialize() {
+   //create manager singleton
+   getManager();
+}
+
+void ControlRunningManager::CleanUp() {
+   delete this;
+}
+
+//Start the given application
+void ControlRunningManager::Start(ApplicationInfo::cApplication::Ptr app) {
+   cMutexLock lock(&mutex);
+   
+   //check if app is already running
+   if (foregroundApp==app || apps.find(app) != apps.end()) {
+      Messages::DisplayMessage(Messages::AlreadyRunning);
+      Control::CheckMessage();
+      return;
+   }
+   
+   //perform availability checks
+   if (!MhpOutput::Administration::CheckSystem()) {
+      Messages::DisplayMessage(Messages::OutputSystemError);
+      Control::CheckMessage();
+      return;
+   }
+   if (!JavaInterface::CheckSystem()) {
+      Messages::DisplayMessage(Messages::JavaSystemError);
+      Control::CheckMessage();
+      return;
+   }
+   
+   //Start Java VM (if not already running)
+   if (!JavaInterface::CheckStart()) {
+      Messages::DisplayMessage(Messages::JavaStartError);
+      Control::CheckMessage();
+      return;
+   }
+   
+   //stop current foreground app
+   if (foregroundApp && foregroundApp != app) {
+      Stop(foregroundApp);
+   }
+   
+   if (!control) {
+      //There is currently no control object, and we cannot be 100% sure that attaching the cControl/cPlayer
+      //will be allowed. So we defer further loading:
+      //When created, Control will create a Player.
+      //As soon as VDR attached this player, Player::Activate is called,
+      //which in turn will call StartMhp()
+      control = new Mhp::Control();
+      printf("Control::Start(): Launching control %p\n", control);
+      control->SetApplication(app);
+      cControl::Launch(control);
+   } else {
+      control->SetApplication(app);
+      control->StartMhp();
+   }
+}
+
+//Stop the given application, return control to VDR if no other application remains running
+void ControlRunningManager::Stop(ApplicationInfo::cApplication::Ptr a) {
+   cMutexLock lock(&mutex);
+   JavaInterface::StopApplication(a);
+}
+
+//Stop all applications, return control to VDR
+void ControlRunningManager::Stop() {
+   cMutexLock lock(&mutex);
+   if (control) {
+      //stop all applications
+      JavaInterface::StopApplications();
+      //detach main thread from VM
+      JavaInterface::CheckDetachCurrentThread();
+      ShutdownControl();
+   }
+}
+
+void ControlRunningManager::ShutdownControl() {
+   cMutexLock lock(&mutex);
+   control->Stop();
+   //do not delete control, ownership is passed to VDR
+   control=0;
+}
+
+//Inform manager that the given application has been started
+void ControlRunningManager::ApplicationStarted(ApplicationInfo::cApplication::Ptr a) {
+   cMutexLock lock(&mutex);
+   printf("RunningManager: Notified about start of application %p\n", a.getPointer());
+   apps.insert(a);
+}
+
+//Inform manager that the given application is no longer running;
+//the manager may return control to VDR if no other application remains running
+void ControlRunningManager::ApplicationStopped(ApplicationInfo::cApplication::Ptr a) {
+   cMutexLock lock(&mutex);
+   printf("RunningManager: Notified about stop of application %p\n", a.getPointer());
+   apps.erase(a);
+   if (apps.empty()) {
+      Stop();
+   }
+}
+
+void ControlRunningManager::NewApplication(ApplicationInfo::cApplication::Ptr app) {
+   JavaInterface::NewApplication(app);
+}
+
+void ControlRunningManager::ApplicationRemoved(ApplicationInfo::cApplication::Ptr app) {
+   JavaInterface::ApplicationRemoved(app);
+}
+
+/* --------- LoadingManager and ControlLoadingManager ------------- */
+
+
+LoadingManager *LoadingManager::s_self=0;
+
+LoadingManager *LoadingManager::getManager() {
+   if (!s_self)
+      s_self=new ControlLoadingManager;
+   return s_self;
+}
+
+LoadingManager::LoadingManager() {
+   s_self = this;
+}
+
+LoadingManager::~LoadingManager() {
+   s_self = 0;
+}
+
+void ControlLoadingManager::Initialize() {
+   //create manager singleton
+   getManager();
+}
+
+void ControlLoadingManager::CleanUp() {
+   delete this;
+}
+
+ControlLoadingManager::ControlLoadingManager() : hibernatedCount(0), loadingApp(0) {
+   preloader = new CarouselPreloader();
+   watch = new ChannelWatch(preloader);
+   selectionProvider = new ControlServiceSelectionProvider(watch);
+}
+
+ControlLoadingManager::~ControlLoadingManager() {
    s_self=0;
    for (AppMap::iterator it=apps.begin(); it != apps.end(); ++it) {
       delete it->second;
@@ -376,16 +512,16 @@ MhpLoadingManager::~MhpLoadingManager() {
 /*void Add(ApplicationInfo::cApplication::Ptr a) {
    AppMap::Iterator it=apps.find(a);
    if (it == apps.end()) {
-      apps[a]=new MhpCarouselLoader(a);
+      apps[a]=new CarouselLoader(a);
    }
 }*/
 
-void MhpLoadingManager::Load(ApplicationInfo::cApplication::Ptr a, bool foreground) {
-   printf("MhpLoadingManager::Load\n");
+void ControlLoadingManager::Load(ApplicationInfo::cApplication::Ptr a, bool foreground) {
+   printf("ControlLoadingManager::Load\n");
    cMutexLock lock(&mutex);
    AppMap::iterator it=apps.find(a);
    if (it == apps.end()) {
-      MhpCarouselLoader *loader=new MhpCarouselLoader(a);
+      CarouselLoader *loader=new CarouselLoader(a);
       apps[a]=loader;
       if (foreground) {
          loadingApp=loader;
@@ -397,8 +533,8 @@ void MhpLoadingManager::Load(ApplicationInfo::cApplication::Ptr a, bool foregrou
    }
 }
 
-void MhpLoadingManager::Stop(ApplicationInfo::cApplication::Ptr a) {
-   printf("MhpLoadingManager::Stop\n");
+void ControlLoadingManager::Stop(ApplicationInfo::cApplication::Ptr a) {
+   printf("ControlLoadingManager::Stop\n");
    cMutexLock lock(&mutex);
    AppMap::iterator it=apps.find(a);
    if (it != apps.end()) {
@@ -408,8 +544,8 @@ void MhpLoadingManager::Stop(ApplicationInfo::cApplication::Ptr a) {
 /*void Hibernate() {
 }*/
 
-LoadingState MhpLoadingManager::getState(ApplicationInfo::cApplication::Ptr a) {
-   printf("MhpLoadingManager::getState\n");
+LoadingState ControlLoadingManager::getState(ApplicationInfo::cApplication::Ptr a) {
+   printf("ControlLoadingManager::getState\n");
    cMutexLock lock(&mutex);
    AppMap::iterator it=apps.find(a);
    if (it != apps.end()) {
@@ -418,7 +554,7 @@ LoadingState MhpLoadingManager::getState(ApplicationInfo::cApplication::Ptr a) {
    return LoadingStateWaiting;
 }
 
-SmartPtr<Cache::Cache> MhpLoadingManager::getCache(ApplicationInfo::cApplication::Ptr a) {
+SmartPtr<Cache::Cache> ControlLoadingManager::getCache(ApplicationInfo::cApplication::Ptr a) {
    cMutexLock lock(&mutex);
    AppMap::iterator it=apps.find(a);
    if (it != apps.end()) {
@@ -427,19 +563,19 @@ SmartPtr<Cache::Cache> MhpLoadingManager::getCache(ApplicationInfo::cApplication
    return SmartPtr<Cache::Cache>(0);
 }
 
-void MhpLoadingManager::NewApplication(ApplicationInfo::cApplication::Ptr app) {
+void ControlLoadingManager::NewApplication(ApplicationInfo::cApplication::Ptr app) {
 }
 
-void MhpLoadingManager::ApplicationRemoved(ApplicationInfo::cApplication::Ptr app) {
+void ControlLoadingManager::ApplicationRemoved(ApplicationInfo::cApplication::Ptr app) {
    cMutexLock lock(&mutex);
    AppMap::iterator it=apps.find(app);
    if (it != apps.end()) {
       it->second->Stop();
-      apps.erase(it);
+      //apps.erase(it);
    }   
 }
 
-void MhpLoadingManager::ChannelSwitch(const cDevice *device, Service::TransportStreamID oldTs, Service::TransportStreamID newTs) {
+void ControlLoadingManager::ChannelSwitch(const cDevice *device, Service::TransportStreamID oldTs, Service::TransportStreamID newTs) {
    cMutexLock lock(&mutex);
    for (AppMap::iterator it=apps.begin(); it != apps.end(); ++it) {
       if (it->second->ChannelSwitchedAway(device, oldTs, newTs)) {
@@ -452,7 +588,7 @@ void MhpLoadingManager::ChannelSwitch(const cDevice *device, Service::TransportS
    }
 }
 
-void MhpLoadingManager::Load(MhpCarouselLoader *l, bool foreground) {
+void ControlLoadingManager::Load(CarouselLoader *l, bool foreground) {
    switch (l->getState()) {
    case LoadingStateWaiting:
    case LoadingStateError:
@@ -474,13 +610,13 @@ void MhpLoadingManager::Load(MhpCarouselLoader *l, bool foreground) {
    }
 }
 
-void MhpLoadingManager::Stop(MhpCarouselLoader *l) {
+void ControlLoadingManager::Stop(CarouselLoader *l) {
    //manage hibernating
    if (l==loadingApp)
       loadingApp=0;
    l->Hibernate();
    if (++hibernatedCount >= MAX_HIBERNATED_APPS) {
-      MhpCarouselLoader *oldest=0;
+      CarouselLoader *oldest=0;
       time_t oldestTime=0;
       for (AppMap::iterator it=apps.begin();it!=apps.end();++it) {
          if (it->second->getState()==LoadingStateHibernated && it->second->getHibernationTime()>oldestTime) {
@@ -493,13 +629,13 @@ void MhpLoadingManager::Stop(MhpCarouselLoader *l) {
    }
 }
 
-void MhpLoadingManager::OnceASecond(ProgressIndicator *pi) {
+void ControlLoadingManager::ProgressInfo(ProgressIndicator *pi) {
    cMutexLock lock(&mutex);
    //There may be more than one loading app, loadingApp is the last started
    if (loadingApp) {
       switch (loadingApp->getState()) {
       case LoadingStateError:
-         MhpMessages::DisplayMessage(MhpMessages::LoadingFailed);
+         Messages::DisplayMessage(Messages::LoadingFailed);
          loadingApp=0;
          break;
       case LoadingStateLoading:
@@ -533,42 +669,43 @@ void MhpLoadingManager::OnceASecond(ProgressIndicator *pi) {
    }
 }
 
-/* --------- MhpChannelWatch ------------ */
+/* --------- ChannelWatch ------------ */
 
 /*
   This class observes the channel switches. The information is
   delegated to other classes were the following action is taken:
   - switches on the same transponder are handled by DsmccReceiver.
     If it is a transponder switch, look for a different device or hibernate
-  - independent from this, inform the MhpCarouselPreloader of the channel
+  - independent from this, inform the CarouselPreloader of the channel
     switch. This class will take care for preloading the apps on the new
     transponder
 */
 
-MhpChannelWatch::MhpChannelWatch(MhpCarouselPreloader* preloader) 
+ChannelWatch::ChannelWatch(CarouselPreloader* preloader) 
   : preloader(preloader)
 {
 }
 
-void MhpChannelWatch::ChannelSwitch(const cDevice *Device, int ChannelNumber) {
-   if (ChannelNumber) {
+void ChannelWatch::ChannelSwitch(const cDevice *Device, int ChannelNumber) {
+   if (Device && ChannelNumber) {
       cChannel *chan=Channels.GetByNumber(ChannelNumber);
-      ApplicationInfo::cTransportStream *str=ApplicationInfo::Applications.findTransportStream(chan->Source(), chan->Nid(), chan->Tid());
-      printf("MhpChannelWatch: Switch to stream %p, %d-%d-%d\n", str, str->GetSource(), str->GetNid(), str->GetTid());
-      if (str) {
-         Service::TransportStreamID oldTs=ts;
-         ts=str->GetTransportStreamID();
-         MhpLoadingManager::getManager()->ChannelSwitch(Device, oldTs, ts);
-         preloader->PreloadForTransportStream(oldTs, ts);
-      }
+      //we cannot access Applications' transport stream database because the channel switch is just about to happen,
+      //and if it is a new transponder the AIT is yet to be received.
+      //ApplicationInfo::cTransportStream *str=ApplicationInfo::Applications.findTransportStream(chan->Source(), chan->Nid(), chan->Tid());
+      Service::TransportStream str(chan);
+      printf("ChannelWatch: Switch to stream %d-%d-%d\n", str.GetSource(), str.GetNid(), str.GetTid());
+      Service::TransportStreamID oldTs=ts;
+      ts=str.GetTransportStreamID();
+      ControlLoadingManager::getManager()->ChannelSwitch(Device, oldTs, ts);
+      preloader->PreloadForTransportStream(oldTs, ts);
    } else {
    }
 }
 
 
-/* --------- MhpCarouselPreloader ------------- */
+/* --------- CarouselPreloader ------------- */
 
-MhpCarouselPreloader::MhpCarouselPreloader() 
+CarouselPreloader::CarouselPreloader() 
   : SchedulerBySeconds(10),
     currentLoader(0)
 {
@@ -580,7 +717,7 @@ MhpCarouselPreloader::MhpCarouselPreloader()
   If all devices are monitored and a channel switch on any device causes a call of this
   method here, there must be a map Transport Stream -> TimedPreloader maintained here!!
 */
-void MhpCarouselPreloader::PreloadForTransportStream(Service::TransportStreamID oldTs, Service::TransportStreamID newTs) {
+void CarouselPreloader::PreloadForTransportStream(Service::TransportStreamID oldTs, Service::TransportStreamID newTs) {
    if (newTs != oldTs) {
       Remove(currentLoader);
       delete currentLoader;
@@ -597,17 +734,18 @@ void MhpCarouselPreloader::PreloadForTransportStream(Service::TransportStreamID 
 //Preload again to check for changes every ten minutes
 #define REPRELOAD_WAIT 10*60
 
-MhpCarouselPreloader::TimedPreloader::TimedPreloader(Service::TransportStreamID newTs)
+CarouselPreloader::TimedPreloader::TimedPreloader(Service::TransportStreamID newTs)
   : TimedBySeconds(INITIAL_WAIT),
     loading(false), ts(newTs)
 {
 }
 
-//No need for a destructor. MhpLoadingManager will take care for hibernation/detaching.
+//No need for a destructor. ControlLoadingManager will take care for hibernation/detaching.
 
-void MhpCarouselPreloader::TimedPreloader::Execute() {
+void CarouselPreloader::TimedPreloader::Execute() {
+   printf("TimedPreloader::Execute, loading is %d\n", loading);
    if (loading) {
-      if (MhpLoadingManager::getManager()->getState((*currentPosition)) != LoadingStateLoading) {
+      if (ControlLoadingManager::getManager()->getState(*currentPosition) != LoadingStateLoading) {
          //preload next in list
          ++currentPosition;
          //if end is reached, wait REPRELOAD_WAIT for the next round.
@@ -615,19 +753,19 @@ void MhpCarouselPreloader::TimedPreloader::Execute() {
             ChangeInterval(REPRELOAD_WAIT);
             loading=false;
          } else {
-            printf("MhpCarouselPreloader: Preloading next application %p, %s\n", (*currentPosition).getPointer(), (*currentPosition)->GetNumberOfNames() ? (*currentPosition)->GetName(0)->name.c_str() : "<unknown>");
-            MhpLoadingManager::getManager()->Load((*currentPosition), false);
+            printf("CarouselPreloader: Preloading next application %p, %s\n", (*currentPosition).getPointer(), (*currentPosition)->GetNumberOfNames() ? (*currentPosition)->GetName(0)->name.c_str() : "<unknown>");
+            ControlLoadingManager::getManager()->Load((*currentPosition), false);
             ChangeInterval(CHECK_PERIOD);
             loading=true;
          }
       }
    } else {
-      printf("MhpCarouselPreloader: Beginning preloading\n");
+      printf("CarouselPreloader: Beginning preloading\n");
       if (ApplicationInfo::Applications.findApplicationsForTransportStream(apps, ts.source, ts.onid, ts.tid) && apps.size()) {
          currentPosition=apps.begin();
          if (currentPosition != apps.end()) {
-            printf("MhpCarouselPreloader: Preloading next application %p, %s\n", (*currentPosition).getPointer(), (*currentPosition)->GetNumberOfNames() ? (*currentPosition)->GetName(0)->name.c_str() : "<unknown>");
-            MhpLoadingManager::getManager()->Load((*currentPosition), false);
+            printf("CarouselPreloader: Preloading next application %p, %s\n", (*currentPosition).getPointer(), (*currentPosition)->GetNumberOfNames() ? (*currentPosition)->GetName(0)->name.c_str() : "<unknown>");
+            ControlLoadingManager::getManager()->Load((*currentPosition), false);
             ChangeInterval(CHECK_PERIOD);
             loading=true;
          }
@@ -639,16 +777,16 @@ void MhpCarouselPreloader::TimedPreloader::Execute() {
 }
 
 
-/* --------- MhpServiceSelectionProvider ------------- */
+/* --------- ControlServiceSelectionProvider ------------- */
 
-MhpServiceSelectionProvider::MhpServiceSelectionProvider(MhpChannelWatch *watch)
+ControlServiceSelectionProvider::ControlServiceSelectionProvider(ChannelWatch *watch)
   : watch(watch)
 {
 }
 
-void MhpServiceSelectionProvider::SelectService(cChannel *service) {
+void ControlServiceSelectionProvider::SelectService(cChannel *service) {
    //TODO: This needs more thought, or testing
-   printf("MhpServiceSelectionProvider::SelectService(): Selection channel %s\n", (const char*)service->ToText());
+   printf("ControlServiceSelectionProvider::SelectService(): Selection channel %s\n", (const char*)service->ToText());
    if (!service) {
       Service::ServiceStatus::MsgServiceEvent(Service::ServiceStatus::MessageContentNotFound, Service::Service(service));
       return;
@@ -660,36 +798,36 @@ void MhpServiceSelectionProvider::SelectService(cChannel *service) {
    }
 }
 
-void MhpServiceSelectionProvider::StopPresentation() {
+void ControlServiceSelectionProvider::StopPresentation() {
    //TODO: Find out what to do here
-   printf("MhpServiceSelectionProvider::StopPresentation(): Doing nothing\n");
+   printf("ControlServiceSelectionProvider::StopPresentation(): Doing nothing\n");
    Service::ServiceStatus::MsgServiceEvent(Service::ServiceStatus::MessageUserStop, Service::Service(Channels.GetByNumber(cDevice::CurrentChannel())));
 }
 
 
 
-/* --------- MhpCarouselLoader ------------- */
+/* --------- CarouselLoader ------------- */
 
 /*
    This class wraps all direct access to cDsmccReceiver. It knows about devices, transport streams,
    components of an application, different TransportProtocols.
    Although the infrastructure supports multiple carousels per receiver, here there is always only
    one carousel and one receiver.
-   All methods are invoked exclusively by the MhpLoadingManager, so many sanity/status checks
+   All methods are invoked exclusively by the ControlLoadingManager, so many sanity/status checks
    are already done.
 */
 
-MhpCarouselLoader::MhpCarouselLoader(ApplicationInfo::cApplication::Ptr a) 
+CarouselLoader::CarouselLoader(ApplicationInfo::cApplication::Ptr a) 
   : app(a), receiver(0), carousel(0), filterDevice(0), state(LoadingStateWaiting), hibernatedTime(0), totalSize(0), foreground(false)
 {
    protocol=app->GetTransportProtocol()->GetProtocol();
 }
 
-MhpCarouselLoader::~MhpCarouselLoader() {
+CarouselLoader::~CarouselLoader() {
    Stop();
 }
 
-LoadingState MhpCarouselLoader::getState() {
+LoadingState CarouselLoader::getState() {
    //always check if loading completed
    if (state==LoadingStateLoading) {
       int a,b;
@@ -698,7 +836,7 @@ LoadingState MhpCarouselLoader::getState() {
    return state;
 }
 
-float MhpCarouselLoader::getProgress(int &currentSize, int &retTotalSize) {
+float CarouselLoader::getProgress(int &currentSize, int &retTotalSize) {
    switch (state) {
       case LoadingStateError:
       case LoadingStateWaiting:
@@ -729,7 +867,7 @@ float MhpCarouselLoader::getProgress(int &currentSize, int &retTotalSize) {
    }
 }
 
-void MhpCarouselLoader::Start() {
+void CarouselLoader::Start() {
    switch(protocol) {
       case ApplicationInfo::cTransportProtocol::ObjectCarousel:
          return StartObjectCarousel();
@@ -740,7 +878,7 @@ void MhpCarouselLoader::Start() {
    }
 }
 
-void MhpCarouselLoader::Stop() {
+void CarouselLoader::Stop() {
    //detaches itself
    delete receiver;
    receiver=0;
@@ -753,7 +891,7 @@ void MhpCarouselLoader::Stop() {
    foreground=false;
 }
 
-void MhpCarouselLoader::Hibernate() {
+void CarouselLoader::Hibernate() {
    if ( (state == LoadingStateLoading || state == LoadingStateLoaded)
          && protocol != ApplicationInfo::cTransportProtocol::Local) {
       state=LoadingStateHibernated;
@@ -767,7 +905,7 @@ void MhpCarouselLoader::Hibernate() {
    }
 }
 
-void MhpCarouselLoader::WakeUp() {
+void CarouselLoader::WakeUp() {
    if (state==LoadingStateHibernated && protocol != ApplicationInfo::cTransportProtocol::Local) {
       StartObjectCarousel(carousel);
       //status is set by StartObjectCarousel
@@ -775,7 +913,7 @@ void MhpCarouselLoader::WakeUp() {
    }
 }
 
-void MhpCarouselLoader::StartObjectCarousel(Dsmcc::ObjectCarousel *hibernated) {
+void CarouselLoader::StartObjectCarousel(Dsmcc::ObjectCarousel *hibernated) {
    ApplicationInfo::cTransportProtocolViaOC *tp=dynamic_cast<ApplicationInfo::cTransportProtocolViaOC*>(app->GetTransportProtocol());
    //find device
    filterDevice=cDevice::GetDevice(app->GetChannel(), 0);
@@ -818,30 +956,30 @@ void MhpCarouselLoader::StartObjectCarousel(Dsmcc::ObjectCarousel *hibernated) {
    state=LoadingStateLoading;   
 }
 
-void MhpCarouselLoader::StartLocalApp() {
+void CarouselLoader::StartLocalApp() {
    state=LoadingStateLoaded;
 }
 
-SmartPtr<Cache::Cache> MhpCarouselLoader::getCache() {
+SmartPtr<Cache::Cache> CarouselLoader::getCache() {
    if (carousel)
       return carousel->getCache();
    else
       return SmartPtr<Cache::Cache>(0);
 }
 
-ApplicationInfo::cApplication::ApplicationName *MhpCarouselLoader::getName() {
+ApplicationInfo::cApplication::ApplicationName *CarouselLoader::getName() {
    if (app->GetNumberOfNames())
       return app->GetName(0);
    else
       return 0;
 }
 
-bool MhpCarouselLoader::ChannelSwitchedAway(const cDevice *device, Service::TransportStreamID oldTs, Service::TransportStreamID newTs) {
+bool CarouselLoader::ChannelSwitchedAway(const cDevice *device, Service::TransportStreamID oldTs, Service::TransportStreamID newTs) {
    return filterDevice==device && oldTs != newTs;
 }
 
 
-
+} //namespace Mhp
 
 /* --------- cProgressBar ------------- */
 

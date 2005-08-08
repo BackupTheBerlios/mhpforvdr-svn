@@ -132,15 +132,15 @@ jint Java_org_dvb_application_AppsDatabase_getSize(JNIEnv* env, jobject obj, jlo
 //ApplicationManager$LoadingManagerInterface
 //The $, unicode 0x24, is mangled to _00024
 void Java_vdr_mhp_ApplicationManager_00024LoadingManagerInterface_load(JNIEnv* env, jclass clazz, jlong nativeData) {
-   MhpLoadingManager::getManager()->Load(*(ApplicationInfo::cApplication::Ptr *)nativeData);
+   Mhp::LoadingManager::getManager()->Load(*(ApplicationInfo::cApplication::Ptr *)nativeData);
 }
 
 void Java_vdr_mhp_ApplicationManager_00024LoadingManagerInterface_stop(JNIEnv* env, jclass clazz, jlong nativeData) {
-   MhpLoadingManager::getManager()->Stop(*(ApplicationInfo::cApplication::Ptr *)nativeData);
+   Mhp::LoadingManager::getManager()->Stop(*(ApplicationInfo::cApplication::Ptr *)nativeData);
 }
 
 jboolean Java_vdr_mhp_ApplicationManager_00024LoadingManagerInterface_isAcquired(JNIEnv* env, jclass clazz, jlong nativeData) {
-   return MhpLoadingManager::getManager()->getState(*(ApplicationInfo::cApplication::Ptr *)nativeData) == LoadingStateLoaded;
+   return Mhp::LoadingManager::getManager()->getState(*(ApplicationInfo::cApplication::Ptr *)nativeData) == Mhp::LoadingStateLoaded;
 }
 
 //the standard is not very explicit about the mangling of JNI methods, but this is definitely the way to go.
@@ -154,6 +154,24 @@ void Java_vdr_mhp_ApplicationManager_$LoadingManagerInterface_stop(JNIEnv* env, 
 jboolean Java_vdr_mhp_ApplicationManager_$LoadingManagerInterface_isAcquired(JNIEnv* env, jclass clazz, jlong nativeData) {
    return Java_vdr_mhp_ApplicationManager_00024LoadingManagerInterface_isAcquired(env, clazz, nativeData);
 }
+
+//ApplicationManager$RunningManagerInterface
+void Java_vdr_mhp_ApplicationManager_00024RunningManagerInterface_started(JNIEnv* env, jclass clazz, jlong nativeData) {
+   Mhp::RunningManager::getManager()->ApplicationStarted(*(ApplicationInfo::cApplication::Ptr *)nativeData);
+}
+
+void Java_vdr_mhp_ApplicationManager_00024RunningManagerInterface_stopped(JNIEnv* env, jclass clazz, jlong nativeData) {
+   Mhp::RunningManager::getManager()->ApplicationStopped(*(ApplicationInfo::cApplication::Ptr *)nativeData);
+}
+
+void Java_vdr_mhp_ApplicationManager_$RunningManagerInterface_started(JNIEnv* env, jclass clazz, jlong nativeData) {
+   return Java_vdr_mhp_ApplicationManager_00024RunningManagerInterface_started(env, clazz, nativeData);
+}
+
+void Java_vdr_mhp_ApplicationManager_$RunningManagerInterface_stopped(JNIEnv* env, jclass clazz, jlong nativeData) {
+   return Java_vdr_mhp_ApplicationManager_00024RunningManagerInterface_stopped(env, clazz, nativeData);
+}
+
 
 //DSMCCObject
 
@@ -230,7 +248,7 @@ jlong Java_org_dvb_dsmcc_DSMCCObject_createListener(JNIEnv* env, jobject obj, jl
    
    DSMCCObjectListener *l=new DSMCCObjectListener();
    l->dsmccObject.SetObject(obj);
-   l->cache=MhpLoadingManager::getManager()->getCache(*(ApplicationInfo::cApplication::Ptr *)nativeApp);
+   l->cache=Mhp::LoadingManager::getManager()->getCache(*(ApplicationInfo::cApplication::Ptr *)nativeApp);
    
    if (l->cache)
       l->cache->addListener(path, l);

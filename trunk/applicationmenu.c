@@ -105,7 +105,7 @@ eOSState MhpApplicationMenu::ProcessKey(eKeys Key) {
          if (typeid(*item) == typeid(MhpApplicationMenuItem)) {
             MhpApplicationMenuItem *appitem=static_cast<MhpApplicationMenuItem *>(item);
             if (appitem->GetApplication()->GetTransportProtocol()->GetProtocol() == ApplicationInfo::cTransportProtocol::Local) {
-               MhpControl::Start(appitem->GetApplication());
+               Mhp::RunningManager::getManager()->Start(appitem->GetApplication());
             } else {
                if (GetReceptionState(appitem->GetApplication()->GetChannel())<=StateNeedsTuning) {
                   cDevice *dev=cDevice::GetDevice(appitem->GetApplication()->GetChannel(), 0);
@@ -116,7 +116,7 @@ eOSState MhpApplicationMenu::ProcessKey(eKeys Key) {
                      return osContinue;
                   }
                   dev->SwitchChannel(appitem->GetApplication()->GetChannel(), false);
-                  MhpControl::Start(appitem->GetApplication());
+                  Mhp::RunningManager::getManager()->Start(appitem->GetApplication());
                   return osEnd;
                }
             }

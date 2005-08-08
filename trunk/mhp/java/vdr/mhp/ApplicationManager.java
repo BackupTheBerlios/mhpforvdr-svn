@@ -7,10 +7,15 @@ import java.security.PrivilegedAction;
 
 /*
    The ApplicationManager is the core class of this implementation.
-   All operations are started, controlled and ended from this class, although
-   the work is done elsewhere.
-   The native plugin will call the static methods of this class via JNI.
-   The ApplicationManager also sets the security manager.
+   All operations are started, controlled and stopped from this class.
+   The native plugin will access the static methods via JNI to initiate
+   starting and stopping. The ApplicationManager also provides an internal API
+   through which all starting and stopping operations from
+   the Java side (org.dvb.application package) are routed. This class provides
+   the state machine, controls the DSMCC loading on the native side and
+   initiates all actual state change operations of applications.
+   The ApplicationManager also sets the security manager, important
+   properties and provides some general infrastructure for the implementation.
 */
 
 
@@ -348,6 +353,9 @@ static void setupProperties() {
    */
 }
 
+//Encapsulation of the native access methods for Mhp::LoadingManager
+//and Mhp::RunningManager from mhploading.h/mhpcontrol.h/mhpcontrol.c
+
 static class LoadingManagerInterface {
    static void load(MHPApplication app) {
       load(app.getNativeData());
@@ -365,6 +373,23 @@ static class LoadingManagerInterface {
    private static native boolean isAcquired(long nativeData);
 }
 
+static class RunningManagerInterface {
+   static void started(MHPApplication app) {
+      started(app.getNativeData());
+   }
+   private static native void started(long nativeData);
+   
+   static void stopped(MHPApplication app) {
+      stopped(app.getNativeData());
+   }
+   private static native void stopped(long nativeData);
+}
+
+//ThreadGroup for the ApplicationTaskThread from which
+//most interaction with (and thus thread creation in)
+//applications originates. However, this is not 100% waterproof,
+//some other threads will access application code as well.
+
 class ApplicationThreadGroup extends ThreadGroup {
 
    ApplicationThreadGroup(String s) {
@@ -378,13 +403,48 @@ class ApplicationThreadGroup extends ThreadGroup {
 
 }
 
+//Internal helper class to track state changes, success of the operation, and finally send an event.
+
+class StateChangeNote {
+
+   MHPApplication app;
+   int initialState;
+   int targetState;
+   boolean error = false;
+   boolean sent = false;
+
+   StateChangeNote(MHPApplication a, int initialState, int targetState) {
+      this.app=a;
+      this.initialState=initialState;
+      this.targetState=targetState;
+   }
+   
+   void setError() {
+      error=true;
+   }
+   
+   void sendNotification() {
+      if (!sent && app.hasListeners()) {
+         new AppStateChangeEvent(app.getIdentifier(), initialState, targetState, app, error);
+      }
+      sent=true;
+   }
+
+}
+
+//An application task executes a state change from the initial state
+//to a requested target states. This class implements the application state machine,
+//splits the task in single state transitions
+//and orders DVBJApplication to carry out the state transitions.
+
 class ApplicationTask {
 
    MHPApplication app;
-   Object args;
-   AppStateChangeEvent event;
+   Object arg;
+   StateChangeNote note = null;
    java.util.Stack todo = new java.util.Stack();
    private boolean acquiring = false;
+   private int targetState = -1;
    
    //these constants have two slightly different interpretations
    //in the switch in the constructor and as values for todo
@@ -394,24 +454,75 @@ class ApplicationTask {
    static final int PAUSE      =4;
    static final int RESUME     =5;
    static final int STOP       =6;
-   private static final int SEND_ERROR =7;
+   private static final int SEND_NOTIFICATION =7;
    
    static final int REMOVE =1;
    static final int APPEND =2;
    static final int APPEND_DELAYED =3;
       
-   ApplicationTask(MHPApplication a, int procedure, Object arg) {
+   ApplicationTask(MHPApplication a) {
       app=a;
-      args=arg;
-      fillTodo(procedure);
+   }
+   
+   synchronized void setTask(int procedure) {
+      setTask(procedure, null);
+   }
+   
+   synchronized void setTask(int procedure, Object arg) {
+      if (procedure==targetState && this.arg==arg)
+         return;
+      //interruption?
+      if (note != null) {
+         note.setError();
+         note.sendNotification();
+      }
+      this.arg=arg;
+      targetState=procedure;
+      fillNote();
+      fillTodo();
    }
       
-   synchronized void fillTodo(int procedure) {
+   private void fillNote() {
+      switch (targetState) {
+      
+      //target state LOADED
+      case LOAD:
+         note = new StateChangeNote(app, app.getState(), DVBJProxy.LOADED);
+         break;
+         
+      //target state PAUSED
+      case INIT:
+         note = new StateChangeNote(app, app.getState(), AppProxy.PAUSED);
+         break;
+         
+      //target state PAUSED
+      case PAUSE:
+         note = new StateChangeNote(app, app.getState(), AppProxy.PAUSED);
+         break;
+         
+      //target state STARTED
+      case RESUME:
+         note = new StateChangeNote(app, app.getState(), AppProxy.STARTED);
+         break;
+         
+      //target state STARTED
+      case START:
+         note = new StateChangeNote(app, app.getState(), AppProxy.STARTED);
+         break;
+         
+      //target state DESTROYED
+      case STOP:
+         note = new StateChangeNote(app, app.getState(), AppProxy.DESTROYED);
+         break;
+      }
+   }
+      
+   private void fillTodo() {
       //this is the implementation of the application lifecycle state machine
       //See page 189 of the spec for a diagram, and see the specification
       //of AppProxy and DVBJProxy for details regarding the allowed states.
       todo.clear();
-      switch (procedure) {
+      switch (targetState) {
       
       //target state LOADED
       //allowed initial states: NOT_LOADED
@@ -420,17 +531,13 @@ class ApplicationTask {
          switch (app.getState()) {
          case AppProxy.NOT_LOADED:
             todo.push(new Integer(LOAD));
-            if (app.hasListeners())
-               event=new AppStateChangeEvent(app.getIdentifier(), app.getState(), DVBJProxy.LOADED, app, false);
             break;
          case DVBJProxy.LOADED:
          case AppProxy.PAUSED:
          case AppProxy.STARTED:
          case AppProxy.DESTROYED:
-            if (app.hasListeners()) {
-               todo.push(new Integer(SEND_ERROR));
-               event=new AppStateChangeEvent(app.getIdentifier(), app.getState(), DVBJProxy.LOADED, app, true);
-            }
+            todo.push(new Integer(SEND_NOTIFICATION));
+            note.setError();
             break;
          }
          break;
@@ -443,21 +550,15 @@ class ApplicationTask {
          case AppProxy.NOT_LOADED:
             todo.push(new Integer(INIT));
             todo.push(new Integer(LOAD));
-            if (app.hasListeners())
-               event=new AppStateChangeEvent(app.getIdentifier(), app.getState(), AppProxy.PAUSED, app, false);
             break;
          case DVBJProxy.LOADED:
             todo.push(new Integer(INIT));
-            if (app.hasListeners())
-               event=new AppStateChangeEvent(app.getIdentifier(), app.getState(), AppProxy.PAUSED, app, false);
             break;
          case AppProxy.PAUSED:
          case AppProxy.STARTED:
          case AppProxy.DESTROYED:
-            if (app.hasListeners()) {
-               todo.push(new Integer(SEND_ERROR));
-               event=new AppStateChangeEvent(app.getIdentifier(), app.getState(), AppProxy.PAUSED, app, true);
-            }
+            todo.push(new Integer(SEND_NOTIFICATION));
+            note.setError();
             break;
          }
          break;
@@ -471,15 +572,11 @@ class ApplicationTask {
          case AppProxy.DESTROYED:
          case AppProxy.PAUSED:
          case DVBJProxy.LOADED:
-            if (app.hasListeners()) {
-               todo.push(new Integer(SEND_ERROR));
-               event=new AppStateChangeEvent(app.getIdentifier(), app.getState(), AppProxy.PAUSED, app, true);
-            }
+            todo.push(new Integer(SEND_NOTIFICATION));
+            note.setError();
             break;
          case AppProxy.STARTED:
             todo.push(new Integer(PAUSE));
-            if (app.hasListeners())
-               event=new AppStateChangeEvent(app.getIdentifier(), app.getState(), AppProxy.PAUSED, app, false);
             break;
          }
          break;
@@ -493,15 +590,11 @@ class ApplicationTask {
          case DVBJProxy.LOADED:
          case AppProxy.STARTED:
          case AppProxy.DESTROYED:
-            if (app.hasListeners()) {
-               todo.push(new Integer(SEND_ERROR));
-               event=new AppStateChangeEvent(app.getIdentifier(), app.getState(), AppProxy.STARTED, app, true);
-            }
+            todo.push(new Integer(SEND_NOTIFICATION));
+            note.setError();
             break;
          case AppProxy.PAUSED:
             todo.push(new Integer(RESUME));
-            if (app.hasListeners())
-               event=new AppStateChangeEvent(app.getIdentifier(), app.getState(), AppProxy.STARTED, app, false);
             break;
          }
          break;
@@ -516,26 +609,18 @@ class ApplicationTask {
             todo.push(new Integer(START));
             todo.push(new Integer(INIT));
             todo.push(new Integer(LOAD));
-            if (app.hasListeners())
-               event=new AppStateChangeEvent(app.getIdentifier(), app.getState(), AppProxy.PAUSED, app, false);
             break;
          case DVBJProxy.LOADED:
             todo.push(new Integer(START));
             todo.push(new Integer(INIT));
-            if (app.hasListeners())
-               event=new AppStateChangeEvent(app.getIdentifier(), app.getState(), AppProxy.PAUSED, app, false);
             break;
          case AppProxy.PAUSED:
             todo.push(new Integer(START));
-            if (app.hasListeners())
-               event=new AppStateChangeEvent(app.getIdentifier(), app.getState(), AppProxy.PAUSED, app, false);
             break;
          case AppProxy.STARTED:
          case AppProxy.DESTROYED:
-            if (app.hasListeners()) {
-               todo.push(new Integer(SEND_ERROR));
-               event=new AppStateChangeEvent(app.getIdentifier(), app.getState(), AppProxy.STARTED, app, true);
-            }
+            todo.push(new Integer(SEND_NOTIFICATION));
+            note.setError();
             break;
          }
          break;
@@ -544,20 +629,16 @@ class ApplicationTask {
       //allowed initial states: NOT_LOADED, LOADED, STARTED, PAUSED
       //illegal initial states: DESTROYED
       case STOP:
-         switch (app.getState()) {
+        switch (app.getState()) {
          case AppProxy.DESTROYED:
-            if (app.hasListeners()) {
-               todo.push(new Integer(SEND_ERROR));
-               event=new AppStateChangeEvent(app.getIdentifier(), app.getState(), AppProxy.DESTROYED, app, true);
-            }
+            todo.push(new Integer(SEND_NOTIFICATION));
+            note.setError();
             break;
          case AppProxy.PAUSED:
          case AppProxy.STARTED:
          case AppProxy.NOT_LOADED:
          case DVBJProxy.LOADED:
             todo.push(new Integer(STOP));
-            if (app.hasListeners())
-               event=new AppStateChangeEvent(app.getIdentifier(), app.getState(), AppProxy.DESTROYED, app, false);
             break;
          }
          break;
@@ -573,35 +654,61 @@ class ApplicationTask {
       }
       
       System.out.println("ApplicationTask: Executing task "+task);
-      boolean success=false;
+      boolean success=true;
+      //After having accessed the application code we may not make any assumption about
+      //the contents of todo; we call StopApplication ourselves in some cases and alter todo!
       switch (task) {
       //calling the non-API methods!
       case INIT:
          System.out.println("ApplicationTask: Calling doInit on application");
-         if (!(success=((DVBJApplication)app).doInit()))
+         success=((DVBJApplication)app).doInit();
+         if (!success) {
+            note.setError();
             vdr.mhp.Osd.LoadingFailed();
+            //Stop application if loading fails
+            //calling this from here is safe!
+            StopApplication(app, true);
+         }
          break;
       case START:
          System.out.println("ApplicationTask: Calling doStart on application");
-         if (args==null)
+         if (arg==null)
             success=app.doStart();
          else
-            success=app.doStart((String[])args);
-         if (!success)
+            success=app.doStart((String[])arg);
+         if (!success) {
             vdr.mhp.Osd.StartingFailed();
+            //Stop application if starting fails
+            StopApplication(app, true);
+            note.setError();
+         } else 
+            notifyStarted();
          break;
       case PAUSE:
          success=app.doPause();
+         if (!success)
+            note.setError();
+         else
+            notifyStarted();
          break;
       case RESUME:
          success=app.doResume();
+         if (!success)
+            note.setError();
+         else
+            notifyStarted();
          break;
       case STOP:
          System.out.println("ApplicationTask: Calling doStop on application");
          if (acquiring)
             stopAcquiring();
-         boolean force = (args==null) ? true : ((Boolean)args).booleanValue();
+         boolean force = (arg==null) ? true : ((Boolean)arg).booleanValue();
+         //may only fail if not forced
          success=app.doStop(force);
+         if (!success)
+            note.setError();
+         else
+            notifyStopped();
          break;
       case LOAD:
          //this one is a bit special: we do everything from the ApplicationManager,
@@ -614,6 +721,8 @@ class ApplicationTask {
             //just set the state to LOADED
             //System.out.println(" Yes");
             success=((DVBJApplication)app).doLoad();
+            if (!success)
+               note.setError();
          } else {
             //again push load on top of todo
             //System.out.println(" No, push to delayedList");
@@ -624,18 +733,16 @@ class ApplicationTask {
             return APPEND_DELAYED;
          }
          break;
-      case SEND_ERROR:
-         success=true;
+      case SEND_NOTIFICATION:
          //is sent below
          break;
       }
       
-      //send event when everything is done
-      if (todo.empty() && event!=null) {
-         app.sendAppStateChangeEvent(event);
-      }
-      
-      if (todo.empty() || !success)
+      //send notification when everything is done or an error occurred
+      if (todo.isEmpty())
+         note.sendNotification();
+         
+      if (todo.isEmpty())
          return REMOVE;
       else
          return APPEND;
@@ -652,13 +759,24 @@ class ApplicationTask {
       ApplicationManager.LoadingManagerInterface.stop(app);
       acquiring=false;
    }
+   
+   //only set the state, may be called multiple times
+   void notifyStarted() {
+      ApplicationManager.RunningManagerInterface.started(app);
+   }
+   
+   void notifyStopped() {
+      ApplicationManager.RunningManagerInterface.stopped(app);
+   }
 }
 
+//This Thread manages a list of ApplicationTasks and executes them
 
 class ApplicationTaskThread extends Thread {
 
    java.util.LinkedList list = new java.util.LinkedList();
    java.util.LinkedList delayedList = new java.util.LinkedList();
+   ApplicationTask currentTask =  null;
    
    Thread thread;
    
@@ -691,6 +809,14 @@ class ApplicationTaskThread extends Thread {
                task=t;
             }
          }
+         //Check for the possibility that the call of this method originates from our
+         //very own working thread, i.e. from the "currentTask.Execute()" below,
+         //and if it affects the application and the task that is currently executed
+         if (currentTask != null && currentTask.app==app) {
+            //If we are here, we are in the worker thread, called in some way by 
+            //run() and task.Execute()!
+            task=currentTask;
+         }
          //if no task for the application is found, create one
          if (task==null) {
             if (!running) {
@@ -706,7 +832,10 @@ class ApplicationTaskThread extends Thread {
                }
             }
             System.out.println("Appending task");
-            list.addLast(new ApplicationTask(app, procedure, arg));
+            task = new ApplicationTask(app);
+            task.setTask(procedure, arg);
+            list.addLast(task);
+            //wake up thread
             notifyAll();
             return;
          }
@@ -714,7 +843,7 @@ class ApplicationTaskThread extends Thread {
       //If a task is found, change it according to the new request.
       //Do this outside synchronization on this. Instead, this function is synchronized,
       //and so is Execute, so that there is always a clearly defined state.
-      task.fillTodo(procedure);
+      task.setTask(procedure, arg);
    }
    
    //stop thread when all pending tasks are done
@@ -740,21 +869,20 @@ class ApplicationTaskThread extends Thread {
    
    public void run() {
       try {
-         ApplicationTask task=null;
          int action = ApplicationTask.REMOVE;
          while (running) {
          
             synchronized(this) {
             
-               if (task != null) {
+               if (currentTask != null) {
                   switch (action) {
                   case ApplicationTask.APPEND:
                      //re-add to tail of list
-                     list.addLast(task);
+                     list.addLast(currentTask);
                      break;
                   case ApplicationTask.APPEND_DELAYED:
                      //(re-)add to tail of delayedList
-                     delayedList.addLast(task);
+                     delayedList.addLast(currentTask);
                      break;
                   case ApplicationTask.REMOVE:
                      //drop task
@@ -764,7 +892,7 @@ class ApplicationTaskThread extends Thread {
                   
                //System.out.println("ApplicationTaskThread: list isEmpty? "+list.isEmpty()+" and delayedList "+delayedList.isEmpty());
                if (list.isEmpty()) {
-                  task=null;
+                  currentTask=null;
                   if (completeAndStop)
                      break;
                   try {
@@ -777,16 +905,16 @@ class ApplicationTaskThread extends Thread {
                   if (delayedList.isEmpty())
                      continue;
                   else {
-                     task=(ApplicationTask)delayedList.removeFirst();
+                     currentTask=(ApplicationTask)delayedList.removeFirst();
                   }
                } else
-                  task=(ApplicationTask)list.removeFirst();
+                  currentTask=(ApplicationTask)list.removeFirst();
             }
             
-            if (task != null) {
+            if (currentTask != null) {
                //here the actual work is done
                try {
-                  action=task.Execute();
+                  action=currentTask.Execute();
                } catch (Exception e) {
                   e.printStackTrace();
                }

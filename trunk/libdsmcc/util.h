@@ -167,7 +167,7 @@ public:
    T& operator* () const { return *p_; }
    SmartPtr(T* p)    : p_(p) { if (p_) ++p_->count_; }
    ~SmartPtr()           { if (p_ && --p_->count_ == 0) delete p_; }
-   SmartPtr(const SmartPtr& p) : p_(p.p_) { if (p_) ++p_->count_; }
+   SmartPtr(const SmartPtr<T>& p) : p_(p.p_) { if (p_) ++p_->count_; }
    SmartPtr& operator= (const SmartPtr& p)
           { // DO NOT CHANGE THE ORDER OF THESE STATEMENTS!
             // (This order properly handles self-assignment)
@@ -185,6 +185,12 @@ public:
             return *this;
           }
    operator bool() const { return p_ != 0; }
+   bool operator==(const SmartPtr<T> &p) const { return p_==p.p_; }
+   bool operator==(const T *const p) const { return p_==p; }
+   bool operator!=(const SmartPtr<T> &p) const { return p_!=p.p_; }
+      //for STL
+   bool operator<(const SmartPtr<T> &p) const { return p_ < p.p_; }
+   bool operator>(const SmartPtr<T> &p) const { return p_ > p.p_; }
 private:
    T* p_;
 }; 

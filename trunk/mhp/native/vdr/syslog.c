@@ -19,11 +19,11 @@ void Java_vdr_mhp_Syslog_esyslog (JNIEnv* env, jclass clazz, jstring s) {
 }
 
 void Java_vdr_mhp_Osd_loadingFailed(JNIEnv* env, jclass clazz, jstring s) {
-   MhpMessages::MhpMessages::DisplayMessage(MhpMessages::LoadingFailed);
+   Mhp::Messages::DisplayMessage(Mhp::Messages::LoadingFailed);
 }
 
 void Java_vdr_mhp_Osd_startingFailed(JNIEnv* env, jclass clazz, jstring s) {
-   MhpMessages::DisplayMessage(MhpMessages::StartingFailed);
+   Mhp::Messages::DisplayMessage(Mhp::Messages::StartingFailed);
 }
 
 }
