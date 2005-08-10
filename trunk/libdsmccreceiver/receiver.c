@@ -507,7 +507,7 @@ void cDsmccReceiver::SetStatus(bool On) {
       //If we are on the same transponder, restore all streams.
       //Otherwise, higher levels should take appropriate action (Hibernation, Deletion)
       #if VDRVERSNUM <= 10327
-      #error "Unfortunately, VDR versions up to 1.3.27 contain a bug that prevents this code from working properly. Please use VDR version 1.3.28 or later.
+      #error "Unfortunately, VDR versions up to 1.3.27 contain a bug that prevents this code from working properly. Please use VDR version 1.3.28 or later."
       #endif
       const cChannel *newChan=cFilter::Channel();
       filterOn=ts.equals(newChan->Source(), newChan->Nid(), newChan->Tid());

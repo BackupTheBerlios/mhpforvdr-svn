@@ -29,7 +29,7 @@ SdlSystem::~SdlSystem() {
    }
 }
 
-void SdlSystem::Initialize(const char *arg) {
+bool SdlSystem::Initialize(const char *arg) {
    const char *dfbargs="DFBARGS";
    const char *newArgs="system=sdl";
    char *previousArgs=getenv(dfbargs);
@@ -45,16 +45,16 @@ void SdlSystem::Initialize(const char *arg) {
    } else {
       setenv(dfbargs, newArgs, true);
    }
-   DirectFB::Init();
-   
    try {
+      DirectFB::Init();
+      
       dfb=DirectFB::Create();
       layer=dfb->GetDisplayLayer(DLID_PRIMARY);
       layer->SetCooperativeLevel(DLSCL_ADMINISTRATIVE);
    } catch (DFBException *e) {
         esyslog("MhpOutput: SDL: Error %s, %s. Expect crash.", e->GetAction(), e->GetResult());
         delete e;
-        return;
+        return false;
    }
    
    try {
@@ -63,8 +63,8 @@ void SdlSystem::Initialize(const char *arg) {
    } catch (DFBException *e) {
         esyslog("MhpOutput: SDL: Error %s, %s.", e->GetAction(), e->GetResult());
         delete e;
-        return;
    }
+   return true;
 }
 
 void SdlSystem::Activate(class Player *player, bool On) {

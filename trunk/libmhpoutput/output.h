@@ -27,7 +27,12 @@
 
 namespace MhpOutput {
 
-#define MHPOUTPUTPLUGINCREATOR(PluginClass) extern "C" void *MhpOutputPluginCreator(void) { return new PluginClass; }
+//Enforce explicit, C++ style cast to enforce type safety.
+//If PluginClass would not inherit MhpOutput::System, strange crashes will occur.
+#define MHPOUTPUTPLUGINCREATOR(PluginClass)      \
+   extern "C" void *MhpOutputPluginCreator(void) \
+   { return static_cast<MhpOutput::System *>(new PluginClass()); }
+
 #define PAL_WIDTH   720
 #define PAL_HEIGHT  576
 #define NTSC_WIDTH  720

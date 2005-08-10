@@ -16,7 +16,7 @@
 namespace MhpOutput {
 
 
-class SdlSystem {
+class SdlSystem : public System {
 public:
    SdlSystem();
    virtual ~SdlSystem();
@@ -28,11 +28,11 @@ public:
    bool HasBackgroundLayer() { return false; }
    IDirectFBDisplayLayer *GetBackgroundLayer() { return GetMainLayer(); }
 protected:
-   virtual void Initialize(const char *arg);
+   virtual bool Initialize(const char *arg);
    virtual void Activate(class Player *player, bool On);
 private:
    IDirectFB *dfb;
-   IDirectFBDisplayLayer *layer;   
+   IDirectFBDisplayLayer *layer;
 };
 
 
