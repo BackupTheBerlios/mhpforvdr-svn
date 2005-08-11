@@ -1,0 +1,23 @@
+
+Note that currently the core classes
+   DSMCCStream
+   DSMCCStreamEvent
+   ServiceDomain
+and the classes
+   NPTDiscontinuityEvent
+   NPTListener
+   NPTPresentEvent
+   NPTRate
+   NPTRateChangeEvent
+   NPTRemovedEvent
+   NPTStatusEvent
+   ServiceXFRReference
+   ServiceXFRException
+   ServiceXFRErrorEvent
+   StreamEvent
+   StreamEventListener
+are not implemented.
+
+Moreover, the current (partial) implementation does not use the concept 
+"read the stream and know what happens in it" but rather something like
+"let libdsmcc write its stuff to disk and see what we can offer my callers from the files".

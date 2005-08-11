@@ -1,0 +1,204 @@
+/*
+ * NIST/DASE API Reference Implementation
+ * $File: HScreenDevice.java $
+ * Last changed on $Date: 2001/06/15 21:20:34 UTC $
+ *
+ * See the file "nist.disclaimer" in the top-level directory for information
+ * on usage and redistribution of this file.
+ *
+ */
+
+package org.havi.ui;
+import org.havi.ui.event.HScreenConfigurationListener;
+import org.havi.ui.event.HScreenConfigurationEvent;
+import java.util.Vector;
+import org.davic.resources.*;
+
+/**
+ *
+ * See the official (C) HaVi documentation for full specification details.
+ *
+ * <p>Revision information:<br>
+ * $Revision: 1.3 $
+ * <br> Abstract class to describe a HScreen device: see subclasses
+ * HVideoDevice HGraphicsDevice HBackgroundDevice.
+ * Note: no comments for copyright reasons.
+ * WARNING / TODO : I made this class abstract (even though the specs do not)
+ * to delegate device-specific functions. Event handling is implemented here.
+ */
+
+public abstract class HScreenDevice implements org.davic.resources.ResourceProxy,
+       org.davic.resources.ResourceServer{
+  
+  /** Configuration Listener list */
+  private Vector configListeners = new Vector();
+
+  /** Utility class to store (listener, template) pairs */
+  private class configListenerSpecification {
+    public HScreenConfigurationListener listener;
+    public HScreenConfigTemplate template;
+    public configListenerSpecification(HScreenConfigurationListener l,
+                                 HScreenConfigTemplate t) {
+      listener = l;
+      template = t;
+    }
+  }
+  
+  /** Add a configuration listener
+   *  @param hscl configuration listener to add */
+  public void addScreenConfigurationListener(HScreenConfigurationListener hscl) {
+    synchronized(configListeners) {
+      configListeners.add( new configListenerSpecification(hscl, null) );
+    }
+  }
+
+  /** Add a configuration listener to be notified when the device's configuration
+   *  is no longer compatible with the specified configuration template
+   *  @param hscl configuration listener to add
+   *  @param hsct configuration template to match */
+  public void addScreenConfigurationListener(HScreenConfigurationListener hscl,
+                                             HScreenConfigTemplate hsct) {
+    configListeners.add( new configListenerSpecification(hscl, hsct) );
+  }    
+
+  /** Remove a configuration listener
+   *  @param hscl configuration listener to remove */
+  public void
+    removeScreenConfigurationListener(HScreenConfigurationListener hscl) {
+
+    synchronized(configListeners) {
+      /* NOTE: the listener could have been registered several times.
+       First build a list of matching configListeners */
+      Vector match = new Vector();
+      
+      for(int i=0; i<configListeners.size(); i++) {
+        if( ((configListenerSpecification)configListeners.get(i)).listener == hscl ) {
+          match.add(configListeners.get(i));
+        }
+      }
+      for(int i=0; i<match.size(); i++) {
+        configListeners.remove(match.get(i));
+      }
+    }
+    
+  }
+
+
+
+  /** Utility class that extends Thread to notify a configuration listener
+      asynchronously */
+  private class ConfigurationListenerThread extends Thread {
+
+    /** Event to fire */
+    private HScreenConfigurationEvent event;
+    /** Target configuration listener */
+    private HScreenConfigurationListener listener;
+
+    /** Constructor */
+    public ConfigurationListenerThread(HScreenConfigurationEvent e,
+                                       HScreenConfigurationListener l) {
+      event = e;
+      listener = l;
+      setName("HScreenDevice configuration change notify thread");
+    }
+    
+    /** Run method. Use object.start() to start the thread (not run() directly)*/
+    public void run() {
+      listener.report(event);
+    }
+    
+  }
+  
+  /** Notify configListeners of a configuration change.
+   *  This implementation method is not part of the API. */
+  protected void notifyConfigurationListeners() {
+
+    HScreenConfigurationEvent e = new HScreenConfigurationEvent(this);
+    
+    /* Do the actual notification of each listener in a separate thread */
+
+    synchronized(configListeners) {
+      
+      for(int i=0; i<configListeners.size(); i++) {
+        ConfigurationListenerThread notifyThread = 
+          new ConfigurationListenerThread(e,
+                             (HScreenConfigurationListener)configListeners.get(i) );
+        notifyThread.start();
+      }
+    }
+
+  }
+
+  /** Device dependant */
+  public abstract java.awt.Dimension getScreenAspectRatio();
+
+
+  /** Device dependant */
+  public abstract String getIDstring();
+
+
+  /** Return a reference to an HContainer that encapsulates the device.
+      Multiple calls return a reference to the same object.
+      @return HContainer encapsulating the device or null if not available.
+      <br>NOTE: THIS IMPLEMENTATION METHOD IS <b>NOT</b> PART OF THE API */
+  //public abstract HContainer getHContainer();
+  
+
+
+
+  /** Current owner of the lock. null if not locked */
+  private ResourceClient owner = null;
+
+  /** Request control of this device
+      @param client intended owner
+      @return true if control has been granted, false otherwise */
+  public boolean synchronized reserveDevice(ResourceClient client) {
+
+    synchronized(owner) {
+      if(owner!=null) {
+        return false;
+      } else {
+        owner = client;
+        return true;
+      }
+    }
+  }
+
+
+  /** Release a lock. Note that the API provides that a call to this method
+      by an "application" that does not own the lock should have not effect.
+      Since there is no concept of application at this point, this requirement
+      is not enforced.
+      <br>It is up to the application to clean up behind itself (see API for
+      details). */
+  // TODO Comply fully with API
+  public void synchronized releaseDevice() {
+    synchronized(owner) {
+      owner = null;
+    }
+  }
+
+  /** Return the current owner of the device lock
+      @return current ResourceClient owning the lock */
+  public ResourceClient getClient() {
+    return owner;
+  }
+
+  /** Registered resource listeners */
+  private Vector resourceListeners = new Vector();
+
+  /** Register a resource listener
+   @param listener new listener */
+  public void addResourceStatusEventListener(ResourceStatusListener listener) {
+    resourceListeners.add(listener);
+  }
+
+  /** Remove a resource status listener from the list
+      @param listener listener to be removed */
+  public void removeResourceStatusEventListener
+    (ResourceStatusListener listener) {
+    /* Note: listener may have been registered several times */
+    while(resourceListeners.remove(listener)) {}
+  }
+
+}

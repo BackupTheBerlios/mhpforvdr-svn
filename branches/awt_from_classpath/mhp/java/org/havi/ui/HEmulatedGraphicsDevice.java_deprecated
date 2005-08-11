@@ -1,0 +1,9 @@
+package org.havi.ui;
+
+
+//TODO: As it is obvious, this class does not do too much at the moment - 
+// however, it inherits enough functionality and I do not know if there
+// is any need for this class in our environment.
+
+public class HEmulatedGraphicsDevice extends HVDRGraphicsDevice {
+}

@@ -1,0 +1,230 @@
+This file contains additional information for developers and those
+who are interested in how this works.
+
+Table of Contents:
+* What is MHP (marketing stripped away)?
+* What is the architecture of this plugin?
+* Architectural difficulties and differences
+* What are all those libs about?
+* The test applications
+* Compiling Java classes 
+* Specifications
+
+
+
+What is MHP (marketing stripped away)?
+ MHP applications are Java applications programmed against an API
+ adapted to the TV/Set-top-box situation (the MHP API).
+ The applications are typically delivered over the TV network (be
+ it DVB-S, DVB-C, DVB-T). The protocol used for that channel is DSMCC.
+
+What is the architecture of this plugin?
+ MHP applications are Java code. They are signalled in the DVB service information
+ (like schedule information in the EIT) and broadcast using DSMCC object
+ carousels.
+ The MHP standards provide a broad range of APIs adapted to the set-top
+ environment. It is the task of this implementation to provide these interfaces.
+ It links to the native libraries of the Java implementation and starts the VM via JNI, this means
+ the VM in embedded into the VDR process. This way the implementation
+ can communicate directly with VDR. Only few calls are executed via JNI
+ Native -> Java, most of the control flow is executed in Java and the 
+ Java stack accesses VDR/plugin code via JNI Java -> Native.
+ Graphics are important for MHP, stuff like alpha blending, and Porter/Duff rules.
+ Fortunately Convergence wrote DirectFB for
+ their commercial MHP implementation and provided it as free software. (Thank you!)
+ So the display stack is based on DirectFB's graphics capabilities, i.e. all drawing
+ is done on DirectFB image structures, in most/all cases in software, but MMX accelerated.
+ 
+Architectural difficulties and differences
+ The general situation in which MHP applications are presented to the user
+ by this plugin is significantly different from the way described in the specification
+ and chosen by commercial set-top boxes (this is an assumption, I have never
+ seen one, so this is taken from the specifation).
+ An "MHP terminal" is completely oriented towards MHP content. When you switch to a channel,
+ application may be autostarted in the background. E.g. a "digitext" application
+ would grab the "Teletext" key and display itself when the user presses this key.
+ The VDR MHP plugin, on the other hand cannot and does not want to offer this level
+ of integration. The user enters a menu and explicitly starts an application if he wants.
+ Unless he does so, applications are not executed in any way.
+ 
+A note on Java virtual machines
+ The Java implementation from SUN is the only feature-complete
+ Java implementation, but it is proprietary, does not allow replacing
+ some components, does not even allow you viewing its source
+ without somehow selling your soul.
+ GNU classpath is the free, high-quality implementation of the Java
+ class libraries which is used by this project. It does not implement
+ every feature, especially of the latest Java release, but MHP does not
+ require Java 5 but only 1.2, and for this purpose GNU CP already is
+ sufficient.
+ There are several free virtual machine implementations based on GNU CP.
+ - SableVM
+   A very elegant and clean implementation by a team from Université du
+   Québec à Montréal. A few patches were sent upstream and now SableVM
+   fully supports the required JNI invocation API calls and is currently
+   the only supported VM.
+   Does not have a JIT engine as of yet.
+ - Kaffe
+   A quite feature complete implementation with a long history but
+   little development and maintainership lately.
+   Up to spring 2005 the plugin was based on Kaffe, but after an upgrade
+   Kaffe stopped working. The source of Kaffe (some other parts probably as well)
+   is a complete mess to read, and I could not get it working.
+   I might re-add support one day.
+   Kaffe provides a JITter as well as a choice of advanced garbage collectors.
+ - JamVM
+   A compact, clean and lean VM, actively developed.
+   Unfortunately, the last time a has a look at the source the incovation
+   API was not supported, so no chance to use it until this is implemented.
+   Does not have a JIT engine as of yet.
+ - JC virtual machine
+   This implementation concentrates on ahead-of-time compilation to native
+   code. Such a feature is not really needed, but JC provides an interpreter
+   as well. JNI seems to be fully implemented, development is active.
+   If there had to be another VM added immediately, it would probably JC
+ - Apache Harmony
+   Apache Harmony is a very interesting project, and if there is working
+   code one day I will love to support it.
+   
+A note on the binary objects (dynamic libraries) of this plugin
+ The actual plugin library libvdr-mhp.so which is loaded by VDR is only
+ made of the source file mhp.c. The large part of the plugin's functionality
+ can be found in libmhpforvdr.so which is installed per default in /usr/local/vdr/mhp/lib.
+ The plugin object links to this library.
+ There are some "subplugins", dynamic libraries dlopen'ed by 
+ the plugin - or rather by code from libmhpvdr.so.
+ These are the output modules found under libmhpoutput, and the libraries loaded
+ by the Java stack providing those functions called via JNI from the Java side.
+ All these libraries also link libmhpforvdr.so and find the functions they need
+ when they call back to the main plugin.
+   
+What are all those libs about?
+
+   libdvbsi
+      Library which uses VDR's cFilter/libsi API to provide access to SI data.
+      Tries to build a well-defined, synchronous layer over SI's asynchronous nature.
+      Used by the plugin itself and the org.dvb.si implementation.
+   
+      Status: beta, core features stable, some features missing
+
+
+   libait
+      Library to parse the AIT and provide a database of available MHP applications.
+
+      Status: stable
+
+   
+   libdsmcc
+      Library to parse DSMCC/BIOP objects
+
+      Status: stable
+
+
+   libdsmccreceiver
+      Library to use libdsmcc for DVB services and to cache the DSMCC filesystems.
+      Built upon libdsmcc.
+   
+      Status: stable
+   
+   
+   libjava
+      Library to load start the Kaffe VM and access the Java stack via JNI.
+
+      Status: stable
+
+   
+   libmhpoutput
+      Provides the output framework used by the MHP. As
+      graphics are built upon DirectFB, here is the code which does
+      the real work of putting DirectFB's drawings at some place
+      where they are visible.
+      Supports plugins, currently implemented is a plugin
+      which encodes DirectFB output to MPEG-1 (for display over
+      the full-featured DVB cards), and a simple plugin which
+      enables DirectFB's SDL output (for desktop use).
+
+      Status: beta
+   
+   libservice
+      The package javax.tv.service.selection provides access
+      to service selection (read channel switching) which is quite
+      different from VDR's point of view. This library is quite similar
+      to this API and tries to map it to VDR's native structure.
+      It is written quite specifically for this purpose and does
+      not contain much reusable code.
+      
+   libxmi
+      This is an external library packaged with the plugin for convenience.
+      It provides the necessary routines for non-trivial drawing primitives
+      like polygons, arcs, ovals.
+   
+  
+The test applications
+
+The applications in testapps/ are primarily written to test the implementation.
+The directory where they have to be located can be specified by an command line argument,
+the default is "/usr/local/vdr/apps".
+An application with the name "XYApp" must be have an initial class "XYApp"
+defined in the class file "XYApp.class" in the directory "XYApp" under the specified path.
+Example: "/usr/local/vdr/apps/XYApp/XYApp.class".
+Any files the application wants to use shall be located in this directory (other classes,
+configuration files, images, data, etc.).
+
+
+Compiling Java classes 
+
+If you want to recompile the Java class files,
+you need
+  jikes (http://oss.software.ibm.com/developerworks/opensource/jikes/)
+Jikes is already included in the SableVM package.
+Since this is Java, recompilation is only required when you change the source,
+or if you install from SVN.
+For release packages, the Java code comes precompiled.
+
+
+
+Specifications
+
+Thanks to ETSI, almost all specifications this plugin is based on are freely available
+for download at www.etsi.org (http://pda.etsi.org/pda/queryform.asp).
+
+- The most important is quite obviously the MHP specification itself:
+  * ETSI TS 102 812
+    I recommend the download of "ETSI TS 102 812 V1.1.1 (2001-11)" because this one
+    also includes the Havi standards as an annex, whereas in "ETSI TS 102 812 V1.2.1 (2003-06)"
+    they are stripped away (I think they are now available at www.havi.org)
+    
+- SUN has compiled an extensive package with the necessary docs for the Java class libraries
+  in the versions used by MHP and JavaTV. You also get the JNI (Java Native Interface)
+  specification, which is used extensively in this implementation.
+  * http://java.sun.com/products/specformhp/
+  
+- Some definitions from the DAVIC standards are covered by MHP:
+  * DAVIC 1.4.1 Specification Part 9, www.davic.org
+  
+- The core DVB/MPEG2 standards:
+  * ISO 13818-1
+    MPEG2 broadcast systems. Unfortunately, this one is not officially available,
+    but Google will find a (slightly outdated, but sufficient) version.
+  * ETSI EN 300 468
+    for DVB SI information
+  * ETSI TR 101 211
+    Guidelines on implementation and usage of Service Information (SI) 
+    
+- The DSMCC data carousel standards:
+  The part of DSMCC used to broadcast the files of MHP applications is only a small
+  subset of the DSMCC standard. The latter one, however, is also an ISO standard
+  and not available. Luckily, all necessary parts can be found scattered over several ETSI
+  standards. So reading is not easy, but we have what we need:
+  * ETSI TR 101 202
+    Implementation guidelines for Data Broadcasting.
+    This one is most important, especially chapter 4.7 and the annexes.
+  * ETSI EN 301 192
+    DVB specification for data broadcasting.
+    Chapters 8 and 9 are of special interest.
+  * Annex B of the MHP specification mentioned above.
+    Fills the remaining gaps.
+  
+  
+  
+  

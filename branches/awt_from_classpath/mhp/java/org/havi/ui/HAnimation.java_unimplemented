@@ -1,0 +1,193 @@
+
+package org.havi.ui;
+
+/*All Implemented Interfaces: HAnimateEffect HMatteLayer HNavigable HNavigationInputPreferred HNoInputPreferred HState 
+java.awt.image.ImageObserver,java.awt.MenuContainer, java.io.Serializable,TestOpacity Description The HAnimation class 
+is a user interface component used to display animated graphical content (as HStaticAnimation )which additionally 
+enables a user to navigate to it,i.e.it can have the input focus. By default it uses the HAnimateLook to render 
+itself.The HAnimation class supports animating images in exactly the same way as the HStaticAnimation class,with the 
+following exception: " If the HAnimation has different content set for the supported states a change in interaction 
+state may cause an implementation-specific change to the animation position to deal with animation content of different 
+length. The parameters to the constructors are as follows,in cases where parameters are not used,then the constructor 
+should use the default values. Default parameter values exposed in the constructors: Parameter Description Default value 
+Set method Get method x x-coordinate of top left hand corner of this component in pixels, relative to its parent 
+container (subject to layout management). --- java.awt.Compo-nent# setBounds java.awt.Compo-nent# getBounds y 
+y-coordinate of top left hand corner of this component in pixels, relative to its parent container (subject to layout 
+management). --- java.awt.Compo-nent# setBounds java.awt.Compo-nent# getBounds width width of this component in pixels 
+(sub-ject to layout management). --- java.awt.Compo-nent# setBounds java.awt.Compo-nent# getBounds height height of this 
+component in pixels (subject to layout management). --- java.awt.Compo-nent# setBounds java.awt.Compo-nent# getBounds 
+images The array of images to be used as the content for every state of this compo-nent. null setAnimateCon-tent( 
+Image[], int) getAnimateConte nt(int) images-Normal The array of images to be used as the content for the NORMAL_STATE 
+state of this component. null setAnimateCon-tent( Image[], int) getAnimateConte nt(int) imagesFo- cused The array of 
+images to be used as the content for the focused states of this component. null setAnimateCon- tent(Image[], int) 
+getAnimateConte nt(int) delay The delay between the presentation of successive content in the animation, in units of 0.1 
+second 1 (i.e. 0.1 sec- onds) setDelay(int) getDelay() repeat- Count The number of times that the anima- tion is to be 
+played. REPEAT_INF INITE setRepeatCount( int) getRepeatCount( ) playMode The playing mode for the animation. PLAY_REPEA 
+TING setPlayMode(int ) getPlayMode() Default parameter values not exposed in the constructors Description Default value 
+Set method Get method Associated matte (HMatte ). none (i.e. getMatte() returns null) setMatte(HMatte ) getMatte() The 
+text layout manager responsi- ble for text formatting. An HDefaultTextLayoutManag er object. setTextLayout- 
+Manager(HTextLa youtManager) getTextLayoutMa nager() The background painting mode NO_BACKGROUND_FILL setBackgroundMo 
+de(int) getBackgroundMo de() The default preferred size not set (i.e. null) unless specified by width and height parame- 
+ters setDefaultSize( Dimension) getDefaultSize( ) The horizontal content alignment HALIGN_CENTER setHorizontalAl 
+ignment(int) getHorizontalAl ignment() The vertical content alignment VALIGN_CENTER setVerticalAlig nment(int) 
+getVerticalAlig nment() The content scaling mode RESIZE_NONE setResizeMode(i nt) getResizeMode() The initial piece of 
+content to be presented, i.e. its position in the content array. 0 setPosition(int ) getPosition() By default the 
+animation should be stopped. Hence, to start the ani-mation its start method must be explicitly invoked. This mecha-nism 
+allows for animations that are programmatically controlled, e.g. via the setPosition method. "stopped" start() / stop() 
+isAnimated() The default "look" for this class. A platform specific HAnimateLook setDefaultLook( HAnimateLook) 
+getDefaultLook( ) The "look" for this object. The HAnimateLook returned from HAnimation.getDefault- Look when this 
+object */
+
+public class HAnimation extends HStaticAnimation implements HNavigable {
+
+/*
+Creates an HAnimation object.See the class description for details of constructor parameters and default 
+values. */
+public HAnimation() {
+}
+
+/*
+Creates an HAnimation object.See the class description for details of constructor parameters and default values. (Table 
+see 824!) */
+public HAnimation(java.awt.Image[] imagesNormal, java.awt.Image[] imagesFocused, int delay, int playMode, int 
+repeatCount) {
+}
+
+/*
+Creates 
+an HAnimation object.See the class description for details of constructor parameters and default 
+values.  */
+public HAnimation(java.awt.Image[] imagesNormal, 
+java.awt.Image[] imagesFocused, int delay, int playMode, int repeatCount,
+ int x, int y, int width, int height) {
+}
+
+/*
+Creates an HAnimation object.See the class description for details of constructor parameters and default 
+values. */
+public HAnimation(java.awt.Image[] images, int delay, int playMode, int repeatCount) {
+}
+
+/*
+Creates an HAnimation object.See the class description for details of constructor parameters and default 
+values. */
+public HAnimation(java.awt.Image[] images, int delay, int playMode, int repeatCount, int x, int y, int width, int 
+height) {
+}
+
+/*
+Returns the currently set default look for HAnimation components. Returns: The HLook that is used by default when 
+creating a new HAnimation component. */
+public static HAnimateLook getDefaultLook() {
+   return new HAnimateLook();
+}
+
+
+private HSound gainFocusSound;
+private HSound loseFocusSound;
+/*
+Get the sound associated with the gain focus event. Speci  ed By: getGainFocusSound()in interface HNavigable Returns: 
+The sound played when the component gains focus.If no sound is associated with gaining focus,then null shall be 
+returned. */
+public HSound getGainFocusSound() {
+   return gainFocusSound;   
+}
+
+/*
+Get the sound associated with the lost focus event. Speci  ed By: getLoseFocusSound()in interface HNavigable Returns: 
+The sound played when the component loses focus.If no sound is associated with losing focus, then null shall be 
+returned. */
+public HSound getLoseFocusSound() {
+   return loseFocusSound;
+}
+
+/*
+Provides the HNavigable object that is navigated to when a particular key is pressed. Speci  ed By:getMove(int)in 
+interface HNavigable Parameters: keyCode -The key code of the pressed key. Returns: Returns the HNavigable object,or if 
+no HNavigable is associated with the keyCode then returns null. */
+public HNavigable getMove(int keyCode) {
+}
+
+/*
+Retrieve the set of key codes which this component maps to navigation targets. Speci  ed By: getNavigationKeys()in 
+interface HNavigationInputPreferred Returns: an array of key codes,or null if no navigation targets are set on this 
+component. */
+public int[] getNavigationKeys() {
+}
+
+/*
+Indicates if this component has focus. Speci  ed By: isSelected()in interface HNavigable Returns: true if the component 
+has focus,otherwise returns false */
+public boolean isSelected() {
+}
+
+/*
+Process an HFocusEvent sent to this HAnimation . Speci  ed By: processHFocusEvent(HFocusEvent)in interface 
+HNavigationInputPreferred Parameters: evt -the HFocusEvent to process. */
+public void processHFocusEvent(HFocusEvent evt) {
+}
+
+/*
+Sets the default HLook for further HAnimation Components. Parameters: hlook -The HLook that will be used by default when 
+creating a new HAnimation component. Note that this parameter may be null,in which case newly created components shall 
+not draw themselves until a non-null look is set using the setLook(HLook)method. */
+public static void setDefaultLook(HAnimateLook hlook) {
+}
+
+/*
+Set the focus control for an HNavigable component.Note setFocusTraversal(HNavigable, HNavigable, HNavigable, 
+HNavigable)is a convenience function for application programmers where a standard up,down,left and right focus traversal 
+between components is required. Note setFocusTraversal(HNavigable, HNavigable, HNavigable, HNavigable)is equivalent to 
+multiple calls to setMove(int, HNavigable),where the key codes VK_UP, VK_DOWN,VK_LEFT,VK_RIGHT are used. Note that this 
+API does not prevent the creation of "isolated"HNavigable components ---authors should endeavor to avoid confusing the 
+user. Speci  ed By: setFocusTraversal(HNavigable, HNavigable, HNavigable, HNavigable)in interface HNavigable Parameters: 
+up -The HNavigable component to move to,when the user generates a VK_UP KeyEvent.If there is no HNavigable component to 
+move "up"to,then null should be speci  ed. down -The HNavigable component to move to,when the user generates a VK_DOWN 
+KeyEvent.If there is no HNavigable component to move "down"to,then null should be speci  ed. left -The HNavigable 
+component to move to,when the user generates a VK_LEFT KeyEvent.If there is no HNavigable component to move 
+"left"to,then null should be speci  ed. right -The HNavigable component to move to,when the user generates a VK_RIGHT 
+KeyEvent.If there is no HNavigable component to move "right"to,then null should be speci  
+ed. */
+public void setFocusTraversal(HNavigable up, HNavigable down, HNavigable left, HNavigable 
+right) {
+}
+
+/*
+Associate a sound with gaining focus,i.e.when the HNavigable receives a java.awt.event.FocusEvent event of type 
+FOCUS_GAINED This sound will start to be played when an object implementing this interface gains focus.It is not 
+guaranteed to be played to completion.If the object implementing this interface loses focus before the audio completes 
+playing, the audio will be truncated.Applications wishing to ensure the audio is always played to completion must 
+implement special logic to slow down the focus transitions. By default,an HNavigable object does not have any gain focus 
+sound associated with it. Note that the ordering of playing sounds is dependent on the order of the focus lost,gained 
+events. Speci  ed By: setGainFocusSound(HSound)in interface HNavigable Parameters: sound -the sound to be played,when 
+the component gains focus.If sound content is already set,the original content is replaced.To remove the sound specify a 
+null HSound . */
+public void setGainFocusSound(HSound sound) {
+}
+
+/*
+Associate a sound with losing focus,i.e.when the HNavigable receives a java.awt.event.FocusEvent event of type 
+FOCUS_LOST.This sound will start to be played when an object implementing this interface loses focus.It is not 
+guaranteed to be played to completion.It is implementation dependent whether and when this sound will be truncated by 
+any gain focus sound played by the next object to gain focus.By default,an HNavigable object does not have any lose 
+focus sound associated with it. Note that the ordering of playing sounds is dependent on the order of the focus 
+lost,gained events. Speci  ed By: setLoseFocusSound(HSound)in interface HNavigable Parameters: sound -the sound to be 
+played,when the component loses focus.If sound content is already set,the original content is replaced.To remove the 
+sound specify a null HSound . */
+public void setLoseFocusSound(HSound sound) {
+}
+
+/*
+nes the navigation path from the current HNavigable to another HNavigable when a particular key is pressed. Note that 
+setFocusTraversal(HNavigable, HNavigable, HNavigable, HNavigable) is equivalent to multiple calls to setMove(int, 
+HNavigable),where the key codes VK_UP VK_DOWN VK_LEFT VK_RIGHT are used. Speci  ed By: setMove(int, HNavigable)in 
+interface HNavigable Parameters: keyCode -The key code of the pressed key.Any numerical keycode is allowed,but the 
+platform may not be able to generate all keycodes.Application authors should only use keys for which 
+HRcCapabilities.isSupported()or HKeyCapabilities.isSupported()returns true. target -The target HNavigable object that 
+should be navigated to.If a target is to be removed from a particular navigation path,then null should be speci  
+ed. */
+public void setMove(int keyCode, HNavigable target) {
+}
+
+
+}

@@ -1,0 +1,366 @@
+package org.davic.net.dvb;
+
+import org.davic.net.*;
+import javax.tv.locator.InvalidLocatorException;
+import java.util.StringTokenizer;
+import com.stevesoft.pat.Regex;
+
+//TODO: fix bug explained in line 107, or contact Pat.Stevesoft, or use new Kaffe regex support
+
+
+//This is the class where most of the work is being done.
+
+/*
+Forms of an URL:
+dvb://<original_network_id>.[<transport_stream_id>][.<service_id>[.<compone
+nt_tag>{&<component_ tag>}][;<event_id>]]{/<path_segments>} or 
+dvb://'textual_service_identifier>'[.<component_tag>{&<component_tag>}][;<event_i
+d>]]{/<path_ segments>}*/
+
+// dvb://60.23.20040.3&4&5;45/path/to/files
+// dvb://'some_description'.3&4&5;45/path/to/files
+public class DvbLocator extends org.davic.net.Locator {
+/*DVB Locator that encapsulates a DVB URL into an object */
+
+
+protected int original_network_id;
+protected int transport_stream_id;
+protected int service_id;
+protected int event_id;
+protected int[] component_tags;
+protected String path;
+
+protected String textual_service_identifier;
+
+protected void initDefaults() {
+   original_network_id=-1;
+   transport_stream_id=-1;
+   service_id=-1;
+   event_id=-1;
+   path=null;
+   component_tags=null;
+   textual_service_identifier=null;
+}
+
+
+public java.lang.String toExternalForm () {
+   StringBuffer url=new StringBuffer();
+   url.append("dvb://");
+   
+   if (textual_service_identifier==null) {   
+      //first from, see above
+      url.append(original_network_id);
+      url.append(".");
+
+      if (transport_stream_id != -1) {
+         url.append(transport_stream_id);
+      }
+      if (service_id != -1) {
+         url.append(".");
+         url.append(service_id);
+         if (component_tags != null && component_tags.length>0) {
+            url.append(".");
+            url.append(component_tags[0]);
+            for (int i=1;i<component_tags.length;i++) {
+               url.append("&");
+               url.append(component_tags[i]);
+            }
+         }
+         if (event_id != -1) {
+            url.append(";");
+            url.append(event_id);
+         }
+      }
+   } else {
+      //second form
+      url.append("'");
+      url.append(textual_service_identifier);
+      url.append("'");
+      if (component_tags != null && component_tags.length>0) {
+         url.append(".");
+         url.append(component_tags[0]);
+         for (int i=1;i<component_tags.length;i++) {
+            url.append("&");
+            url.append(component_tags[i]);
+         }
+      }
+      if (event_id != -1) {
+         url.append(";");
+         url.append(event_id);
+      }
+   }
+   
+   if (path != null)
+      url.append(path);
+      
+   return url.toString();
+}
+
+
+
+public DvbLocator(String url) throws InvalidLocatorException {
+   super(url);
+   initDefaults();
+   
+   //I will not do this with StringTokenizer!
+   //Yes, I want to include a whole Regex library to make my life much easier!
+   
+   //Since 1.1.0, Kaffe includes some regex support, but I did not directly find
+   //support for $1, $2, ... Let's wait and see.
+   
+   Regex re= Regex.perlCode("/dvb:\\/\\/(\\d+)\\.(\\d+)?(?:(?:\\.(\\d+)(?:\\.(\\d+)((?:\\&\\d+)*))?)?(?:\\;(\\d+))?)?(.*)?/");
+   //this regex behaves slightly differently from perl: if $2 does not match, it is not null
+   //(as perl does it) but $3 is taken to be $2.
+   //so for now there is a bug.
+   
+   int i,diff;
+   if (re.search(url)) {
+      i=1;
+      diff=0;
+   } else { //second type
+      re=Regex.perlCode("/dvb:\\/\\/\\'(.*)'(?:\\.(\\d+)((?:\\&\\d+)*)?)?(?:\\;(\\d+))?(.*)?/");
+      if (!re.search(url))
+         throw new InvalidLocatorException(this, "No valid DVB-locator");
+      textual_service_identifier=re.stringMatched(1);
+      i=4;
+      diff=2;
+   }
+   
+   String match;
+   String componentTag=null;
+   for (;i<=7;i++) {
+      match=re.stringMatched(i-diff);
+      switch (i) {
+      case 1:
+         try {
+         original_network_id= (match == null ? -1 : Integer.parseInt(match, 10));
+         } catch (NumberFormatException ex) { original_network_id=-1; }
+         break;
+      case 2:
+         try {
+         //if (re.charsMatched
+         transport_stream_id= (match == null ? -1 : Integer.parseInt(match, 10));
+         } catch (NumberFormatException ex) { transport_stream_id=-1; }
+         break;
+      case 3:
+         try {
+         service_id= (match == null ? -1 : Integer.parseInt(match, 10));
+         } catch (NumberFormatException ex) { service_id=-1; }
+         break;
+      case 4:
+         componentTag=match;
+         break; //continues at 4
+      case 5:
+         componentTag=(componentTag==null ? match : componentTag.concat(match));
+         if (componentTag == null)
+            break;
+         Regex compre = Regex.perlCode("/(\\d+)\\&?/g");
+         int count=0;
+         while (compre.search(componentTag))
+            count++;
+         if (count==0)
+            break;
+         component_tags=new int[count];
+         compre = Regex.perlCode("/(\\d+)\\&?/g");
+         for (int u=0;u<count;u++) {
+            compre.search(componentTag);
+           try {
+            component_tags[u]=Integer.parseInt(compre.stringMatched(1),10);
+           } catch (NumberFormatException ex) { component_tags[u]=-1; }
+         }   
+         break;
+      case 6:
+         try {
+         event_id= (match == null ? -1 : Integer.parseInt(match, 10));
+         } catch (NumberFormatException ex) { event_id=-1; }
+         break;
+      case 7:
+         path=match;
+         break;
+      }
+   }
+   
+}
+/* Constructor for the DVB locator Parameters: url - URL string Throws: 
+InvalidLocatorException when the parameters to construct the locator wouldn't 
+specify a valid locator (e.g. a numeric identifier out of range) */
+
+
+//transport stream
+public DvbLocator(int onid, int tsid) throws InvalidLocatorException {
+   initDefaults();
+   original_network_id=onid;
+   transport_stream_id=tsid;
+}
+/*Constructor 
+for the DVB locator corresponding to the URL form "dvb://onid.tsid" Parameters: 
+onid - original network identifier tsid - transport stream identifier Throws: 
+InvalidLocatorException180 when the parameters to construct the locator wouldn't 
+specify a valid locator (e.g. a numeric identifier out of range) */
+
+//service
+public DvbLocator(int onid, int tsid, int serviceid) throws InvalidLocatorException {
+   initDefaults();
+   original_network_id=onid;
+   transport_stream_id=tsid;
+   service_id=serviceid;
+}
+
+/*Constructor for the DVB locator corresponding to the URL form 
+"dvb://onid.tsid.serviceid" Parameters: onid - original network identifier tsid 
+- transport stream identifier (if -1, the locator does not include a 
+transport_stream_id) serviceid - service identifier Throws: 
+InvalidLocatorException when the parameters to construct the locator wouldn't 
+specify a valid locator (e.g. a numeric identifier out of range) */
+
+//event?
+public DvbLocator(int onid, int tsid, int serviceid, int eventid) throws 
+InvalidLocatorException{
+   initDefaults();
+   original_network_id=onid;
+   transport_stream_id=tsid;
+   service_id=serviceid;
+   event_id=eventid;
+}
+/*Constructor for the DVB locator corresponding to the 
+URL form "dvb://onid.tsid.serviceid;eventid" Parameters: onid - original network 
+include a transport_stream_id) serviceid - service identifier eventid - 
+eveidentifier Throws: InvalidLocatorException when the parameters to construct 
+thlocator wouldn't specify a valid locator (e.g. a numeric identifier out of     
+ range) */
+ 
+//stream?
+ public DvbLocator(int onid, int tsid, int serviceid, int eventid, int componenttag)
+  throws InvalidLocatorException {
+   initDefaults();
+   original_network_id=onid;
+   transport_stream_id=tsid;
+   service_id=serviceid;
+   event_id=eventid;
+   component_tags=new int[1];
+   component_tags[0]=componenttag;
+}
+  /*Constructor for the DVB 
+locatoor "dvb://onid.tsid.serviceid.componenttag" Parameters: onid - original 
+network  identifier tsid - transport stream identifier (if -1, the locator does 
+not      include a transport_stream_id) serviceid - service identifier eventid - 
+event   identifier (if -1, the locator does not include an event id) 
+componenttag -component tag Throws: InvalidLocatorException when the parameters 
+to constructthe locator wouldn't specify a valid locator (e.g. a numeric 
+identifier out range)*/
+
+//streams?
+public DvbLocator(int onid, int tsid, int serviceid, int 
+eventid, int  componenttag[]) throws InvalidLocatorException {
+   initDefaults();
+   original_network_id=onid;
+   transport_stream_id=tsid;
+   service_id=serviceid;
+   event_id=eventid;
+   component_tags=componenttag;
+}
+/* Constructor 
+for the DVB    locator corresponding to the URL form                             
+            "dvb://onid.tsid.serviceid.componenttag{&componenttag};eventid" or   
+       "dvb://onid.tsid.serviceid.componenttaoriginal network identifier tsid - 
+transport stream identifier (if locator does not include a transport_stream_id) 
+serviceid - service identifeventid - event identifier (if -1, the locator does 
+not include an event idcomponenttags - an array of component tags Throws: 
+InvalidLocatorException whenthe parameters to construct the locator wouldn't 
+specify a valid locator (e.g */
+
+public DvbLocator(int onid, int tsid, int serviceid, int eventid, int componenttags[],
+ String filePath) throws InvalidLocatorException {
+   original_network_id=onid;
+   transport_stream_id=tsid;
+   service_id=serviceid;
+   event_id=eventid;
+   component_tags=componenttags;
+   path=filePath;
+}
+/*Constructor for the DVB locator corresponding to the URL form 
+"dvb://onid.tsid.serviceid.componenttag{&componenttag};eventid/filepath"
+ or "dvb://onid.tsid.serviceid.componenttag{&componenttag}/filepath"
+ Parameters:
+  onid - original network identifier 
+  tsid - transport stream identifier (if -1, the locator does not include a transport_stream_id) 
+  serviceid - service identifier 
+  eventid - event identifier (if -1, the locator does not include an event id) 
+  componenttags - array of component tags (if null, the locator does not include any component tags) 
+  the - file path string including the slash character in the beginning 
+  
+  Throws: InvalidLocatorException when the parameters to construct the 
+  locator wouldn't specify a valid locator (e.g. a numeric identifier out of range) */
+  
+  
+
+public int getOriginalNetworkId() {
+   return original_network_id;
+}
+/*Returns the  
+original_network_id Returns:original_network_id */ 
+
+
+public int getTransportStreamId() {
+   return transport_stream_id;
+}
+/*Returns the transport_stream_id Returns:              
+transport_stream_id, -1 if not present */
+
+
+public int getServiceId() {
+   return service_id;
+}
+/*Rthe 
+service_id Returns: service_id, -1 if not present */
+
+
+public int[] getComponentTags() {
+   return (component_tags==null ? new int[0] : component_tags);
+}
+/*Returns an array of the component_tags Returns: an 
+arrcontaining the component_tags, the length of the array will belocator does 
+not identify component_tags */
+
+
+public int getEventId() {
+   return event_id;
+}
+/*the event_id Returns: 
+event_id, -1 if not present */
+
+
+public String getFilePath(){
+   return path;
+}
+/*Returns the file 
+name path part of the locator Returns: the path including the slash character in 
+the beginning. If the locator does not include a path string, this method will 
+return null.*/
+
+
+// -- DEBUGGING --- //
+/*
+public static void main ( String[] args ) {
+  try {
+   DvbLocator loc1=new DvbLocator("dvb://'some_description'.3&4&5;45/path/to/files");
+   DvbLocator loc2=new DvbLocator("dvb://'some_description';45/path/to/files");
+   DvbLocator loc3=new DvbLocator("dvb://'some_description'.3&4&5/path/to/files");
+   DvbLocator loc4=new DvbLocator(400, 500);
+   int[] t={50, 60};
+   DvbLocator loc5=new DvbLocator(400, 500, 600, 700, t, "/hallo/h.class");
+   
+   System.out.println(loc1.toExternalForm());
+   System.out.println(loc2.toExternalForm());
+   System.out.println(loc3.toExternalForm());
+   //System.out.println(loc4.toExternalForm());
+   //System.out.println(loc5.toExternalForm());
+  } catch (javax.tv.locator.InvalidLocatorException ex) {
+  ex.printStackTrace();
+  }
+  
+}
+
+*/
+
+}

@@ -1,0 +1,107 @@
+This is a "plugin" for the Video Disk Recorder (VDR).
+
+Written by:                  Marcel Wiesweg <marcel.wiesweg@gmx.de>
+
+Project's homepage:          http://interactive-vdr.sourceforge.net/
+
+Latest version available at: http://www.sourceforge.net/projects/interactive-vdr
+
+See the file COPYING for license information.
+
+Description:
+
+This plugin aims at an implementation of the 
+Multimedia Home Platform (MHP) for VDR.
+
+
+STATUS of this file:
+   Updated 2 July 2005 for compilation from SVN
+
+
+Installation:
+ 
+ The plugin requires four steps. Please do not forget step 2, 4 and 5, which
+ are unusual for VDR plugins.
+
+ 1)The plugin has quite a few dependencies. Please check this list
+   before compiling the plugin.
+   You need:
+   
+   - VDR 1.3.x series, tested with version 1.3.27, later versions are okay,
+     earlier versions are not officially test/not recommended/
+     may work, may not work (it is a development series after all)
+     
+   - A Java virtual machine based on GNU Classpath. Currently, the only supported VM is
+   
+     - SableVM, current SVN snapshot.
+         Get the latest version from SVN, the 1.11 release of SableVM does not work:
+         
+         svn co svn://svn.sablevm.org/sablevm/trunk sablevm-trunk
+         svn co svn://svn.sablevm.org/sablevm-classpath/trunk sablevm-classpath-trunk
+         
+         Some dependencies (Jikes, libpopt) are already included in this package.
+         
+         Compile and install SableVM.
+         If you don't have GTK installed, you can savely disable
+         compilation of the GTK peer of Classpath, it is not needed.
+         
+   - DirectFB (www.directfb.org), version 0.9.20, 0.9.21 or 0.9.22.
+      Please note that DirectFB is primarily used for its graphics capabilities.
+      You do _not_ need a working framebuffer or supported graphics card.
+      Do
+      
+      ./configure; make; make install      
+      
+       (Or, if you install DirectFB only for this plugins and have no plans to use
+        it with your graphics card (e.g. for the softdevice output method),
+        you can switch off compiling the graphics driver parts:
+      
+        ./configure --with-gfxdrivers= --disable-fbdev
+      
+        If you do not know which one to choose, ignore this hint and choose the first suggestion.)
+      
+      In the output from configure, please check for PNG, JPG and Freetype support.
+      If there is a "no", please check this:
+         - libpng >= 1.2.0
+         - libjpeg >= 6.2
+         - freetype2 >= 2.0.2 
+         
+   - DFB++, with the same version number as your DirectFB installation
+   
+     This needs
+       * pkg-config (http://www.freedesktop.org/software/pkgconfig/, but
+         this is a standard package, it will be available from your distributor)
+        
+     If you installed DirectFB (as recommended) in /usr/local, and DFB++' configure
+     complains, do
+     PKG_CONFIG_PATH=/usr/local/lib/pkgconfig/ ./configure
+      
+   - ffmpeg, both 0.4.8 and 0.4.9-pre1 are tested
+     ./configure --enable-shared
+
+   - The MPEG encoding for the traditional FF-card output will require some power
+     from your CPU, but it is not real time encoding, only one picture per change.
+     I tested on a a 1,2 GHz Celeron processor which is  more than sufficient,
+     so I expect really low power CPUs to work. Expensive drawing operations,
+     such as displaying 3.2 megapixel Jpegs on TV, are a different story.
+
+   Please compile and install all these packages.
+   
+ 2)Edit Make.config and adapt the paths to your system.
+
+ 3)Now it is time to compile the plugin like all other plugins.
+ 
+ 4)Some files (Java and native libraries from the MHP stack, fonts)
+   need to be installed to /usr/local/vdr/mhp.
+   Descend into the plugin's main directory and execute (as root)
+   
+   "make install".
+   
+   Now enjoy...
+
+
+
+Additional information for developers can be found in 
+the README.DEVELOPER file.
+If you only want to use the plugin, you do NOT need to read this.
+

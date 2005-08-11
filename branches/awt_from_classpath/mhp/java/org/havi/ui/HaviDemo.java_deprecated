@@ -1,0 +1,224 @@
+/* A simple Java class to test PCRManagerTimeBase */
+/*
+ * $Id: HaviDemo.java 1.17 2001/05/24 21:10:56 UTC gus@dstp02 Exp gus@dstp02 $
+ */
+
+package org.havi.ui;
+
+import java.io.*;
+//import javax.media.*;
+import java.awt.*;
+import java.net.URL;
+import java.net.MalformedURLException;
+import java.awt.event.ActionListener;
+import java.awt.event.ActionEvent;
+import java.awt.event.KeyEvent;
+
+public class HaviDemo extends Thread implements org.havi.ui.event.HActionListener {
+
+  public static void main (String argv[]) {
+    new HaviDemo();
+  }
+
+  public HaviDemo() {
+
+    //HToolkit.showBorder = false;
+    
+    HSound sf = new HSound();
+    HSound sa = new HSound();
+    try {
+      sf.load("http://dasey.ncsl.nist.gov/nist_docs/havi/sounds/pop.wav");
+      sa.load("http://dasey.ncsl.nist.gov/nist_docs/havi/sounds/crash.wav");
+    } catch ( Exception e) {
+      System.err.println(e);
+    }
+
+    HSceneFactory hsf = HSceneFactory.getInstance();
+    HSceneTemplate hst = new HSceneTemplate();
+    hst.setPreference(HSceneTemplate.SCENE_PIXEL_RECTANGLE,
+                      new Rectangle(50,50, 400, 200),
+                      HSceneTemplate.REQUIRED);
+    HScene f = hsf.getBestScene(hst);
+    // f.setBackground(java.awt.Color.gray);
+    // f.setMatte(new HFlatMatte(0.6F));
+    
+    f.setLayout(new FlowLayout());
+
+    HMatte m = new HFlatMatte(0.8F);
+   
+    HStaticText t1 = new HStaticText("Info", 10, 200, 100, 60);
+    HText t2 = new HText("Click\nHere >>", 120, 200, 100, 60);
+    HTextButton t3 = new HTextButton("NIST TV", 140, 200, 100, 60);
+    t3.setBackground(new Color(200, 200, 200));
+    
+    t1.setBackground(new Color(200,200,255));
+    try {
+      URL mu = new URL("http://dasey.ncsl.nist.gov/nist_docs/havi/mattes/button-sphere.jpg");
+      t1.setMatte(new HImageMatte(t1.getToolkit().getImage(mu)));
+    t2.setMatte(m);
+    } catch (MalformedURLException e ) {
+      System.err.println(e);
+    }
+    
+    /*try {
+      URL mu = new URL("http://dasey.ncsl.nist.gov/nist_docs/havi/mattes/nist-centennial.jpg");
+      HImageMatte hm =
+        new HImageMatte(t1.getToolkit().getImage(mu));
+      hm.setOffset(new Point(0,10));
+      t3.setMatte(hm);
+    } catch (MalformedURLException e ) {
+      System.err.println(e);
+    }*/
+
+    // T
+    // HStaticIcon i1 = new HStaticIcon();
+    // i1.setGraphicContent(i1.getToolkit().createImage("/tmp/icon.gif"),
+    //                     HState.NORMAL_STATE);
+    // i1.setBounds(10, 70, 100, 60);
+  
+    /*
+      HGraphicButton i2 = new HGraphicButton(
+      t1.getToolkit().createImage("/tmp/matte.jpg"),
+      t1.getToolkit().createImage("/tmp/focus.jpg"),
+      t1.getToolkit().createImage("/tmp/action.jpg")
+      );
+      i2.setBounds(120, 70, 100, 120);
+    */
+
+    HStaticRange t4 = new HStaticRange(HStaticRange.OR_VERT, 0, 100, 50, 10, 200, 200, 100);
+    
+    f.add(t1);
+    f.add(t2);
+    f.add(t3);
+    f.add(t4);
+    // f.add(i1);
+    // f.add(i2);
+
+    HTextButton t5 = new HTextButton("Rien du tout");
+    t5.setActionCommand("ChangeBG");
+    t5.addHActionListener(this);
+    f.add(t5);
+    
+    f.doLayout();
+
+
+    float[] sequence = {0.00F, 0.05F, 0.10F, 0.15F, 0.20F, 0.25F, 0.30F,
+                        0.35F, 0.40F, 0.45F, 0.50F, 0.55F, 0.60F, 0.65F,
+                        0.70F, 0.75F, 0.80F, 0.85F, 0.90F, 0.95F, 1.00F};
+    HFlatEffectMatte em = new HFlatEffectMatte(sequence);
+    
+    em.setPlayMode(HAnimateEffect.PLAY_ALTERNATING);
+    em.setDelay(5);
+    em.start();
+    // i2.setMatte(em);
+    
+    t2.setTextContent("=====>", HState.FOCUSED_STATE);
+    t3.setTextContent("Click for\nNIST TV", HState.FOCUSED_STATE);
+    t3.setTextContent("GO!!!", HState.ACTIONED_STATE);
+
+    t2.setGainFocusSound(sf);
+    t3.setGainFocusSound(sf);
+    t3.setActionSound(sa);
+    /* focus traversal for t3 */
+    t3.setFocusTraversal(t2, t5, t2, t5);
+
+    
+    // i2.setGainFocusSound(sf);
+    // i2.setActionSound(sa);
+    
+    t1.requestFocus();
+    System.out.println(t1.getPreferredSize());
+    
+    hst.setPreference(HSceneTemplate.SCENE_PIXEL_RECTANGLE,
+                      new Rectangle(100,100, 100, 100),
+                      HSceneTemplate.REQUIRED);
+    f = hsf.getBestScene(hst);
+    f.setMatte(new HFlatMatte(0.6F));
+    f.setLayout(new FlowLayout());
+    t1 = new HStaticText("New Scene", 10, 10, 100, 60);
+    f.add(t1);
+    f.doLayout();
+
+
+    /* Create a fake EPG */
+    hst.setPreference(HSceneTemplate.SCENE_PIXEL_RECTANGLE,
+                      new Rectangle(0,0, 640, 480),
+                      HSceneTemplate.REQUIRED);
+    HScene epg = hsf.getBestScene(hst);
+    epg.setLayout(new GridBagLayout());
+    epg.setBackground(Color.white);
+    epg.setMatte(new HFlatMatte(0.20F));
+                 
+    GridBagConstraints constraints = new GridBagConstraints();
+    constraints.fill = GridBagConstraints.BOTH;
+    constraints.insets = new Insets(5,5,5,5);
+    constraints.ipadx = constraints.ipady = 2;
+    constraints.weightx = 1.0;
+
+    String x[] = { "Red", "White", "Blue", "1", "Anticonstitutionnellement"};
+    HTextButton table[][] = new HTextButton[10][5];
+    
+    for( int i = 0; i<10; i++ ) {
+      for (int j=0; j<5; j++) {
+        HTextButton b = new HTextButton( x[j] + "[" + i + "," + j + "]");
+        b.setMatte(m);
+        if(j==4) {
+          System.out.println("End of row " + i);
+          constraints.gridwidth =  GridBagConstraints.REMAINDER;
+        } else {
+          constraints.gridwidth = 1;
+        }
+        epg.add(b, constraints);
+        table[i][j] = b;
+      }
+    }
+    /* Set traversal */
+    for( int i = 0; i<10; i++ ) {
+      for (int j=0; j<5; j++) {
+        table[i][j].setFocusTraversal
+          ( /*Up*/ ( i>0 ? table[i-1][j] : table[9][j]),
+            /*Down*/ ( i<9 ? table[i+1][j] : table[0][j]),
+            /*Left*/ ( j>0 ? table[i][j-1] : table[i][4]),
+            /*Right*/ ( j<4 ? table[i][j+1] : table[i][0]) );
+      }
+    }
+        
+
+    
+    /* Locate current Graphics device */
+    HScreen hscreen = HScreen.getDefaultHScreen();
+    HGraphicsDevice grDevice = hscreen.getDefaultHGraphicsDevice();
+
+    int keyID = 0;
+    
+    while(true) {
+      try {
+        sleep(10000);
+      } catch (Exception e) {
+        System.err.println(e);
+        return;
+      }
+      KeyEvent e = new KeyEvent(t3, keyID++, 0,
+                                KeyEvent.SHIFT_MASK,
+                                KeyEvent.VK_TAB);
+      grDevice.fireKeyEvent(e);
+      System.out.println("Fired event: " + e);
+    }
+
+  }
+
+  /** ActionListener interface */
+  public void actionPerformed(ActionEvent e) {
+    HScreen hscreen = HScreen.getDefaultHScreen();
+    HBackgroundDevice bgDevice = hscreen.getDefaultHBackgroundDevice();
+    /*if (bgDevice instanceof HStillBackgroundDevice) {
+      ((HStillBackgroundDevice)bgDevice).setBackgroundImage(null);
+      ((HStillBackgroundDevice)bgDevice).setBackgroundColor(Color.white);
+    } else {
+      System.err.println(
+                         "Unable to change background image: dvice is not an HStillBackgroundDevice");
+      System.out.println("Changing " + e.getActionCommand());
+    }*/
+  }
+  
+}
