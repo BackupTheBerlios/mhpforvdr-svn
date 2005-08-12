@@ -37,7 +37,7 @@ obligated to do so.  If you do not wish to do so, delete this
 exception statement from your version. */
 
 
-package java.awt;
+package vdr.mhp.awt;
 
 import java.awt.datatransfer.Clipboard;
 import java.awt.dnd.DragGestureEvent;
@@ -483,20 +483,6 @@ public class MHPToolkit
   }
 
   /**
-   * Return the font metrics for the specified font
-   *
-   * @param name The name of the font to return metrics for.
-   *
-   * @return The requested font metrics.
-   *
-   * @deprecated
-   */
-   public FontMetrics getFontMetrics(Font name) {
-      //TODO
-      return FontMetrics.getFontMetrics( font);
-   }
-
-  /**
    * Flushes any buffered data to the screen so that it is in sync with
    * what the AWT system has drawn to it.
    */
@@ -504,32 +490,72 @@ public class MHPToolkit
      MHPScreen.sync();
   }
 
-  /**
-   * Returns an image from the specified file, which must be in a
-   * recognized format.  Supported formats vary from toolkit to toolkit.
-   *
-   * @return name The name of the file to read the image from.
-   */
-   public Image getImage(String name) {
-      return MHPImageProducer.getImage(name);
-   }
-
-  /**
-   * Returns an image from the specified URL, which must be in a
-   * recognized format.  Supported formats vary from toolkit to toolkit.
-   *
-   * @return url The URl to read the image from.
-   */
-  public Image getImage(URL url) {
-     return MHPImageProducer.getImage(url);
+  private class LRUCache extends LinkedHashMap
+  {    
+    int max_entries;
+    public LRUCache(int max)
+    {
+      super(max, 0.75f, true);
+      max_entries = max;
+    }
+    protected boolean removeEldestEntry(Map.Entry eldest)
+    {
+      return size() > max_entries;
+    }
   }
 
+  private LRUCache fontCache = new LRUCache(50);
+  private LRUCache metricsCache = new LRUCache(50);
+  private LRUCache imageCache = new LRUCache(50);
+
+  public FontMetrics getFontMetrics (Font font) 
+  {
+    synchronized (metricsCache)
+      {
+        if (metricsCache.containsKey(font))
+          return (FontMetrics) metricsCache.get(font);
+      }
+
+    FontMetrics m = new MHPFontMetrics (font);
+    synchronized (metricsCache)
+      {
+        metricsCache.put(font, m);
+      }
+    return m;
+  }
+
+  public Image getImage (String filename) 
+  {
+    if (imageCache.containsKey(filename))
+      return (Image) imageCache.get(filename);
+    else
+      {
+        Image im = createImage(filename);
+        imageCache.put(filename, im);
+        return im;
+      }
+  }
+
+  public Image getImage (URL url) 
+  {
+    if (imageCache.containsKey(url))
+      return (Image) imageCache.get(url);
+    else
+      {
+        Image im = createImage(url);
+        imageCache.put(url, im);
+        return im;
+      }
+  }
+  
   public Image createImage(String filename) {
-     return MHPImageProducer.createImage(filename);
+     return new MHPImage(filename);
   }
 
   public Image createImage(URL url) {
-     return MHPImageProducer.createImage(url);
+     MHPImageDecoder producer = new MHPImageDecoder(url);
+     MHPImage image = new MHPImage(producer);
+     return image;
   }
 
   /**
@@ -599,7 +625,7 @@ public class MHPToolkit
    * @return The created image.
    */
   public Image createImage(ImageProducer producer) {
-      return MHPImageProducer.createImage(producer);
+      return new MHPImage(producer);
   }
 
   /**
@@ -627,7 +653,9 @@ public class MHPToolkit
    * @return The created image.
    */
   public Image createImage(byte[] data, int offset, int len) {
-      return MHPImageProducer.createImage(data, offset, len);
+     MHPImageDecoder producer = new MHPImageDecoder(data, offset, len);
+     MHPImage image = new MHPImage(producer);
+     return image;
   }
 
   /**

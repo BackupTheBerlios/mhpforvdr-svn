@@ -459,6 +459,30 @@ bool InstanceMethod::CallMethod(jobject object, ReturnType &ret, Types returnTyp
    return checkException();
 }
 
+//inspired by jcl.c from GNU Classpath
+bool Exception::Throw(const char *classname, const char *errMsg, ThrowMode mode = ThrowModeTry) {
+   checkException();
+   ClassRef exc;
+   if (!exc.SetClass(classname)) {
+      if (mode == ThrowModeConsequent) {
+         const char *errExcClass = "java/lang/ClassNotFoundException";
+         if (!exc.SetClass(errExcClass)) {
+            errExcClass = "java/lang/InternalError";
+            if (!exc.SetClass(errExcClass)) {
+               fprintf (stderr, "JNI::Exception: Utterly failed to throw exeption ");
+               fprintf (stderr, className);
+               fprintf (stderr, " with message ");
+               fprintf (stderr, errMsg);
+               return false;
+            }
+         }
+         JNIEnvProvider::GetEnv()->ThrowNew(className, classname);
+      }
+      return false;
+   }
+   return JNIEnvProvider::GetEnv()->ThrowNew(className, errMsg) == 0;
+}
+
 
 }//end of namespace JNI
 

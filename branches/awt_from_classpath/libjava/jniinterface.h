@@ -144,6 +144,17 @@ protected:
    GlobalClassRef classRef;
 };
 
+class Exception : public BaseObject {
+public:
+   Exception();
+   enum ThrowMode { ThrowModeTry, ThrowModeConsequent };
+   //Throws a new exception instance of given class with given error message.
+   //If ThrowMode is Consequent, in case of failure a ClassNotFoundException and
+   //ultimately an internal error is sent. If mode is Try, just try to throw given class
+   //and nothing more. In any case, return value indicates whether the requested attempt was successful.
+   bool Throw(const char *classname, const char *errMsg, ThrowMode mode = ThrowModeTry);
+};
+
 }//end of namespace JNI
 
 

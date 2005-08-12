@@ -67,5 +67,9 @@ static String getAppBasePrefix() {
       return app.getCarouselBasePath()+File.separator;
 }
 
+public static byte[] toNativeString(String s) {
+   return (s+'\0').getBytes();
+}
+
 
 }

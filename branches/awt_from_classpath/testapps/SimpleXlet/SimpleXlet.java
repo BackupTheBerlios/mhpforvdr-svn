@@ -63,11 +63,13 @@ public class SimpleXlet implements Xlet, KeyListener {
         //testIXC();
         //testTimers();
         //testXMI();
-        testStackTrace();
-        testJavaIO();
+        //testStackTrace();
+        //testJavaIO();
+        testUI();
     }
     
     void testUI() {
+        /*
         class PrintSomething implements Runnable {
               public void run() {
                  System.out.println("Ich bin ein Thread");
@@ -77,6 +79,8 @@ public class SimpleXlet implements Xlet, KeyListener {
         (new Thread(
            new PrintSomething()
         )).start();
+        */
+        
         HSceneFactory hsceneFactory = HSceneFactory.getInstance();
         System.out.println("Creating scene");
         scene = hsceneFactory.getFullScreenScene(HScreen.getDefaultHScreen().getDefaultHGraphicsDevice());

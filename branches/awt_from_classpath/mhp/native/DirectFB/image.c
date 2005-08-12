@@ -17,6 +17,7 @@
 #include <libmhpoutput/output.h>
 #include "image.h"
 
+#if 0
 Image::Image()
  : surface(0), hasalpha(0), left(0), top(0),
    latency(0), frame(0), next(0)
@@ -27,13 +28,13 @@ Image::Image()
 extern "C" {
  
 jlong 
-Java_java_awt_Toolkit_imgCreateImage ( JNIEnv* env, jclass clazz, jint width, jint height )
+Java_vdr_mhp_awt_MHPImage_imgCreateImage ( JNIEnv* env, jobject obj, jint width, jint height )
 {
    DFBSurfaceDescription desc;
    IDirectFBSurface *surface;
    Image *img;
 
-  //printf( "Java_java_awt_Toolkit_imgCreateImage(%i, %i) called.\n", width, height );
+  //printf( "Java_vdr_mhp_awt_MHPImage_imgCreateImage(%i, %i) called.\n", width, height );
 
 
    desc.flags = (DFBSurfaceDescriptionFlags)(DSDESC_WIDTH | DSDESC_HEIGHT);// | DSDESC_PIXELFORMAT;
@@ -57,14 +58,14 @@ Java_java_awt_Toolkit_imgCreateImage ( JNIEnv* env, jclass clazz, jint width, ji
 
 
 jlong 
-Java_java_awt_Toolkit_imgCreateScreenImage ( JNIEnv* env, jclass clazz, jint width, jint height )
+Java_vdr_mhp_awt_MHPImage_imgCreateScreenImage ( JNIEnv* env, jobject obj, jint width, jint height )
 {
     DFBSurfacePixelFormat format;
     DFBSurfaceDescription desc;
     IDirectFBSurface *surface;
     Image *img;
 
-    printf( "Java_java_awt_Toolkit_imgCreateScreenImage (%dx%d)\n", width, height );
+    printf( "Java_vdr_mhp_awt_MHPImage_imgCreateScreenImage (%dx%d)\n", width, height );
 
     desc.flags = (DFBSurfaceDescriptionFlags)(DSDESC_WIDTH | DSDESC_HEIGHT | DSDESC_PIXELFORMAT);
 
@@ -79,6 +80,8 @@ Java_java_awt_Toolkit_imgCreateScreenImage ( JNIEnv* env, jclass clazz, jint wid
    } catch (DFBException *e) {
       printf("DirectFB: Error %s, %s\n", e->GetAction(), e->GetResult());
       delete e;
+      Exception exp;
+      exp.Throw("java/lang/RuntimeException", "Failed to create DFBSurface for Image");
       return 0;
    }
    
@@ -98,44 +101,19 @@ Java_java_awt_Toolkit_imgCreateScreenImage ( JNIEnv* env, jclass clazz, jint wid
    }
     
     
-    printf( "Java_java_awt_Toolkit_imgCreateScreenImage: created an image (%dx%d): %p with surface %p, pixelformat %d, check %d\n", 
+    printf( "Java_vdr_mhp_awt_MHPImage_imgCreateScreenImage: created an image (%dx%d): %p with surface %p, pixelformat %d, check %d\n", 
           width, height, img, img->surface, format, img->surface->GetPixelFormat());
 
     return (jlong ) img;
 }
 
 
-/* generic (ImageProducer) based image construction */
 
 void
-Java_java_awt_Toolkit_imgSetIdxPels ( JNIEnv* env, jclass clazz, Image * img,
-                                      jint x, jint y, jint w, jint h,
-                                      jarray clrMap, jarray idxPels, jint trans,
-                                      jint off, jint scan)
-{
-    printf( "Java_java_awt_Toolkit_imgSetIdxPels\n" );
-}
-
-
-void
-Java_java_awt_Toolkit_imgSetRGBPels ( JNIEnv* env, jclass clazz, Image * img,
-                                      jint x, jint y, jint w, jint h,
-                                      jarray rgbPels, jint off, jint scan)
-{
-    printf( "Java_java_awt_Toolkit_imgSetRGBPels\n" );
-}
-
-void
-Java_java_awt_Toolkit_imgComplete( JNIEnv* env, jclass clazz, Image * img, jint status )
-{
-    printf( "Java_java_awt_Toolkit_imgComplete\n" );
-}
-
-void
-Java_java_awt_Toolkit_imgFreeImage( JNIEnv* env, jclass clazz, jint nativeHandle)
+Java_vdr_mhp_awt_MHPImage_imgFreeImage( JNIEnv* env, jobject obj, jint nativeHandle)
 {
   Image *img = (Image*) nativeHandle;
-  printf("Java_java_awt_Toolkit_imgFreeImage: img %p, surface %p\n", img, img->surface);
+  printf("Java_vdr_mhp_awt_MHPImage_imgFreeImage: img %p, surface %p\n", img, img->surface);
   
   if(!img)
      return;          
@@ -147,25 +125,17 @@ Java_java_awt_Toolkit_imgFreeImage( JNIEnv* env, jclass clazz, jint nativeHandle
 
 
 jlong 
-Java_java_awt_Toolkit_imgCreateScaledImage ( JNIEnv* env, jclass clazz,
+Java_vdr_mhp_awt_MHPImage_imgCreateScaledImage ( JNIEnv* env, jobject obj,
                          jint nativeHandle, int width, int height )
 {
-  /*Image *img = (Image*) nativeHandle;
-
-  printf( "TODO: Java_java_awt_Toolkit_imgCreateScaledImage(..., %p, %i, %i)\n", img, width, height );
-   */
+   
+  //TODO!!
   return 0;
 }
 
 
-void
-Java_java_awt_Toolkit_imgProduceImage ( JNIEnv* env, jclass clazz, jobject producer, jint nativeHandle )
-{
-    printf( "Java_java_awt_Toolkit_imgProduceImage\n" );
-}
-
 jlong 
-Java_java_awt_Toolkit_imgCreateFromFileLocalEncoding ( JNIEnv* env, jclass clazz, jbyteArray fileName )
+Java_vdr_mhp_awt_MHPImage_imgCreateFromFileLocalEncoding ( JNIEnv* env, jobject obj, jbyteArray fileName )
 {
     DFBSurfaceDescription desc;
     IDirectFBImageProvider *provider;
@@ -176,7 +146,7 @@ Java_java_awt_Toolkit_imgCreateFromFileLocalEncoding ( JNIEnv* env, jclass clazz
     fn = (const char *)env->GetByteArrayElements(fileName, 0);
     //fn = env->GetStringUTFChars(fileName, NULL);
 
-    printf( "Java_java_awt_Toolkit_imgCreateFromFile(\"%s\") called.\n", fn );
+    printf( "Java_vdr_mhp_awt_MHPImage_imgCreateFromFile(\"%s\") called.\n", fn );
 
     try {
        provider=MhpOutput::System::self()->Interface()->CreateImageProvider(fn);
@@ -239,7 +209,7 @@ Java_java_awt_Toolkit_imgCreateFromFileLocalEncoding ( JNIEnv* env, jclass clazz
     }
 
 
-    //printf( "Java_java_awt_Toolkit_imgCreateFromFile(\"%s\") done. img: %p\n", fn, img );
+    //printf( "Java_vdr_mhp_awt_MHPImage_imgCreateFromFile(\"%s\") done. img: %p\n", fn, img );
     if (img->desc.caps & DICAPS_COLORKEY) {
          //printf( ", colorkey: %02x %02x %02x", img->desc.colorkey_r, img->desc.colorkey_g, img->desc.colorkey_b );
          surface->SetSrcColorKey( img->desc.colorkey_r, img->desc.colorkey_g, img->desc.colorkey_b );
@@ -249,7 +219,7 @@ Java_java_awt_Toolkit_imgCreateFromFileLocalEncoding ( JNIEnv* env, jclass clazz
 }
 
 jlong 
-Java_java_awt_Toolkit_imgCreateFromData ( JNIEnv* env, jclass clazz,
+Java_vdr_mhp_awt_MHPImage_imgCreateFromData ( JNIEnv* env, jobject obj,
                       jbyteArray jbuffer, jint off, jint len )
 {
      DFBSurfaceDescription desc;
@@ -353,7 +323,7 @@ Java_java_awt_Toolkit_imgCreateFromData ( JNIEnv* env, jclass clazz,
      }
 
 
-     printf( "Java_java_awt_Toolkit_imgCreateFromData() done. img: %p (alpha: %d", img, img->hasalpha );
+     printf( "Java_vdr_mhp_awt_MHPImage_imgCreateFromData() done. img: %p (alpha: %d", img, img->hasalpha );
      if (img->desc.caps & DICAPS_COLORKEY) {
           printf( ", colorkey: %02x %02x %02x", img->desc.colorkey_r, img->desc.colorkey_g, img->desc.colorkey_b );
           surface->SetSrcColorKey( img->desc.colorkey_r, img->desc.colorkey_g, img->desc.colorkey_b );
@@ -363,21 +333,12 @@ Java_java_awt_Toolkit_imgCreateFromData ( JNIEnv* env, jclass clazz,
      return (jlong ) img;
 }
 
-jlong 
-Java_java_awt_Toolkit_imgSetFrame ( JNIEnv* env, jclass clazz, Image* img, int frameNo )
-{
-    printf( "Java_java_awt_Toolkit_imgSetFrame(): WARNING: no effect yet.\n" );
-    
-    return NULL;
-}
-
-
 /************************************************************************************
  * field access
  */
 
 jint
-Java_java_awt_Toolkit_imgGetWidth ( JNIEnv* env, jclass clazz, jint nativeHandle)
+Java_vdr_mhp_awt_MHPImage_imgGetWidth ( JNIEnv* env, jobject obj, jint nativeHandle)
 {
   Image *img = (Image*) nativeHandle;
 
@@ -397,19 +358,19 @@ Java_java_awt_Toolkit_imgGetWidth ( JNIEnv* env, jclass clazz, jint nativeHandle
 }
 
 jlong 
-Java_java_awt_Toolkit_imgGetSurface ( JNIEnv* env, jclass clazz, jint nativeHandle)
+Java_vdr_mhp_awt_MHPImage_imgGetSurface ( JNIEnv* env, jobject obj, jint nativeHandle)
 {
     Image *img = (Image*) nativeHandle;
 
   if(!img)
      return 0;
      
-    //printf("Java_java_awt_Toolkit_imgGetSurface: %p, control %d\n", img->surface, img->surface->GetPixelFormat());
+    //printf("Java_vdr_mhp_awt_MHPImage_imgGetSurface: %p, control %d\n", img->surface, img->surface->GetPixelFormat());
     return (jlong ) img->surface;
 }
 
 jint
-Java_java_awt_Toolkit_imgGetHeight ( JNIEnv* env, jclass clazz, jint nativeHandle)
+Java_vdr_mhp_awt_MHPImage_imgGetHeight ( JNIEnv* env, jobject obj, jint nativeHandle)
 {
   Image *img = (Image*) nativeHandle;
   
@@ -428,27 +389,9 @@ Java_java_awt_Toolkit_imgGetHeight ( JNIEnv* env, jclass clazz, jint nativeHandl
     return height;
 }
 
-jboolean
-Java_java_awt_Toolkit_imgIsMultiFrame ( JNIEnv* env, jclass clazz, jint nativeHandle)
-{
-    return 0;
-}
 
 jint
-Java_java_awt_Toolkit_imgGetLatency ( JNIEnv* env, jclass clazz, jint nativeHandle)
-{
-    return 0;
-}
-
-jlong 
-Java_java_awt_Toolkit_imgGetNextFrame ( JNIEnv* env, jclass clazz, jint nativeHandle)
-{
-    return NULL;
-}
-
-
-jint
-Java_java_awt_Toolkit_imgGetRGB(  JNIEnv* env, jclass clazz, jint imgData, jint x, jint y) {
+Java_vdr_mhp_awt_MHPImage_imgGetRGB(  JNIEnv* env, jobject obj, jint imgData, jint x, jint y) {
      u_int32_t             *dst;
      Image                 *img = (Image*) imgData;
      int                    pitch,ret;
@@ -472,7 +415,7 @@ Java_java_awt_Toolkit_imgGetRGB(  JNIEnv* env, jclass clazz, jint imgData, jint 
 }
 
 void
-Java_java_awt_Toolkit_imgGetRGBRegion(  JNIEnv* env, jclass clazz, jint imgData, jint startX, jint startY, jint w, jint h, jintArray rgbArray, jint offset, jint scansize) {
+Java_vdr_mhp_awt_MHPImage_imgGetRGBRegion(  JNIEnv* env, jobject obj, jint imgData, jint startX, jint startY, jint w, jint h, jintArray rgbArray, jint offset, jint scansize) {
      u_int32_t             *dst;
      Image                 *img = (Image*) imgData;
      int                    pitch;
@@ -506,7 +449,7 @@ Java_java_awt_Toolkit_imgGetRGBRegion(  JNIEnv* env, jclass clazz, jint imgData,
 }
 
 void
-Java_java_awt_Toolkit_imgSetRGB(  JNIEnv* env, jclass clazz, jint imgData, jint x, jint y, jint rgb) {
+Java_vdr_mhp_awt_MHPImage_imgSetRGB(  JNIEnv* env, jobject obj, jint imgData, jint x, jint y, jint rgb) {
      u_int32_t             *dst;
      Image                 *img = (Image*) imgData;
      int                    pitch;
@@ -527,7 +470,7 @@ Java_java_awt_Toolkit_imgSetRGB(  JNIEnv* env, jclass clazz, jint imgData, jint 
 }
 
 void
-Java_java_awt_Toolkit_imgSetRGBRegion(  JNIEnv* env, jclass clazz, jint imgData, jint startX, jint startY, jint w, jint h, jintArray rgbArray, jint offset, jint scansize) {
+Java_vdr_mhp_awt_MHPImage_imgSetRGBRegion(  JNIEnv* env, jobject obj, jint imgData, jint startX, jint startY, jint w, jint h, jintArray rgbArray, jint offset, jint scansize) {
      u_int32_t             *dst;
      Image                 *img = (Image*) imgData;
      int                    pitch;
@@ -561,7 +504,7 @@ Java_java_awt_Toolkit_imgSetRGBRegion(  JNIEnv* env, jclass clazz, jint imgData,
 }
 
 jlong 
-Java_java_awt_Toolkit_imgGetSubImage(  JNIEnv* env, jclass clazz, jint imgData, jint x, jint y, jint w, jint h) {
+Java_vdr_mhp_awt_MHPImage_imgGetSubImage(  JNIEnv* env, jobject obj, jint imgData, jint x, jint y, jint w, jint h) {
    Image                 *img = (Image*) imgData;
    
    if(!img)
@@ -585,7 +528,228 @@ Java_java_awt_Toolkit_imgGetSubImage(  JNIEnv* env, jclass clazz, jint imgData, 
    }
    return (jlong )newImage;
 }
+#endif
 
+
+
+
+
+
+
+
+jlong 
+Java_vdr_mhp_awt_MHPImage_imgCreateScreenImage ( JNIEnv* env, jobject obj, jint width, jint height )
+{
+   DFBSurfacePixelFormat format;
+   DFBSurfaceDescription desc;
+   IDirectFBSurface *surface;
+
+   printf( "Java_vdr_mhp_awt_MHPImage_imgCreateScreenImage (%dx%d)\n", width, height );
+
+   desc.flags = (DFBSurfaceDescriptionFlags)(DSDESC_WIDTH | DSDESC_HEIGHT | DSDESC_PIXELFORMAT);
+
+   desc.width = width;
+   desc.height = height;
+   desc.pixelformat = DSPF_ARGB;
+      
+
+   try {
+      surface=MhpOutput::System::self()->Interface()->CreateSurface(desc);
+      format=surface->GetPixelFormat();
+   } catch (DFBException *e) {
+      printf("DirectFB: Error %s, %s\n", e->GetAction(), e->GetResult());
+      delete e;
+      Exception exp;
+      //What kind of exception should be thrown?
+      exp.Throw("java/lang/RuntimeException", "Failed to create DFBSurface for Image");
+      return 0;
+   }
+
+   return (jlong )surface;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+JNI::InstanceMethod setProperties;
+
+void Java_vdr_mhp_awt_DFBImageProvider_initStaticState(JNIEnv* env, jclass clazz) {
+   char sig[100];
+   JNI::BaseObject::getSignature(sig, JNI::Void, 3, JNI::Boolean, JNI::Int, JNI::Int);
+   if (!setProperties.SetMethod(clazz, "setProperties", sig)) {
+      Exception exp;
+      exp.Throw("NoSuchMethodException", "DFBImageProvider.setProperties(boolean, int, int)");
+   }
+}
+
+static bool setProperties(IDirectFBImageProvider *provider, jobject obj) {
+   try {
+      provider->GetSurfaceDescription(&desc);
+   } catch (DFBException *e) {
+      buffer->Release();
+      provider->Release();
+      printf("DirectFB: Error %s, %s\n", e->GetAction(), e->GetResult());
+      Exception exp;
+      exp.Throw("java/lang/IllegalArgumentException", "Failed to get image information from ImageProvider");
+      delete e;
+      return false;
+   }
+   
+   ReturnType type;
+   return setProperties.CallMethod(obj, type, JNI::Void, valid, width, height);
+}
+
+jlong Java_vdr_mhp_awt_DFBImageProvider_createImageProviderFromFile(JNIEnv* env, jobject obj, jbyteArray filename) //throws IllegalArgumentException
+{
+   IDirectFBImageProvider *provider = 0;
+   DFBSurfaceDescription desc;
+   const char* fn = 0;
+
+   fn = (const char *)env->GetByteArrayElements(fileName, 0);
+   //fn = env->GetStringUTFChars(fileName, NULL);
+
+   printf( "Java_vdr_mhp_awt_DFBImageProvider_createImageProviderFromFile(\"%s\") called.\n", fn );
+
+   try {
+      provider=MhpOutput::System::self()->Interface()->CreateImageProvider(fn);
+   } catch (DFBException *e) {
+      fprintf( stderr, "Unable to create the "
+               "Media Provider for `%s': %s", fn, e->GetResult() );
+      printf("DirectFB: Error %s, %s\n", e->GetAction(), e->GetResult());
+      env->ReleaseByteArrayElements(fileName, (jbyte *)fn, JNI_ABORT);
+      Exception exp;
+      char *msg;
+      asprintf(&msg, "Error trying to create ImageProvider from file %s", fn);
+      exp.Throw("java/io/IllegalArgumentException", msg);
+      free(msg);
+      delete e;
+      return 0;
+   }
+   
+   setProperties(provider, obj);
+
+   return (jlong)provider;
+}
+
+jlong Java_vdr_mhp_awt_DFBImageProvider_createImageProviderFromDataBuffer(JNIEnv* env, jobject obj, jlong nativeBufferData) //throws IllegalArgumentException, IOException;
+{
+   IDirectFBImageProvider *provider = 0;
+   IDirectFBDataBuffer *buffer = (IDirectFBDataBuffer *)nativeBufferData;
+   DFBSurfaceDescription desc;
+   
+   if (!buffer) {
+      Exception exp;
+      exp.Throw("java/lang/IllegalArgumentException", "Invalid data buffer");
+      return 0;
+   }
+   
+   try {
+      provider=buffer->CreateImageProvider();
+   } catch (DFBException *e) {
+      fprintf( stderr, "Unable to create image provider from data buffer: %s", e->GetResult() );
+      printf("DirectFB: Error %s, %s\n", e->GetAction(), e->GetResult());
+      Exception exp;
+      exp.Throw("java/lang/IllegalArgumentException", "Failed to create ImageProvider from DataBuffer");
+      delete e;
+      return 0;
+   }
+   
+   setProperties(provider, obj);
+
+   return (jlong)provider;
+}
+
+void Java_vdr_mhp_awt_DFBImageProvider_renderTo(JNIEnv* env, jobject obj, jlong nativeProviderData, jlong nativeImageData) {
+   IDirectFBImageProvider *provider = (IDirectFBImageProvider *)nativeProviderData;
+   IDirectFBSurface *surface = (IDirectFBSurface *)nativeImageData;
+   
+   try {
+      provider->RenderTo(surface, NULL);
+   } catch (DFBException *e) {
+      provider->Release();
+      env->ReleaseByteArrayElements(fileName, (jbyte *)fn, JNI_ABORT);
+      printf("DirectFB: Error %s, %s\n", e->GetAction(), e->GetResult());
+      Exception exp;
+      exp.Throw("java/lang/IllegalArgumentException", "Failed to render image");
+      delete e;
+   }
+}
+
+void Java_vdr_mhp_awt_DFBImageProvider_removeRef(jlong nativeData) {
+   IDirectFBImageProvider *provider = (IDirectFBImageProvider *)nativeProviderData;
+   provider->Release();
+}
+
+jlong Java_vdr_mhp_awt_DFBDataBuffer_createBufferFromFile(JNIEnv* env, jobject obj, jbyteArray filename) //throws IOException;
+{
+}
+
+jlong Java_vdr_mhp_awt_DFBDataBuffer_createBufferFromData(JNIEnv* env, jobject obj, jbyteArray data, jint offset, jint len) //throws IOException;
+{
+   if (len <= 0 || offset < 0) {
+      Exception exp;
+      exp.Throw("java/lang/IllegalArgumentException", "Invalid length parameter");
+   }
+   
+   int       n;
+   jboolean  isCopy;
+   jbyte     *jcomplete, *joffset;
+
+   
+   n = env->GetArrayLength(jbuffer);                             // length
+   jcomplete = env->GetByteArrayElements(jbuffer, &isCopy);      // complete copy
+   joffset = jcomplete + off;                                    // copy after +offset
+
+   if (jcomplete == NULL) {
+         env->ReleaseByteArrayElements(jbuffer, jcomplete, JNI_ABORT);
+         return 0;
+   }
+
+   if ( off+len > n )
+         len = n - off;
+   if (len <= 0)
+      return 0;
+   
+   IDirectFBDataBuffer *buffer;
+   DFBDataBufferDescription bufDesc;
+   bufDesc.flags=DBDESC_MEMORY;
+   bufDesc.memory.data=joffset;
+   bufDesc.memory.length=len;
+
+   try {
+      buffer=MhpOutput::System::self()->Interface()->CreateDataBuffer(bufDesc);
+   } catch (DFBException *e) {
+      fprintf( stderr, "Unable to create the Data buffer: %s", e->GetResult() );
+      printf("DirectFB: Error %s, %s\n", e->GetAction(), e->GetResult());
+      env->ReleaseByteArrayElements(jbuffer, jcomplete, JNI_ABORT);
+      Exception exp;
+      exp.Throw("java/io/IOException", "Unable to create data buffer");
+      delete e;
+      return 0;
+   }
+   
+   env->ReleaseByteArrayElements(jbuffer, jcomplete, JNI_ABORT);
+   
+   return (jlong)buffer;
+}
+
+jlong Java_vdr_mhp_awt_DFBDataBuffer_createBufferForStreaming(JNIEnv* env, jobject obj) //throws IOException;
+{
+}
+
+void Java_vdr_mhp_awt_DFBDataBuffer_putData(JNIEnv* env, jobject obj, jlong nativeData, jbyteArray data, jint len) {
+}
+
+void Java_vdr_mhp_awt_DFBDataBuffer_removeRef(JNIEnv* env, jobject obj, jlong nativeData) {
+}
 
 
 }
