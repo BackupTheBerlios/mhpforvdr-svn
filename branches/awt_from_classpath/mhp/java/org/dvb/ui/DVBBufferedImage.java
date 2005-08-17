@@ -6,7 +6,7 @@ import java.awt.image.ImageObserver;
 import java.awt.image.ImageProducer;
 import java.util.Hashtable;
 
-//Implementation (get/setRGB, getSubimage) is done in java.awt.Image.
+//Implementation (get/setRGB, getSubimage) is done in superclass
 //There is a Classpath implementation in awt/image, see comment
 //in java.awt.Image
 
@@ -24,7 +24,7 @@ import java.util.Hashtable;
  * values are set to 0;
  * @since MHP 1.0
  */
-public class DVBBufferedImage extends Image {
+public class DVBBufferedImage extends vdr.mhp.awt.MHPImage {
     /**
      *	Represents an image stored in a best possible SampleModel (platform
      * dependent) The image has a DirectColorModel

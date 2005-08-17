@@ -5,6 +5,18 @@
 
 extern "C" {
 
+enum java_awt_font_style {
+   java_awt_font_PLAIN = 0,
+   java_awt_font_BOLD = 1,
+   java_awt_font_ITALIC = 2
+};
+
+enum java_awt_font_baseline {
+   java_awt_font_ROMAN_BASELINE = 0,
+   java_awt_font_CENTER_BASELINE = 1,
+   java_awt_font_HANGING_BASELINE = 2
+};
+
 static char *styles[4] = {
      "",   //plain
      "bd", //bold
@@ -12,9 +24,48 @@ static char *styles[4] = {
      "bi"  //bold italic
 };
 
-static char *defaultFont= MHPFONTDIR "arial.ttf";
+#define FONT_METRICS_ASCENT      0
+#define FONT_METRICS_MAX_ASCENT  1
+#define FONT_METRICS_DESCENT     2
+#define FONT_METRICS_MAX_DESCENT 3
+#define FONT_METRICS_MAX_ADVANCE 4
+#define NUM_FONT_METRICS 5
 
-jlong Java_java_awt_Font_init(JNIEnv* env, jobject obj, jstring spec, jint style, jint size) {
+#define TEXT_METRICS_X_BEARING 0
+#define TEXT_METRICS_Y_BEARING 1
+#define TEXT_METRICS_WIDTH     2
+#define TEXT_METRICS_HEIGHT    3
+#define TEXT_METRICS_X_ADVANCE 4
+#define TEXT_METRICS_Y_ADVANCE 5
+#define NUM_TEXT_METRICS 6
+
+#define NUM_GLYPH_METRICS 10
+
+#define GLYPH_LOG_X(i)      (NUM_GLYPH_METRICS * (i)    )
+#define GLYPH_LOG_Y(i)      (NUM_GLYPH_METRICS * (i) + 1)
+#define GLYPH_LOG_WIDTH(i)  (NUM_GLYPH_METRICS * (i) + 2)
+#define GLYPH_LOG_HEIGHT(i) (NUM_GLYPH_METRICS * (i) + 3)
+
+#define GLYPH_INK_X(i)      (NUM_GLYPH_METRICS * (i) + 4)
+#define GLYPH_INK_Y(i)      (NUM_GLYPH_METRICS * (i) + 5)
+#define GLYPH_INK_WIDTH(i)  (NUM_GLYPH_METRICS * (i) + 6)
+#define GLYPH_INK_HEIGHT(i) (NUM_GLYPH_METRICS * (i) + 7)
+
+#define GLYPH_POS_X(i)      (NUM_GLYPH_METRICS * (i) + 8)
+#define GLYPH_POS_Y(i)      (NUM_GLYPH_METRICS * (i) + 9)
+
+static char *defaultFont= MHPFONTDIR "/vera.ttf";
+static JNI::Constructor mhpGlyphVectorConstructor;
+
+void Java_vdr_mhp_awt_MHPFontPeer_initStaticState(JNIEnv* env, jclass clazz) {
+   char sig[100];
+   //public MHPGlyphVector(double[] extents, int[] codes, Font font, FontRenderContext frc)
+   JNI::BaseObject::getConstructorSignature(sig, 4, JNI::Array, JNI::Double, JNI::Array, JNI::Int, JNI::Object, "java/awt/Font", JNI::Object, "java/awt/font/FontRenderContext");
+   mhpGlyphVectorConstructor.SetExceptionHandling(JNI::DoNotClearExceptions);
+   mhpGlyphVectorConstructor.SetMethod("vdr/mhp/awt/MHPGlyphVector", sig)
+}
+
+jlong Java_vdr_mhp_awt_MHPFontPeer_setFont(JNIEnv* env, jobject obj, jstring spec, jint style, jint size) {
    DFBFontDescription desc;
    
    const char *fontname=(const char *)env->GetStringUTFChars(spec, NULL);
@@ -37,6 +88,9 @@ jlong Java_java_awt_Font_init(JNIEnv* env, jobject obj, jstring spec, jint style
       } catch (DFBException *e) {
          printf("DirectFB: Error %s, %s\n", e->GetAction(), e->GetResult());
          esyslog("MHP Graphics subsystem short of panicking: No fonts found! Font path is %s", MHPFONTDIR);
+         //Throw an InternalError instead?
+         Exception exp;
+         exp.Throw("java/lang/IllegalArgumentException", "Request font and default font not found");
          delete e;
          return 0;
       }
@@ -44,16 +98,189 @@ jlong Java_java_awt_Font_init(JNIEnv* env, jobject obj, jstring spec, jint style
    return (jlong )font;
 }
 
-void Java_java_awt_Font_removeRef(JNIEnv* env, jobject obj, jlong nativeData) {
+void Java_vdr_mhp_awt_MHPFontPeer_removeRef(JNIEnv* env, jobject obj, jlong nativeData) {
    ((IDirectFBFont *)nativeData)->Release();
 }
 
 
+void Java_vdr_mhp_awt_MHPFontPeer_getFontMetrics(JNIEnv* env, jobject obj, jlong nativeData, jdoubleArray java_metrics) {
+   IDirectFBFont *font = (IDirectFBFont *)nativeData;
+   jdouble *native_metrics;
+   DFBRectangle logicalRectangle;
+   
+   if (!font) {
+      Exception exp;
+      exp.Throw("java/lang/NullPointerException", "IDirectFBFont is NULL");
+   }
+   
+   native_metrics 
+         = env->GetDoubleArrayElements (java_metrics, NULL);
+
+   g_assert (native_metrics != NULL);
+
+   native_metrics[FONT_METRICS_ASCENT] = font->GetAscender();
+         // = PANGO_PIXELS (pango_font_metrics_get_ascent (pango_metrics));
+
+   native_metrics[FONT_METRICS_MAX_ASCENT] 
+          = native_metrics[FONT_METRICS_ASCENT];
+
+   native_metrics[FONT_METRICS_DESCENT] = font->GetDescender();
+         // = PANGO_PIXELS (pango_font_metrics_get_descent (pango_metrics));
+
+   if (native_metrics[FONT_METRICS_DESCENT] < 0)
+      native_metrics[FONT_METRICS_DESCENT] 
+            = - native_metrics[FONT_METRICS_DESCENT];
+
+   native_metrics[FONT_METRICS_MAX_DESCENT] 
+          = native_metrics[FONT_METRICS_DESCENT];
+
+   native_metrics[FONT_METRICS_MAX_ADVANCE] = font->GetMaxAdvance();
+         //= PANGO_PIXELS (pango_font_metrics_get_approximate_char_width (pango_metrics));
+	 
+   env->ReleaseDoubleArrayElements (java_metrics, native_metrics, JNI_COMMIT);
+}
+
+void Java_vdr_mhp_awt_MHPFontPeer_getTextMetrics(JNIEnv* env, jobject obj, jlong nativeData, jstring str, jdoubleArray java_metrics) {
+   IDirectFBFont *font = (IDirectFBFont *)nativeData;
+   jdouble *native_metrics;
+   const char *text;
+   DFBRectangle logicalRectangle;
+   
+   if (!font) {
+      Exception exp;
+      exp.Throw("java/lang/NullPointerException", "IDirectFBFont is NULL");
+   }
+   
+   str=(const char *)env->GetStringUTFChars(s, NULL);
+   
+   //GTK's implementation uses Pango which has similar semantics,
+   //such as a logical rectangle and an ink rectangle. I just do it as they did it.
+   font->GetStringExtents(text, env->GetStringUTFLength(str), &logicalRectangle, NULL)
+   
+   native_metrics = env->GetDoubleArrayElements (java_metrics, NULL);
+
+   native_metrics[TEXT_METRICS_X_BEARING] = (double) logicalRectangle.x;
+        // = PANGO_PIXELS( ((double)log.x) );
+
+   native_metrics[TEXT_METRICS_Y_BEARING] = (double) logicalRectangle.y;
+        // = PANGO_PIXELS( ((double)log.y) );
+
+   native_metrics[TEXT_METRICS_WIDTH] = (double) logicalRectangle.w;
+        // = PANGO_PIXELS( ((double)log.width) );
+
+   native_metrics[TEXT_METRICS_HEIGHT] = (double) logicalRectangle.h;
+        // = PANGO_PIXELS( ((double)log.height) );
+
+   native_metrics[TEXT_METRICS_X_ADVANCE] = (double) (logicalRectangle.x + logicalRectangle.w);
+        // = PANGO_PIXELS( ((double) (log.x + log.width)) );
+
+   native_metrics[TEXT_METRICS_Y_ADVANCE] = (double) (logicalRectangle.y + logicalRectangle.h);
+        // = PANGO_PIXELS( ((double) (log.y + log.height)) );
+	 
+   env->ReleaseDoubleArrayElements (java_metrics, native_metrics, JNI_COMMIT);
+}
+
+static int utf8GetCharWidth(const char *utf) {
+   //JNI UTF8 character are 1, 2 or 3 bytes wide.
+   //See http://java.sun.com/docs/books/jni/html/types.html
+   if ( (*utf) & 0x0800)
+      return 3;
+   else if ( (*utf) & 0x0080)
+      return 2;
+   else
+      return 1;
+}
+
+static int utf8GetUnicodeIndex(const char *utf) {
+   //See http://java.sun.com/docs/books/jni/html/types.html
+   if ( (*utf) & 0x0800)
+      return ((utf[0] & 0xf) << 12) + ([utf[1] & 0x3f) << 6) + (utf[2] & 0x3f);
+   else if ( (*utf) & 0x0080)
+      return ((utf[0] & 0x1f) << 6) + (utf[1] & 0x3f);
+   else
+      return utf[0];
+}
+
+static 
+
+jobject Java_vdr_mhp_awt_MHPFontPeer_getGlyphVector(JNIEnv* env, jobject obj, jlong nativeData, jstring chars, jobject font, jobject fontRenderContext)
+{
+   IDirectFBFont *font = (IDirectFBFont *)nativeData;
+   int len, j;
+   double *native_extents;
+   int *native_codes;
+   jintArray java_codes = NULL;
+   jdoubleArray java_extents = NULL;
+   const char *str;
+
+   if (!font) {
+      Exception exp;
+      exp.Throw("java/lang/NullPointerException", "IDirectFBFont is NULL");
+   }
+   
+   len = env->GetStringUTFLength (chars);
+   //characterLen = env->GetStringLength (chars);
+   str = env->GetStringUTFChars (chars, NULL);
+   
+   if (len > 0 && str[len-1] == '\0')
+      len--;
+  
+   int x = 0;
+   //double scale = ((double) PANGO_SCALE);
+
+   java_extents = (*env)->NewDoubleArray (env, glyphs->num_glyphs * NUM_GLYPH_METRICS);
+   java_codes = (*env)->NewIntArray (env, glyphs->num_glyphs);
+   native_extents = (*env)->GetDoubleArrayElements (env, java_extents, NULL);
+   native_codes = (*env)->GetIntArrayElements (env, java_codes, NULL);
+
+   for (j = 0; j < len; )
+   {
+      DFBRectangle ink;
+      DFBRectangle logical;
+      int byteLen = utf8GetCharWidth(str+j);
+      
+      font->GetStringWidth(str+j, byteLen, &logical, &ink);
+      //PangoGlyphGeometry *geom = &glyphs->glyphs[j].geometry;
+
+      //don't what code is wanted here, using unicode index
+      native_codes[j] = utf8GetUnicodeIndex(str+j);
+      //native_codes[j] = glyphs->glyphs[j].glyph;
+
+      native_extents[ GLYPH_LOG_X(j)      ] = (logical.x);
+      native_extents[ GLYPH_LOG_Y(j)      ] = (- logical.y);
+      native_extents[ GLYPH_LOG_WIDTH(j)  ] = (logical.w);
+      native_extents[ GLYPH_LOG_HEIGHT(j) ] = (logical.h);
+
+      native_extents[ GLYPH_INK_X(j)      ] = (ink.x);
+      native_extents[ GLYPH_INK_Y(j)      ] = (- ink.y);
+      native_extents[ GLYPH_INK_WIDTH(j)  ] = (ink.w) ;
+      native_extents[ GLYPH_INK_HEIGHT(j) ] = (ink.h);
+
+      //here I am very unsure as well. See the Pango implementation below,
+      //I don't have these values in DirectFB.
+      native_extents[ GLYPH_POS_X(j)      ] = (x + logical.x);
+      native_extents[ GLYPH_POS_Y(j)      ] = (  - logical.y);
+      x += logical.x;
+      //native_extents[ GLYPH_POS_X(j)      ] = (x + geom->x_offset);
+      //native_extents[ GLYPH_POS_Y(j)      ] = (  - geom->y_offset);
+      //x += geom->width;
+      
+      //increment for loop!
+      j += byteLen;
+   }
+   (*env)->ReleaseDoubleArrayElements (env, java_extents, native_extents, JNI_COMMIT);
+   (*env)->ReleaseIntArrayElements (env, java_codes, native_codes, JNI_COMMIT);
 
 
+   (*env)->ReleaseStringUTFChars (env, chars, str);
 
-/*** FontMetrics ***/
+   jobject newObj;
+   mhpGlyphVectorConstructor.NewObject(newObj, java_extents, java_codes, font, fontRenderContext);
+   return newObj;
+}
 
+
+/*
 
 jint Java_java_awt_FontMetrics_charWidth(JNIEnv* env, jobject obj, jlong nativeData, jchar c) {
    char *str = " ";     
@@ -104,6 +331,6 @@ jint Java_java_awt_FontMetrics_stringWidth(JNIEnv* env, jobject obj, jlong nativ
    env->ReleaseStringUTFChars(s, str);
    return ret;
 }
-
+*/
 
 }

@@ -172,7 +172,7 @@ public synchronized void removeResourceStatusEventListener(org.davic.resources.R
    listeners=HEventMulticaster.remove(listeners, listener);
 }
 
-/* Called from java.awt.MHPEventFilter
+/* Called from framework.
    Return true if event should no longer be dispatched  */
 public boolean DispatchEvent(UserEvent e) {
    if (exclusiveChain.dispatchEventExclusive(e)) {

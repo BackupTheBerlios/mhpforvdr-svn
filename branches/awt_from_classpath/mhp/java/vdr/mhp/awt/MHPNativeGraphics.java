@@ -1,15 +1,22 @@
 //parts of the code are taken from kawt, (c) Convergence Integrated Media
 
-package java.awt;
+package vdr.mhp.awt;
 
 
 import org.dvb.ui.DVBColor;
 import org.dvb.ui.DVBAlphaComposite;
 import org.dvb.ui.DVBBufferedImage;
+import java.awt.Graphics;
+import java.awt.Font;
+import java.awt.FontMetrics;
+import java.awt.Rectangle;
+import java.awt.Shape;
+import java.awt.Color;
+import org.dvb.ui.DVBGraphics;
 
 
 
-public class MHPNativeGraphics extends org.dvb.ui.DVBGraphics {
+public class MHPNativeGraphics extends DVBGraphics {
 
 static Font standardFont=new Font("tiresias", Font.PLAIN, 10);
 static Color standardColor=new DVBColor(0, 0, 0, 0);
@@ -144,22 +151,24 @@ private native static long createSubFlipData(long nativeFlipData, int x, int y);
 
 //create Graphics object for a Component
 public static Graphics createClippedGraphics(Component comp) {
-   Component c=comp;
-   int u=0, v=0;
-   while (c.parent != null) {
-      u += c.x;
-      v += c.y;
-      c=c.parent;
-   }
    //System.out.println("MHPNativeGraphics.createClippedGraphics for"+comp+", toplevel "+comp);
+   MHPPlane toplevel = MHPPlane.getMHPPlane(comp);
    
-   if (!(c instanceof MHPPlane)) //in this implementation, MHPPlane is the only toplevel widget
+   if (toplevel == null) //in this implementation, MHPPlane is the only toplevel widget
       return null;
-   MHPNativeGraphics g=new MHPNativeGraphics();
-   long nativeSurface=((MHPPlane)c).getNativeSurface();
+   
+   DFBWindowPeer peer = toplevel.getPeer();
+   
+   if (peer == null)
+      return null;
+   
+   MHPNativeGraphics g=new MHPNativeGraphics();   
+   long nativeSurface=peer.getNativeSurface();
+   
    if (nativeSurface==0)
-      return null;
-   if (c==comp) //comp is an MHPPlane - dont return a subsurface, but the full surface
+      throw new RuntimeException();
+   
+   if (toplevel == comp) //comp is an MHPPlane - dont return a subsurface, but the full surface
       g.initializeNativeData(nativeSurface, true);
    else { //comp is contained in the MHPPlane - return a subsurface
       Rectangle bounds=comp.getBounds();
@@ -203,7 +212,7 @@ public void dispose () {
    }
 }
 
-protected void finalize() throws Throwable {
+public void finalize() {
    dispose();
    super.finalize();
 }

@@ -13,6 +13,13 @@ long nativeData;
 int width, height;
 boolean valid = false;
 
+  //DirectFB's ARGB color format
+static ColorModel cm = new DirectColorModel(32, 
+                                             0x00FF0000,
+                                             0x0000FF00,
+                                             0x000000FF,
+                                             0xFF000000);
+
 static {
    initStaticState();
 }
@@ -23,11 +30,11 @@ private native long createImageProviderFromDataBuffer(long nativeBufferData) thr
 private native void renderTo(long nativeProviderData, long nativeImageData);
 private native void removeRef(long nativeData);
 
-public DFBImageProvider(String filename) throws IOException {
+public DFBImageProvider(String filename) throws IllegalArgumentException {
    nativeData = createImageProviderFromFile( PathConverter.toNativeString(filename) );
 }
 
-public DFBImageProvider(MHPDataBuffer data) throws IllegalArgumentException, IOException {
+public DFBImageProvider(MHPDataBuffer data) throws IllegalArgumentException {
    nativeData = createImageProviderFromDataBuffer( data.nativeData );
 }
 
@@ -41,6 +48,16 @@ public int getHeight() {
    if (!valid)
       throw new IllegalStateException();
    return height;
+}
+
+public int isValid() {
+   return valid;
+}
+
+public ColorModel getColorModel() {
+   //The image filemay have a different color model,
+   //but the surface it is rendered to will be ARGB
+   return cm;
 }
 
 public MHPImage createImage() {
@@ -71,7 +88,7 @@ private void setProperties(boolean valid, int width, int height) {
    this.height=height;
 }
 
-public void flush() {
+public void dispose() {
    if (nativeData != 0) {
       removeRef(nativeData);
       nativeData = 0;
@@ -79,7 +96,7 @@ public void flush() {
 }
 
 public void finalize() {
-   flush();
+   dispose();
 }
 
 

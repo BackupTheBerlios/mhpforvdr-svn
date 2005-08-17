@@ -50,6 +50,8 @@ import java.awt.image.RenderedImage;
 import java.io.DataOutput;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.ByteArrayInputStream;
+import java.io.FileInputStream;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Hashtable;
@@ -60,44 +62,161 @@ import java.util.Vector;
 
 public class MHPImageDecoder extends gnu.java.awt.image.ImageDecoder
 {
-  
-  // the current set of ImageConsumers for this decoder
-  Vector curr;
 
-  // interface to GdkPixbuf
-  private native long initState ();
-  private native void pumpBytes(long nativeProviderData, byte[] bytes, int len);
-  private native long pumpDone(long nativeProviderData);
-  //private native void finish (long nativeData);
+  Vector consumers = new Vector ();
+  String filename;
+  URL url;
+  byte[] data;
+  int offset;
+  int length;
+  InputStream input;
   
-  
-  //DirectFB's ARGB color format
-  static ColorModel cm = new DirectColorModel(32, 
-						       0x00FF0000,
-						       0x0000FF00,
-						       0x000000FF,
-						       0xFF000000);
-  
-  public MHPImageDecoder (InputStream in)
-  {
-    super (in);
-  }
-
   public MHPImageDecoder (String filename)
   {
-    super (filename);
+    this.filename = filename;
   }
-  
+
   public MHPImageDecoder (URL url)
   {
-    super (url);
+    this.url = url;
+  }
+
+  public MHPImageDecoder (InputStream is)
+  {
+    this.input = is;
   }
 
   public MHPImageDecoder (byte[] imagedata, int imageoffset, int imagelength)
   {
-    super (imagedata, imageoffset, imagelength);
+    data = imagedata;
+    offset = imageoffset;
+    length = imagelength;
+  }
+  
+  
+  // --- ImageProducer interface ---
+
+  public void addConsumer (ImageConsumer ic) 
+  {
+    consumers.addElement (ic);
   }
 
+  public boolean isConsumer (ImageConsumer ic)
+  {
+    return consumers.contains (ic);
+  }
+  
+  public void removeConsumer (ImageConsumer ic)
+  {
+    consumers.removeElement (ic);
+  }
+
+  public void startProduction (ImageConsumer ic)
+  {
+    if (!isConsumer(ic))
+      addConsumer(ic);
+
+    Vector list = (Vector) consumers.clone ();
+    
+    DFBDataBuffer buffer;
+    DFBImageProvider provider;
+    
+    try {
+      // Create the data buffer and image provider here rather than in the
+      // ImageDecoder constructors so that exceptions cause
+      // imageComplete to be called with an appropriate error
+      // status.
+      
+      if (filename != null) {
+         //no buffer needed
+         provider = new DFBImageProvider(filename);
+      } else if (data != null) {
+         buffer = new DFBDataBuffer(data, offset, length);
+         provider = new DFBImageProvider(buffer);
+      } else {
+         InputStream stream;
+         if (url != null) {
+            buffer = new MHPDataBuffer(url.openStream());
+         } else if (input != null) {
+            buffer = new MHPDataBuffer(input);
+         } else
+            throw new IllegalArgumentException("Null value");
+         provider = new DFBImageProvider(buffer);
+      }
+      
+    } catch (Exception e) {
+      e.printStackTrace();
+      for (int i = 0; i < list.size (); i++)
+      {
+         ImageConsumer ic2 = (ImageConsumer) list.elementAt (i);
+         ic2.imageComplete (ImageConsumer.IMAGEERROR);
+      }
+    }
+    
+      // For MHPImages respectively MHPImageConsumers, its helper class,
+      // there is a special handling which does everything on the native side.
+      // For other consumers, the pixel must be passed through Java.
+    
+    MHPImage image;
+    for (int i = 0; i < list.size (); i++) {
+       ImageConsumer ic = (ImageConsumer) list.elementAt (i);
+       try {
+         if (ic instanceof MHPImageConsumer) {
+            ((MHPImageConsumer)ic).setImageFromProvider(provider);
+         } else {
+            ic.setDimensions (provider.getWidth(), provider.getHeight());
+            ic.setColorModel (provider.getColorModel());
+            ic.setHints (ImageConsumer.RANDOMPIXELORDER);
+            //create temporary image to copy pixels from
+            if (image == null)
+               image = provider.createImage();
+            ic.setPixels (0, 0, image.getWidth(), image.getHeight(), provider.getColorModel(), image.getPixels(), 0, image.getWidth());
+         }
+       } catch (Exception e) {
+          e.printStackTrace();
+          ic.imageComplete(ImageConsumer.IMAGEERROR);
+       }
+    }
+    
+    if (provider != null)
+       provider.dispose();
+    if (buffer != null)
+       buffer.dispose();
+    
+  }
+
+  public void requestTopDownLeftRightResend (ImageConsumer ic) 
+  { 
+     //TODO?
+  }
+  
+  
+  // --- package-internal API ---
+
+  MHPImage createImage() {
+     DFBImageProvider provider = createProvider();
+  }
+  
+  private DFBImageProvider createProvider() throws IOException, IllegalArgumentException {
+     DFBImageProvider provider;
+     if (filename != null) {
+         //no buffer needed
+        provider = new DFBImageProvider(filename);
+     } else if (data != null) {
+        buffer = new DFBDataBuffer(data, offset, length);
+        provider = new DFBImageProvider(buffer);
+     } else {
+        InputStream stream;
+        if (url != null) {
+           buffer = new MHPDataBuffer(url.openStream());
+        } else if (input != null) {
+           buffer = new MHPDataBuffer(input);
+        } else
+           throw new IllegalArgumentException("Null value");
+        provider = new DFBImageProvider(buffer);
+     }
+     return provider;
+  }
   /*
   // called back by native side
   void areaPrepared (int width, int height)
@@ -137,16 +256,15 @@ public class MHPImageDecoder extends gnu.java.awt.image.ImageDecoder
   // this object, feeding back decoded pixel blocks, which we pass to each
   // of the ImageConsumers in the provided Vector.
 
+  /*
   public void produce (Vector v, InputStream is) throws IOException
   {
     curr = v;
 
-    byte bytes[] = new byte[4096];
-    int len = 0;
-    initState();
-    while ((len = is.read (bytes)) != -1)
-      pumpBytes (bytes, len);
-    pumpDone();
+    DFBDataBuffer buffer = new DFBDataBuffer(is);
+    DFBImageProvider provider;
+    
+    try {
     
     for (int i = 0; i < curr.size (); i++)
       {
@@ -161,5 +279,5 @@ public class MHPImageDecoder extends gnu.java.awt.image.ImageDecoder
   {
     finish();
   }
-
+   */
 }

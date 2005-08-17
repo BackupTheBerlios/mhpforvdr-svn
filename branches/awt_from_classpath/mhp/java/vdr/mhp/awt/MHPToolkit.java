@@ -78,15 +78,89 @@ import java.beans.PropertyChangeSupport;
 import java.net.URL;
 import java.util.Map;
 import java.util.Properties;
+import gnu.java.awt.peer.ClasspathFontPeer;
+import gnu.java.awt.peer.ClasspathTextLayoutPeer;
+import java.awt.AWTException;
+import java.awt.Dimension;
+import java.awt.DisplayMode;
+import java.awt.EventQueue;
+import java.awt.Font;
+import java.awt.FontMetrics;
+import java.awt.GraphicsDevice;
+import java.awt.GraphicsEnvironment;
+import java.awt.Image;
+import java.awt.Toolkit;
+import java.awt.font.FontRenderContext;
+import java.awt.image.ColorModel;
+import java.awt.image.ImageProducer;
+import java.awt.peer.RobotPeer;
+import java.io.File;
+import java.io.InputStream;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.text.AttributedString;
+import java.util.HashMap;
+import java.util.Map;
+import java.awt.MHPPlane;
+import gnu.classpath.Configuration;
+import gnu.java.awt.EmbeddedWindow;
+import gnu.java.awt.EmbeddedWindowSupport;
+import gnu.java.awt.peer.ClasspathFontPeer;
+import gnu.java.awt.peer.ClasspathTextLayoutPeer;
+import gnu.java.awt.peer.EmbeddedWindowPeer;
+import java.awt.*;
+import java.awt.datatransfer.Clipboard;
+import java.awt.dnd.DragGestureEvent;
+import java.awt.dnd.peer.DragSourceContextPeer;
+import java.awt.font.FontRenderContext;
+import java.awt.im.InputMethodHighlight;
+import java.awt.image.BufferedImage;
+import java.awt.image.ColorModel;
+import java.awt.image.DirectColorModel;
+import java.awt.image.ImageConsumer;
+import java.awt.image.ImageObserver;
+import java.awt.image.ImageProducer;
+import java.awt.peer.*;
+import java.io.InputStream;
+import java.net.URL;
+import java.text.AttributedString;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Hashtable;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.Properties;
+import javax.imageio.spi.IIORegistry;
 
-public class MHPToolkit
+public class MHPToolkit extends gnu.java.awt.ClasspathToolkit
 {
-   static EventQueue eventQueue;
+  static EventQueue eventQueue;
 
   public MHPToolkit()
   {
   }
+  
+  public DFBWindowPeer createDFBWindowPeer(MHPPlane target)
+  {
+     return new DFBWindowPeer(target);
+  }
 
+  /**
+   * Creates a peer object for the specified <code>Component</code>.  The
+   * peer returned by this method is not a native windowing system peer
+   * with its own native window.  Instead, this method allows the component
+   * to draw on its parent window as a "lightweight" widget.
+   *
+   * @param target The <code>Component</code> to create the peer for.
+   *
+   * @return The peer for the specified <code>Component</code> object.
+   */
+  protected LightweightPeer createComponent(Component target)
+  {
+     return new MHPLightweightPeer (target);
+  }
+  
   /**
    * Creates a peer object for the specified <code>Button</code>.
    *
@@ -344,35 +418,6 @@ public class MHPToolkit
      return null;
   }
 
-  /**
-   * Creates a peer object for the specified <code>Component</code>.  The
-   * peer returned by this method is not a native windowing system peer
-   * with its own native window.  Instead, this method allows the component
-   * to draw on its parent window as a "lightweight" widget.
-   *
-   * @param target The <code>Component</code> to create the peer for.
-   *
-   * @return The peer for the specified <code>Component</code> object.
-   */
-  /*
-  protected LightweightPeer createComponent(Component target)
-  {
-    return new gnu.java.awt.peer.GLightweightPeer (target);
-  }
-  */
-
-  /**
-   * Creates a peer object for the specified font name.
-   *
-   * @param name The font to create the peer for.
-   * @param style The font style to create the peer for.
-   *
-   * @return The peer for the specified font name.
-   *
-   * @deprecated
-   */
-  protected FontPeer getFontPeer(String name, int style) {
-  }
 
   /**
    * Copies the current system colors into the specified array.  This is
@@ -429,7 +474,7 @@ public class MHPToolkit
    * @exception HeadlessException If GraphicsEnvironment.isHeadless() is true.
    */
   public Dimension getScreenSize() {
-     return MHPScreen.getDotsPerInch();
+     return MHPScreen.getResolution();
   }
 
   /**
@@ -440,7 +485,7 @@ public class MHPToolkit
    * @exception HeadlessException If GraphicsEnvironment.isHeadless() is true.
    */
   public int getScreenResolution() {
-     return MHPScreen.getResolution();
+     return MHPScreen.getDotsPerInch();
   }
 
   /**
@@ -461,10 +506,7 @@ public class MHPToolkit
    * @exception HeadlessException If GraphicsEnvironment.isHeadless() is true.
    */
   public ColorModel getColorModel() {
-      if ( colorModel == null ){
-         colorModel = MHPScreen.getColorModel();
-      }
-      return colorModel;
+      return MHPScreen.getColorModel();
   }
 
 
@@ -599,7 +641,7 @@ public class MHPToolkit
    * state of the imaging readying process.
    */
   public int checkImage(Image image, int width, int height,
-                                 ImageObserver observer);
+                                 ImageObserver observer)
   {
     int status = ImageObserver.ALLBITS 
       | ImageObserver.WIDTH 
@@ -735,57 +777,45 @@ public class MHPToolkit
    * applet. There is no guarantee that the same queue is shared
    * system-wide.
    *
-   * <p>The implementation first checks whether a
-   * SecurityManager has been installed. If so, its {@link
-   * java.lang.SecurityManager#checkAwtEventQueueAccess()} method gets
-   * called. The security manager will throw a SecurityException if it
-   * does not grant the permission to access the event queue.
-   *
-   * <p>Next, the call is delegated to {@link
-   * #getSystemEventQueueImpl()}.
-   *
-   * @return The event queue for this applet (or application).
-   *
-   * @throws SecurityException if a security manager has been
-   * installed, and it does not grant the permission to access the
-   * event queue.
-   */
-  /*
-  public final EventQueue getSystemEventQueue()
-  {
-    SecurityManager sm;
-
-    sm = System.getSecurityManager();
-    if (sm != null)
-      sm.checkAwtEventQueueAccess();
-
-    return getSystemEventQueueImpl();
-  }
-  */
-
-
-  /**
-   * Returns the event queue that is suitable for the calling context.
-   *
-   * <p>Despite the word &#x201c;System&#x201d; in the name of this
-   * method, a toolkit may provide different event queues for each
-   * applet. There is no guarantee that the same queue is shared
-   * system-wide.
-   *
    * <p>No security checks are performed, which is why this method
    * may only be called by Toolkits.
    *
    * @see #getSystemEventQueue()
    */
    protected EventQueue getSystemEventQueueImpl() {
-      synchronized (this.class) {
+      synchronized (MHPToolkit.class) {
          if (eventQueue == null) {
+            // difference to Gtk implementation: Do not use java.awt.EventQueue
+            // but provide own specialized implementation
             eventQueue = new EventQueue();
          }
       }
       return eventQueue;
    }
 
+   // Classpath's EventQueue handling seems a bit GTK specific.
+   // These methods are called from there, but here we do not really do what they are supposed
+   // to do because we have a bit different semantics.
+   public boolean nativeQueueEmpty() {
+      return true;
+   }
+   public void wakeNativeQueue() {
+   }
+   public void iterateNativeQueue(EventQueue locked, boolean block) {
+      if (block) {
+         try {
+            locked.wait(100);
+         } catch (InterruptedException e) {
+         }
+      }
+   }
+   // Called from MHPPlane's event thread
+   public void postEvent(AWTEvent e) {
+      EventQueue q = getSystemEventQueueImpl();
+      synchronized (q) {
+         q.notifyAll();
+      }
+   }
 
   /**
    * @since 1.3
@@ -822,17 +852,76 @@ public class MHPToolkit
       return null;
   }
 
-static synchronized void startDispatch () {
-   if ( eventThread == null ) {
-      eventThread = new EventDispatchThread( eventQueue);
-      eventThread.start();
-}
+  /** 
+   * @deprecated part of the older "logical font" system in earlier AWT
+   * implementations. Our newer Font class uses getClasspathFontPeer.
+   */
+  protected FontPeer getFontPeer (String name, int style) {
+    // All fonts get a default size of 12 if size is not specified.
+    return getFontPeer(name, style, 12);
+  }
 
-static synchronized void stopDispatch () {
-   if ( eventThread != null ) {
-      eventThread.stopDispatching();
-      eventThread = null;
-   }
-}
+  /**
+   * Private method that allows size to be set at initialization time.
+   */
+  private FontPeer getFontPeer (String name, int style, int size) 
+  {
+    Map attrs = new HashMap ();
+    ClasspathFontPeer.copyStyleToAttrs (style, attrs);
+    ClasspathFontPeer.copySizeToAttrs (size, attrs);
+    return getClasspathFontPeer (name, attrs);
+  }
+
+  /**
+   * Newer method to produce a peer for a Font object, even though Sun's
+   * design claims Font should now be peerless, we do not agree with this
+   * model, hence "ClasspathFontPeer". 
+   */
+
+  public ClasspathFontPeer getClasspathFontPeer (String name, Map attrs)
+  {
+    Map keyMap = new HashMap (attrs);
+    // We don't know what kind of "name" the user requested (logical, face,
+    // family), and we don't actually *need* to know here. The worst case
+    // involves failure to consolidate fonts with the same backend in our
+    // cache. This is harmless.
+    keyMap.put ("MHPToolkit.RequestedFontName", name);
+    if (fontCache.containsKey (keyMap))
+      return (ClasspathFontPeer) fontCache.get (keyMap);
+    else
+      {
+        ClasspathFontPeer newPeer = new MHPFontPeer (name, attrs);
+        fontCache.put (keyMap, newPeer);
+        return newPeer;
+      }
+  }
+  
+  // ClasspathToolkit methods
+
+  public GraphicsEnvironment getLocalGraphicsEnvironment()
+  {
+    throw new UnsupportedOperationException();
+    //return new GdkGraphicsEnvironment(this);
+  }
+
+  public Font createFont(int format, InputStream stream)
+  {
+    throw new UnsupportedOperationException();
+  }
+
+  public RobotPeer createRobot (GraphicsDevice screen) throws AWTException
+  {
+    throw new UnsupportedOperationException();
+  }
+
+  public void registerImageIOSpis(IIORegistry reg)
+  {
+    throw new UnsupportedOperationException();
+    //GdkPixbufDecoder.registerSpis(reg);
+  }
+  
+  public ClasspathTextLayoutPeer getClasspathTextLayoutPeer (AttributedString str, FontRenderContext frc) {
+    throw new UnsupportedOperationException();
+  }
 
 } // class Toolkit

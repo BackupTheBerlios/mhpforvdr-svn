@@ -123,57 +123,50 @@ public class MHPImage extends Image
    */
   private int[] getPixels() {
       int[] data = newe int[nativeModel.getPixelSize() * width * height];
-      imgGetRGBRegion(nativeData, 0, 0, width, height, data, 0, width);
+      getRGBRegion(nativeData, 0, 0, width, height, data, 0, width);
       return data;
   }
-      native static int imgGetRGB( long nativeData, int x, int y);
-      native static void imgGetRGBRegion( long nativeData, int startX, int startY, int w, int h, int[] rgbArray, int offset, int scansize);
+      native static int getRGB( long nativeData, int x, int y);
+      native static void getRGBRegion( long nativeData, int startX, int startY, int w, int h, int[] rgbArray, int offset, int scansize);
 
   /**
    * Sets the pixel data from a java array.
    */
   private void setPixels(int[] pixels) {
-      imgSetRGBRegion(nativeData, 0, 0, width, height, pixels, 0, width);
+      setRGBRegion(nativeData, 0, 0, width, height, pixels, 0, width);
   }
-      native static void imgSetRGB( long nativeData, int x, int y, int rgb);
-      native static void imgSetRGBRegion( long nativeData, int startX, int startY, int w, int h, int[] rgbArray, int offset, int scansize);
+      native static void setRGB( long nativeData, int x, int y, int rgb);
+      native static void setRGBRegion( long nativeData, int startX, int startY, int w, int h, int[] rgbArray, int offset, int scansize);
 
-  /**
-   * Loads an image using gdk-pixbuf.
-   */
-  //private native boolean loadPixbuf(String name);
-      private native long imgCreateFromFileLocalEncoding(byte[] fileName);
 
   /**
    * Allocates a Gtk Pixbuf or pixmap
    */
   //private native void createPixmap();
-      private native long imgCreateImage( int w, int h);
-      private native long imgCreateScreenImage( int w, int h);
+      //private native long imgCreateImage( int w, int h);
+      private native long createScreenImage( int w, int h);
 
   /**
    * Frees the above.
    */
-  private native void freePixmap();
-      native static void imgFreeImage ( long nativeData );
+  //private native void freePixmap();
+      private native void freeImage ( long nativeData );
 
 
   /**
    * Sets the pixmap to scaled copy of src image. hints are rendering hints.
    */
   //private native void createScaledPixmap(MHPImage src, int hints);
-      private native long imgCreateScaledImage( long nativeData, int w, int h, int hints);
+      private native long stretchBlit( long nativeDataDestination, long nativeDataSource);
 
 
 
-native static long imgCreateFromData( byte[] buf, int offset, int len);
-native static int imgGetHeight( long nativeData);
+//native static int imgGetHeight( long nativeData);
 
-native static int imgGetWidth( long nativeData);
+//native static int imgGetWidth( long nativeData);
 
-native static long imgGetSurface( long nativeData );
-
-native static long imgGetSubImage( long nativeData, int x, int y, int w, int h);
+//native static long getSurface( long nativeData );
+native static long getSubImage( long nativeData, int x, int y, int w, int h);
 
   /**
    * Constructs a MHPImage from an ImageProducer. Asynchronity is handled in
@@ -196,30 +189,13 @@ native static long imgGetSubImage( long nativeData, int x, int y, int w, int h);
    *
    * @throws IllegalArgumentException if the image could not be loaded.
    */
-  /*
   public MHPImage (String filename)
   {
-    File f = new File(filename);
-    try
-      {
-        nativeData = imgCreateFromFile(encodeNative(f.getCanonicalPath()));
-	if (nativeData == 0)
-	  throw new IllegalArgumentException("Couldn't load image: "+filename);
-      } 
-    catch(IOException e)
-      {
-	  throw new IllegalArgumentException("Couldn't load image: "+filename);
-      }
-    
-    width = imgGetWidth(nativeData);
-    height = imageGetHeight(nativeData);
-
     isLoaded = true;
     observers = null;
     offScreen = false;
-    props = new Hashtable();
+    setImageFromProvider(new DFBImageProvider(filename), new Hashtable());
   }
-  */
 
   /**
    * Constructs an empty MHPImage.
@@ -228,7 +204,7 @@ native static long imgGetSubImage( long nativeData, int x, int y, int w, int h);
   {
     this.width = width;
     this.height = height;
-    nativeData = imgCreateScreenImage(width, height);
+    nativeData = createScreenImage(width, height);
     props = new Hashtable();
     isLoaded = true;
     observers = null;
@@ -240,15 +216,11 @@ native static long imgGetSubImage( long nativeData, int x, int y, int w, int h);
    */
   private MHPImage (MHPImage src, int width, int height, int hints)
   {
-    this.width = width;
-    this.height = height;
-    props = new Hashtable();
-    isLoaded = true;
-    observers = null;
-    offScreen = false;
-
-    // Use the GDK scaling method.
-    imgCreateScaledImage(src, width, height, hints);
+    this(width, height);
+    //offScreen = false;
+    if (src.nativeData == 0)
+       throw new IllegalArgumentException();
+    stretchBlit(this.nativeData, src.nativeData);
   }
 
   /**
@@ -262,10 +234,27 @@ native static long imgGetSubImage( long nativeData, int x, int y, int w, int h);
     props = (properties != null) ? properties : new Hashtable();
     isLoaded = true;
     deliver();
-    createPixmap();
+    nativeData = createScreenImage(width, height);
     setPixels(pixels);
   }
 
+  /**
+   * Callback from the image consumer.
+   */
+  public void setImage(DFBImageProvider provider, Hashtable properties)
+  {
+    this.width = provider.getWidth();
+    this.height = provider.getHeight();
+    props = (properties != null) ? properties : new Hashtable();
+    isLoaded = true;
+    deliver();
+    nativeData = createScreenImage(width, height);
+    provider.renderTo(this);
+  }
+  
+   long getNativeSurface() {
+      return nativeData;
+   }
   // java.awt.Image methods ////////////////////////////////////////////////
 
   public synchronized int getWidth (ImageObserver observer)
@@ -311,11 +300,14 @@ native static long imgGetSubImage( long nativeData, int x, int y, int w, int h);
   {
     if (!isLoaded) 
       return null;
+    /*
     if (offScreen)
       return new GdkGraphics(this);
     else
       throw new IllegalAccessError("This method only works for off-screen"
 				   +" Images.");
+      */
+    return MHPNativeGraphics.getImageGraphics(this);
   }
   
   /**
@@ -346,15 +338,20 @@ native static long imgGetSubImage( long nativeData, int x, int y, int w, int h);
       {
 	observers = new Vector();
 	isLoaded = false;
-	freePixmap();
+	if (nativeData != 0)
+           freeImage(nativeData);
+	nativeData = 0;
 	source.startProduction(new MHPImageConsumer(this, source));
       }
   }
 
   public void finalize()
   {
-    if (isLoaded)
-      freePixmap();
+    if (isLoaded) {
+      if (nativeData != 0)
+         freeImage(nativeData);
+      nativeData = 0;
+    }
   }
 
   /**
@@ -478,6 +475,16 @@ native static long imgGetSubImage( long nativeData, int x, int y, int w, int h);
     observers = null;
   }
   
+  private void deliverError()
+  {
+    if (observers != null)
+      for(int i=0; i < observers.size(); i++)
+	((ImageObserver)observers.elementAt(i)).
+	  imageUpdate(this, ImageObserver.ERROR, 0, 0, width, height);
+
+    observers = null;
+  }
+  
   /**
    * Adds an observer, if we need to.
    * @return true if an observer was added.
@@ -493,4 +500,150 @@ native static long imgGetSubImage( long nativeData, int x, int y, int w, int h);
       }
     return false;
   }
+  
+  
+  
+  
+  
+  
+  
+/*** DVBBufferedImage implementation ***/
+
+//TODO: I do not know whether using the Classpath implementation of BufferedImage
+//available in awt/image, java.awt.image.BufferedImage is faster 
+//than this hacky, but native approach accessing
+//DirectFB's buffer directly. Currently leave it as it is.
+
+//Is it right to throw all these exceptions? Or just do nothing?
+
+
+    /**
+     *	Returns an integer pixel in the default RGB color model
+     * and default sRGB colorspace.  Color
+     * conversion takes place if the used Sample Model is not 8-bit for each
+     * color component There are only 8-bits of
+     * precision for each color component in the returned data when using
+     * this method. Note that whan a lower precission is used in this buffered
+     * image getRGB may return different values than those used in setRGB()
+     *     @param x,&nbsp;y the coordinates of the pixel from which to get
+     * the pixel in the default RGB color model and sRGB color space
+     * @return an integer pixel in the default RGB color model and
+     * default sRGB colorspace.
+     * @since MHP 1.0
+     */
+    public int getRGB( int x, int y ) {
+        if (x>=width || y>=height || x<0 || y<0)
+           throw new IllegalArgumentException();
+        if (!isLoaded)
+           throw new IllegalStateException();
+        return getRGB(nativeData, x, y);
+    }
+
+    /**
+     * Returns an array of integer pixels in the default RGB color model
+     * (TYPE_INT_ARGB) and default sRGB color space,
+     * from a portion of the image data. There are only 8-bits of precision for
+     * each color component in the returned data when
+     * using this method.  With a specified coordinate (x,&nbsp;y) in the
+     * image, the ARGB pixel can be accessed in this way: <pre>
+     *    pixel   = rgbArray[offset + (y-startY)*scansize + (x-startX)];
+     * </pre>
+     * @param startX,&nbsp; startY the starting coordinates
+     * @param w           width of region
+     * @param h           height of region
+     * @param rgbArray    if not <code>null</code>, the rgb pixels
+     * are written here
+     * @param offset      offset into the <code>rgbArray</code>
+     * @param scansize    scanline stride for the <code>rgbArray</code>
+     * @return            array of RGB pixels.
+     * @exception <code>IllegalArgumentException</code> if an unknown
+     * datatype is specified
+     * @since MHP 1.0
+     */
+    public int[] getRGB( int startX, int startY, int w, int h, int[] rgbArray, int offset, int scansize ) {
+        if (startX+w >= width || startY+h >= height || w<0 || h<0)
+            throw new IllegalArgumentException();
+        if (!isLoaded)
+           throw new IllegalStateException();
+        int bufsize=offset+h*scansize+w;
+        if (rgbArray.length < bufsize)
+            return null;
+        if (rgbArray == null)
+            rgbArray=new int[bufsize];
+        getRGBRegion(nativeData, startX, startY, w, h, rgbArray, offset, scansize);
+        return rgbArray;
+    }
+
+
+    /**
+     * Sets a pixel in this <code>DVBBufferedImage</code> to the specified
+     *   RGB value. The pixel is assumed to be in the default RGB color
+     * model, TYPE_INT_ARGB, and default sRGB color space.
+     * @param x,&nbsp;y the coordinates of the pixel to set
+     * @param rgb the RGB value
+     * @since MHP 1.0
+     */
+    public synchronized void setRGB( int x, int y, int rgb ) {
+         if (x>=width || y>=height || x<0 || y<0)
+            throw new IllegalArgumentException();
+        if (!isLoaded)
+           throw new IllegalStateException();
+         setRGB(nativeData, x, y, rgb);
+    }
+
+    /**
+     * Sets an array of integer pixels in the default RGB color model
+     * (TYPE_INT_ARGB) and default sRGB color space,
+     * into a portion of the image data.   There are only 8-bits of precision for
+     * each color component in the returned data when
+     * using this method.  With a specified coordinate (x,&nbsp;y) in the
+     *   this image, the ARGB pixel can be accessed in this way: <pre>
+     *    pixel   = rgbArray[offset + (y-startY)*scansize + (x-startX)];
+     * </pre> WARNING: No dithering takes place.
+     * @param startX,&nbsp;startY the starting coordinates
+     * @param w           width of the region
+     * @param h           height of the region
+     * @param rgbArray    the rgb pixels
+     * @param offset      offset into the <code>rgbArray</code>
+     * @param scansize    scanline stride for the <code>rgbArray</code>
+     * @since MHP 1.0
+     */
+    public void setRGB( int startX, int startY, int w, int h, int[] rgbArray, int offset, int scansize ) {
+        if (startX+w >= width || startY+h >= height || w<0 || h<0)
+            throw new IllegalArgumentException();
+        if (!isLoaded)
+           throw new IllegalStateException();
+        setRGBRegion(nativeData, startX, startY, w, h, rgbArray, offset, scansize);        
+    }
+
+
+    /**
+     * Returns a subimage defined by a specified rectangular region.
+     * The returned <code>DVBBufferedImage</code> shares the same
+     * data array as the original image.
+     * @param x,&nbsp;y the coordinates of the upper-left corner of the
+     * specified rectangular region
+     * @param w the width of the specified rectangular region
+     * @param h the height of the specified rectangular region
+     * @return a <code>DVBBufferdImage</code> that is the subimage of this
+     * <code>DVBBufferdImage</code>.
+     * @exception <code>RasterFormatException</code> if the specified
+     * area is not contained within this <code>DVBBufferdImage</code>.
+     * @since MHP 1.0
+     */
+    //Cannot call this getSubimage, because BufferedImage needs this signature.
+    public DVBBufferedImage getSubimageDVB( int x, int y, int w, int h ) 
+                            throws DVBRasterFormatException {
+        if (x<width || y<height || x<0 || y<0)
+            throw new IllegalArgumentException();
+        if (!isLoaded)
+           throw new IllegalStateException();
+        Image ret=new DVBBufferedImage();
+        ret.nativeData = getSubImage( nativeData, x, y, w, h );
+        ret.width = w;
+        ret.height = h;
+        ret.flags = READY | SCREEN;
+        return ret;
+    }
+
 }

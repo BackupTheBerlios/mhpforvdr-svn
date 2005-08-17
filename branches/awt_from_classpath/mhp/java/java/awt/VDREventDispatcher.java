@@ -163,7 +163,7 @@ public static void dispatchKey(int eKey) {
    if (comp==null)
       return;
       
-   Toolkit.eventQueue.postEvent(
+   Toolkit.getDefaultToolkit().getSystemEventQueue().postEvent(
                                  new HRcEvent(comp,
                                              HRcEvent.KEY_PRESSED,
                                              millis,
@@ -171,7 +171,7 @@ public static void dispatchKey(int eKey) {
                                              key
                                              )
                                );
-   Toolkit.eventQueue.postEvent(
+   Toolkit.getDefaultToolkit().getSystemEventQueue().postEvent(
                                  new HRcEvent(comp,
                                              HRcEvent.KEY_RELEASED,
                                              millis,
@@ -182,9 +182,11 @@ public static void dispatchKey(int eKey) {
 }
 
 static java.awt.Component findKeyTarget() {
-   java.awt.Component comp = MHPEventFilter.getFocusComponent();
-   if (comp==null)
-      System.out.println("java.awt.VDREventDispatcher: MHPEventFilter.getFocusComponent() is Null, don't know where to send VDR event!");
+   KeyboardFocusManager manager;
+   manager = KeyboardFocusManager.getCurrentKeyboardFocusManager ();
+   Component focusComponent = manager.getGlobalFocusOwner();
+   if (comp == null)
+      System.out.println("java.awt.VDREventDispatcher: KeyboardFocusManager.getGlobalFocusOwner() is Null, don't know where to send VDR event!");
    return comp;
 }
 

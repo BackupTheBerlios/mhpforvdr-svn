@@ -44,6 +44,8 @@ union ReturnType {
    double TypeDouble;
 };
 
+enum ExceptionHandling { ClearExceptions, DoNotClearExceptions };
+
 class JNIEnvProvider {
 public:
    //to set JNIEnv when JNI API is used from a JNI function, called from Java code,
@@ -61,29 +63,39 @@ private:
 
 class BaseObject {
 public:
-   BaseObject() {}
-      //Returns a function signature, accepts enum Types.
-      //numArgs is the number of arguments of the Java function.
-      //'Class' requires the class name, 'Array' the type as a second specifier.
-      //This second specifier shall be a string given as the following argument
-      //and _not_ be counted by numArgs.
-      //If returnType is either 'Class' or 'Array', then the very last argument
-      //is the necessary second specifier. This argument shall _not_ be counted
-      //by numArgs.
-      //"buffer" must be sufficiently large.
-      //Arrays of class objects are not elegantly supported, the second specifier must be "Lorg/my/Example;
+   BaseObject();
+      // Returns a function signature, accepts enum Types.
+      // numArgs is the number of arguments of the Java function.
+      // 'Class' requires the class name, 'Array' the type as a second specifier.
+      // This second specifier shall be a string given as the following argument
+      // and _not_ be counted by numArgs.
+      // If returnType is either 'Class' or 'Array', then the very last argument
+      // is the necessary second specifier. This argument shall _not_ be counted
+      // by numArgs.
+      // "buffer" must be sufficiently large.
+      // Arrays of class objects are not elegantly supported, the second specifier must be "Lorg/my/Example;
       //
-      //Two Examples: public int doIt(int arg1, bool arg2);
-      //              getSignature(buf, JNI::Int, 2, JNI::Int, JNI::Boolean);
-      //              myInstanceMethod.SetMethod("org/my/Example", "doIt", buf);
-      //
-      //              public static String doThat(int arg1, java.util.Date arg2, int[] arg3)
-      //              getSignature(buf, JNI::Object, 3, JNI::Int, JNI::Object, 
-      //                           "java/util/Data", JNI::Array, JNI::Int, "java/lang/String");
-      //              myStaticMethod.SetMethod("org/my/Example", "doThat", buf);
-      //              myStaticMethod.CallMethod(myReturnType, JNI::Object);
+      // Two Examples: public int doIt(int arg1, bool arg2);
+      //               getSignature(buf, JNI::Int, 2, JNI::Int, JNI::Boolean);
+      //               myInstanceMethod.SetMethod("org/my/Example", "doIt", buf);
+      // 
+      //               public static String doThat(int arg1, java.util.Date arg2, int[] arg3)
+      //               getSignature(buf, JNI::Object, 3, JNI::Int, JNI::Object, 
+      //                            "java/util/Data", JNI::Array, JNI::Int, "java/lang/String");
+      //               myStaticMethod.SetMethod("org/my/Example", "doThat", buf);
+      //               myStaticMethod.CallMethod(myReturnType, JNI::Object);
    static void getSignature(char *buffer, Types returnType, int numArgs, ...);
+   static void getSignature(char *buffer, Types returnType, int numArgs, va_list args);
+      //Get signature for a constructor. This is equvivalent to calling getSignature with returnType JNI::Void
+   static void getConstructorSignature(char *buffer, int numArgs, ...);
    static bool checkException();
+   
+   // Per default, exceptions (stacktrace written to output) are cleared after each call
+   // and only the return value indicates an error: ClearExceptions.
+   // If the handling is set to DoNotClearExceptions, ExceptionClear() is not called and an exception may be pending.
+   void SetExceptionHandling(ExceptionHandling eh) { exceptionHandling = eh; }
+private:
+   ExceptionHandling exceptionHandling;
 };
 
 class ClassRef : public BaseObject {
@@ -126,6 +138,7 @@ public:
    //calls method set before, which has return type returnType
    //returnValue is valid only if function return true
    bool CallMethod(jobject object, ReturnType &returnValue, Types returnType, ...);
+   bool CallMethod(jobject object, ReturnType &returnValue, Types returnType, va_list args);
 protected:
    jmethodID method;
    GlobalClassRef classRef;
@@ -139,6 +152,21 @@ public:
    //calls method set before, which has return type returnType
    //returnValue is valid only if function return true
    bool CallMethod(ReturnType &returnValue, Types returnType, ...);
+protected:
+   jmethodID method;
+   GlobalClassRef classRef;
+};
+
+class Constructor : protected InstanceMethod {
+public:
+   Constructor();
+   bool SetConstructor(const char *classname, const char *signature);
+   bool SetConstructor(jclass clazz, const char *signature);
+   //Creates a new object
+   bool NewObject(jobject &newObj, ...);
+   bool NewObject(jobject &newObj, va_list args);
+   //Make method from BaseObject available (protected inheritance)
+   void SetExceptionHandling(ExceptionHandling eh) { InstanceMethod::SetExceptionHandling(eh); }
 protected:
    jmethodID method;
    GlobalClassRef classRef;

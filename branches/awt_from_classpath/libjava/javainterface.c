@@ -210,10 +210,28 @@ void LibraryPreloader::Close() {
 
 namespace JNI {
 
+BaseObject::BaseObject()
+   : ExceptionHandling(ClearExceptions)
+{
+}
+
 void BaseObject::getSignature(char *format, Types returnType, int args, ...) {
    va_list ap;
    va_start(ap, args);
-   
+   bool ret = getSignature(format, returnType, args, ap);
+   va_end(ap);
+   return ret;
+}
+
+void BaseObject::getConstructorSignature(char *format, int args, ...) {
+   va_list ap;
+   va_start(ap, args);
+   bool ret = getSignature(format, JNI::Void, args, ap);
+   va_end(ap);
+   return ret;
+}
+
+void BaseObject::getSignature(char *format, Types returnType, int args, va_list ap) {
    int index=0;
    
    format[index++]='(';
@@ -244,15 +262,14 @@ void BaseObject::getSignature(char *format, Types returnType, int args, ...) {
    if (returnType == JNI::Object)
       format[index++]=';';
    
-   va_end(ap);
-   
    format[index++]=0;
 }
 
 bool BaseObject::checkException() {
    if (JNIEnvProvider::GetEnv()->ExceptionOccurred()) {
       JNIEnvProvider::GetEnv()->ExceptionDescribe();
-      JNIEnvProvider::GetEnv()->ExceptionClear();
+      if (exceptionHandling==ClearExceptions)
+         JNIEnvProvider::GetEnv()->ExceptionClear();
       return false;
    }
    return true;
@@ -350,12 +367,18 @@ bool StaticMethod::SetMethod(jclass clazz, const char *methodName, const char *s
 }
 
 bool StaticMethod::CallMethod(ReturnType &ret, Types returnType, ...) {
+   va_list ap;
+   va_start(ap, returnType);
+   bool ret = CallMethod(ret, returnType, ap);
+   va_end(ap);
+   return ret;
+}
+
+bool StaticMethod::CallMethod(ReturnType &ret, Types returnType, va_list ap) {
    ret.TypeLong=0;
    if (!method)
       return false;
 
-   va_list ap;
-   va_start(ap, returnType);
    switch(returnType) {
       case Void:
          JNIEnvProvider::GetEnv()->CallStaticVoidMethodV(classRef, method, ap);
@@ -389,7 +412,6 @@ bool StaticMethod::CallMethod(ReturnType &ret, Types returnType, ...) {
          ret.TypeObject=JNIEnvProvider::GetEnv()->CallStaticObjectMethodV(classRef, method, ap);
          break;
    }
-   va_end(ap);
    return checkException();
 }
 
@@ -415,13 +437,19 @@ bool InstanceMethod::SetMethod(jclass clazz, const char *methodName, const char 
    return method;
 }
 
-bool InstanceMethod::CallMethod(jobject object, ReturnType &ret, Types returnType, ...) {
+bool InstanceMethod::CallMethod(ReturnType &ret, Types returnType, ...) {
+   va_list ap;
+   va_start(ap, returnType);
+   bool ret = CallMethod(ret, returnType, ap);
+   va_end(ap);
+   return ret;
+}
+
+bool InstanceMethod::CallMethod(jobject object, ReturnType &ret, Types returnType, va_list ap) {
    ret.TypeLong=0;
    if (!method)
       return false;
 
-   va_list ap;
-   va_start(ap, returnType);
    switch(returnType) {
       case Void:
          JNIEnvProvider::GetEnv()->CallVoidMethodV(object, method, ap);
@@ -455,7 +483,32 @@ bool InstanceMethod::CallMethod(jobject object, ReturnType &ret, Types returnTyp
          ret.TypeObject=JNIEnvProvider::GetEnv()->CallObjectMethodV(object, method, ap);
          break;
    }
+   return checkException();
+}
+
+Constructor() {
+}
+
+bool SetConstructor(const char *classname, const char *signature) {
+   InstanceMethod::SetMethod(classname, "<init>", signature);
+}
+
+bool SetConstructor(jclass clazz, const char *signature) {
+   InstanceMethod::SetMethod(clazz, "<init>", signature);
+}
+
+bool NewObject(jobject &newObj, ...) {
+   va_list ap;
+   va_start(ap, newObj);
+   bool ret = NewObject(newObj, ap);
    va_end(ap);
+   return ret;
+}
+
+bool NewObject(jobject &newObj, va_list args) {
+   if (!method)
+      return false;
+   newObj=JNIEnvProvider::GetEnv()->NewObjectV(classRef, method, args)
    return checkException();
 }
 

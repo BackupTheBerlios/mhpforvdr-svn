@@ -8,30 +8,32 @@
 
 extern "C" {
 
-/*** MHPPlane ***/
+/*** MHPScreen ***/
 
-jlong Java_java_awt_MHPPlane_getMainLayer(JNIEnv* env, jclass clazz) {
+jlong Java_java_awt_MHPScreen_getMainLayer(JNIEnv* env, jclass clazz) {
    return (jlong )MhpOutput::System::self()->GetMainLayer();
 }
 
-jlong Java_java_awt_MHPPlane_getVideoLayer(JNIEnv* env, jclass clazz) {
+jlong Java_java_awt_MHPScreen_getVideoLayer(JNIEnv* env, jclass clazz) {
    return (jlong )MhpOutput::System::self()->GetVideoLayer();
 }
 
-jboolean Java_java_awt_MHPPlane_hasVideoLayer(JNIEnv* env, jclass clazz) {
+jboolean Java_java_awt_MHPScreen_hasVideoLayer(JNIEnv* env, jclass clazz) {
    return MhpOutput::System::self()->HasVideoLayer();
 }
 
-jlong Java_java_awt_MHPPlane_getBackgroundLayer(JNIEnv* env, jclass clazz) {
+jlong Java_java_awt_MHPScreen_getBackgroundLayer(JNIEnv* env, jclass clazz) {
    return (jlong )MhpOutput::System::self()->GetBackgroundLayer();
 }
 
-jboolean Java_java_awt_MHPPlane_hasBackgroundLayer(JNIEnv* env, jclass clazz) {
+jboolean Java_java_awt_MHPScreen_hasBackgroundLayer(JNIEnv* env, jclass clazz) {
    return MhpOutput::System::self()->HasBackgroundLayer();
 }
 
+/*** DFBWindowPeer ***/
 
-jlong Java_java_awt_MHPPlane_createDFBWindow(JNIEnv* env, jobject obj, jlong nativeLayer, jint x, jint y, jint width, jint height) {
+
+jlong Java_vdr_mhp_awt_DFBWindowPeer_createDFBWindow(JNIEnv* env, jobject obj, jlong nativeLayer, jint x, jint y, jint width, jint height) {
      IDirectFBDisplayLayer *layer = (IDirectFBDisplayLayer *)nativeLayer;
      IDirectFBWindow       *window;
      DFBWindowDescription  desc;
@@ -92,7 +94,7 @@ jlong Java_java_awt_MHPPlane_createDFBWindow(JNIEnv* env, jobject obj, jlong nat
      return (jlong )window;
 }
 
-jlong Java_java_awt_MHPPlane_attachEventBuffer(JNIEnv* env, jobject obj, jlong nativeData) {
+jlong Java_vdr_mhp_awt_DFBWindowPeer_attachEventBuffer(JNIEnv* env, jobject obj, jlong nativeData) {
    try {
       return (jlong ) ((IDirectFBWindow *)nativeData)->CreateEventBuffer();
    } catch (DFBException *e) {
@@ -102,7 +104,7 @@ jlong Java_java_awt_MHPPlane_attachEventBuffer(JNIEnv* env, jobject obj, jlong n
    }   
 }
 
-void Java_java_awt_MHPPlane_requestFocus(JNIEnv* env, jobject obj, jlong nativeData) {
+void Java_vdr_mhp_awt_DFBWindowPeer_requestFocus(JNIEnv* env, jobject obj, jlong nativeData) {
    try {
       printf("Request Focus: Checking args %d %d %d\n", ((IDirectFBWindow *)nativeData)->GetOptions(), (((IDirectFBWindow *)nativeData)->GetOptions() & DWOP_GHOST), ((IDirectFBWindow *)nativeData)->GetOpacity());
       ((IDirectFBWindow *)nativeData)->RequestFocus();
@@ -112,7 +114,7 @@ void Java_java_awt_MHPPlane_requestFocus(JNIEnv* env, jobject obj, jlong nativeD
    }
 }
 
-jlong Java_java_awt_MHPPlane_getSurface(JNIEnv* env, jobject obj, jlong nativeData) {
+jlong Java_vdr_mhp_awt_DFBWindowPeer_getSurface(JNIEnv* env, jobject obj, jlong nativeData) {
    try {
       return (jlong ) ((IDirectFBWindow *)nativeData)->GetSurface();
    } catch (DFBException *e) {
@@ -125,7 +127,7 @@ jlong Java_java_awt_MHPPlane_getSurface(JNIEnv* env, jobject obj, jlong nativeDa
 //static final int STACKING_LOWER  = 0;
 //static final int STACKING_MIDDLE = 1;
 //static final int STACKING_UPPER  = 2;
-void Java_java_awt_MHPPlane_setStackingClass(JNIEnv* env, jobject obj, jlong nativeData, jint stacking) {
+void Java_vdr_mhp_awt_DFBWindowPeer_setStackingClass(JNIEnv* env, jobject obj, jlong nativeData, jint stacking) {
    try {
       switch (stacking) {
          case 0:
@@ -146,7 +148,7 @@ void Java_java_awt_MHPPlane_setStackingClass(JNIEnv* env, jobject obj, jlong nat
 }
 
 
-void Java_java_awt_MHPPlane_setOpacity(JNIEnv* env, jobject obj, jlong nativeData, jint opacity) {
+void Java_vdr_mhp_awt_DFBWindowPeer_setOpacity(JNIEnv* env, jobject obj, jlong nativeData, jint opacity) {
    printf("MHPPlane_setOpacity %d\n", opacity);
    try {
       ((IDirectFBWindow *)nativeData)->SetOpacity(opacity);
@@ -157,7 +159,7 @@ void Java_java_awt_MHPPlane_setOpacity(JNIEnv* env, jobject obj, jlong nativeDat
    }
 }
 
-jint Java_java_awt_MHPPlane_getOpacity(JNIEnv* env, jobject obj, jlong nativeData) {
+jint Java_vdr_mhp_awt_DFBWindowPeer_getOpacity(JNIEnv* env, jobject obj, jlong nativeData) {
    try {
       return ((IDirectFBWindow *)nativeData)->GetOpacity();
    } catch (DFBException *e) {
@@ -167,7 +169,7 @@ jint Java_java_awt_MHPPlane_getOpacity(JNIEnv* env, jobject obj, jlong nativeDat
    }
 }
 
-void Java_java_awt_MHPPlane_raise(JNIEnv* env, jobject obj, jlong nativeData) {
+void Java_vdr_mhp_awt_DFBWindowPeer_raise(JNIEnv* env, jobject obj, jlong nativeData) {
    try {
       return ((IDirectFBWindow *)nativeData)->Raise();
    } catch (DFBException *e) {
@@ -177,7 +179,7 @@ void Java_java_awt_MHPPlane_raise(JNIEnv* env, jobject obj, jlong nativeData) {
    }
 }
 
-void Java_java_awt_MHPPlane_lower(JNIEnv* env, jobject obj, jlong nativeData) {
+void Java_vdr_mhp_awt_DFBWindowPeer_lower(JNIEnv* env, jobject obj, jlong nativeData) {
    try {
       return ((IDirectFBWindow *)nativeData)->Lower();
    } catch (DFBException *e) {
@@ -187,7 +189,7 @@ void Java_java_awt_MHPPlane_lower(JNIEnv* env, jobject obj, jlong nativeData) {
    }
 }
 
-void Java_java_awt_MHPPlane_raiseToTop(JNIEnv* env, jobject obj, jlong nativeData) {
+void Java_vdr_mhp_awt_DFBWindowPeer_raiseToTop(JNIEnv* env, jobject obj, jlong nativeData) {
    try {
       return ((IDirectFBWindow *)nativeData)->RaiseToTop();
    } catch (DFBException *e) {
@@ -197,7 +199,7 @@ void Java_java_awt_MHPPlane_raiseToTop(JNIEnv* env, jobject obj, jlong nativeDat
    }
 }
 
-void Java_java_awt_MHPPlane_lowerToBottom(JNIEnv* env, jobject obj, jlong nativeData) {
+void Java_vdr_mhp_awt_DFBWindowPeer_lowerToBottom(JNIEnv* env, jobject obj, jlong nativeData) {
    try {
       return ((IDirectFBWindow *)nativeData)->LowerToBottom();
    } catch (DFBException *e) {
@@ -207,7 +209,7 @@ void Java_java_awt_MHPPlane_lowerToBottom(JNIEnv* env, jobject obj, jlong native
    }
 }
 
-void Java_java_awt_MHPPlane_putAtop(JNIEnv* env, jobject obj, jlong nativeData, jlong otherNativeData) {
+void Java_vdr_mhp_awt_DFBWindowPeer_putAtop(JNIEnv* env, jobject obj, jlong nativeData, jlong otherNativeData) {
    try {
       return ((IDirectFBWindow *)nativeData)->PutAtop((IDirectFBWindow *)otherNativeData);
    } catch (DFBException *e) {
@@ -217,7 +219,7 @@ void Java_java_awt_MHPPlane_putAtop(JNIEnv* env, jobject obj, jlong nativeData, 
    }
 }
 
-void Java_java_awt_MHPPlane_putBelow(JNIEnv* env, jobject obj, jlong nativeData, jlong otherNativeData) {
+void Java_vdr_mhp_awt_DFBWindowPeer_putBelow(JNIEnv* env, jobject obj, jlong nativeData, jlong otherNativeData) {
    try {
       return ((IDirectFBWindow *)nativeData)->PutBelow((IDirectFBWindow *)otherNativeData);
    } catch (DFBException *e) {
@@ -227,7 +229,41 @@ void Java_java_awt_MHPPlane_putBelow(JNIEnv* env, jobject obj, jlong nativeData,
    }
 }
 
+void Java_vdr_mhp_awt_DFBWindowPeer_getPosition(JNIEnv* env, jobject obj, jlong nativeData, jintArray java_points) {
+   int *native_points;
+   
+   native_points = env->GetIntArrayElements(java_points, NULL);
+   
+   try {
+      return ((IDirectFBWindow *)nativeData)->GetPosition(&native_points[0], &native_points[1]);
+   } catch (DFBException *e) {
+      printf("DirectFB: Error %s, %s\n", e->GetAction(), e->GetResult());
+      delete e;
+      return;
+   }
+   
+   env->ReleaseIntArrayElements(java_points, native_points, JNI_COMMIT);
+}
 
+void Java_vdr_mhp_awt_DFBWindowPeer_setSize(JNIEnv* env, jobject obj, jlong nativeData, jint width, jint height) {
+   try {
+      return ((IDirectFBWindow *)nativeData)->Resize(width, height);
+   } catch (DFBException *e) {
+      printf("DirectFB: Error %s, %s\n", e->GetAction(), e->GetResult());
+      delete e;
+      return;
+   }
+}
+
+void Java_vdr_mhp_awt_DFBWindowPeer_moveTo(JNIEnv* env, jobject obj, jlong nativeData, jint x, jint y) {
+   try {
+      return ((IDirectFBWindow *)nativeData)->MoveTo(x, y);
+   } catch (DFBException *e) {
+      printf("DirectFB: Error %s, %s\n", e->GetAction(), e->GetResult());
+      delete e;
+      return;
+   }
+}
 
 /*void Java_java_awt_MHPScreen_lowerToBottom(JNIEnv* env, jobject obj, jlong nativeData) {
    try {
@@ -247,7 +283,7 @@ void Java_java_awt_MHPScreen_putAtop(JNIEnv* env, jobject obj, jlong nativeData,
    }
 }*/
 
-void Java_java_awt_MHPPlane_destroy(JNIEnv* env, jobject obj, jlong nativeData) {
+void Java_vdr_mhp_awt_DFBWindowPeer_destroy(JNIEnv* env, jobject obj, jlong nativeData) {
    try {
       ((IDirectFBWindow *)nativeData)->Destroy();
    } catch (DFBException *e) {
@@ -256,7 +292,7 @@ void Java_java_awt_MHPPlane_destroy(JNIEnv* env, jobject obj, jlong nativeData) 
    }
 }
 
-void Java_java_awt_MHPPlane_removeRefs(JNIEnv* env, jobject obj, jlong nativeWindow, jlong nativeEventBuffer) {
+void Java_vdr_mhp_awt_DFBWindowPeer_removeRefs(JNIEnv* env, jobject obj, jlong nativeWindow, jlong nativeEventBuffer) {
    try {
       if (nativeWindow)
          ((IDirectFBWindow *)nativeWindow)->Release();
@@ -269,15 +305,15 @@ void Java_java_awt_MHPPlane_removeRefs(JNIEnv* env, jobject obj, jlong nativeWin
 }
 
 //The $, unicode 0x24, is mangled to _00024
-jlong Java_java_awt_MHPPlane_00024EventThread_allocateEvent(JNIEnv* env, jobject obj) {
+jlong Java_vdr_mhp_awt_DFBWindowPeer_00024EventThread_allocateEvent(JNIEnv* env, jobject obj) {
    return (jlong ) new DFBEvent;
 }
 
-void Java_java_awt_MHPPlane_00024EventThread_deleteEvent(JNIEnv* env, jobject obj, jlong nativeEvent) {
+void Java_vdr_mhp_awt_DFBWindowPeer_00024EventThread_deleteEvent(JNIEnv* env, jobject obj, jlong nativeEvent) {
    delete (DFBEvent *)nativeEvent;
 }
 
-void Java_java_awt_MHPPlane_00024EventThread_waitForEvent(JNIEnv* env, jobject obj, jlong nativeData) {
+void Java_vdr_mhp_awt_DFBWindowPeer_00024EventThread_waitForEvent(JNIEnv* env, jobject obj, jlong nativeData) {
    try {
       ((IDirectFBEventBuffer *)nativeData)->WaitForEvent();
    } catch (DFBException *e) {
@@ -286,7 +322,7 @@ void Java_java_awt_MHPPlane_00024EventThread_waitForEvent(JNIEnv* env, jobject o
    }
 }
 
-jboolean Java_java_awt_MHPPlane_00024EventThread_getEvent(JNIEnv* env, jobject obj, jlong nativeData, jlong nativeEvent) {
+jboolean Java_vdr_mhp_awt_DFBWindowPeer_00024EventThread_getEvent(JNIEnv* env, jobject obj, jlong nativeData, jlong nativeEvent) {
    try {
       DFBEvent *ev=(DFBEvent *)nativeEvent;
       if (((IDirectFBEventBuffer *)nativeData)->GetEvent(ev)==DFB_OK) {
@@ -301,7 +337,7 @@ jboolean Java_java_awt_MHPPlane_00024EventThread_getEvent(JNIEnv* env, jobject o
 }
 
 //simple copying from native structure to Java array
-void Java_java_awt_MHPPlane_00024EventThread_fillEventInformation(JNIEnv* env, jobject obj, jlong nativeEvent, jintArray eventData) {
+void Java_vdr_mhp_awt_DFBWindowPeer_00024EventThread_fillEventInformation(JNIEnv* env, jobject obj, jlong nativeEvent, jintArray eventData) {
    int data[15];
    DFBWindowEvent *e=(DFBWindowEvent *)nativeEvent;
    data[0]=e->type;
@@ -322,20 +358,20 @@ void Java_java_awt_MHPPlane_00024EventThread_fillEventInformation(JNIEnv* env, j
    env->SetIntArrayRegion(eventData, 0, 1, data);
 }
 
-jlong Java_java_awt_MHPPlane_$EventThread_allocateEvent(JNIEnv* env, jobject obj) {
-   return Java_java_awt_MHPPlane_00024EventThread_allocateEvent(env, obj);
+jlong Java_vdr_mhp_awt_DFBWindowPeer_$EventThread_allocateEvent(JNIEnv* env, jobject obj) {
+   return Java_vdr_mhp_awt_DFBWindowPeer_00024EventThread_allocateEvent(env, obj);
 }
-void Java_java_awt_MHPPlane_$EventThread_deleteEvent(JNIEnv* env, jobject obj, jlong nativeEvent) {
-   return Java_java_awt_MHPPlane_00024EventThread_deleteEvent(env, obj, nativeEvent);
+void Java_vdr_mhp_awt_DFBWindowPeer_$EventThread_deleteEvent(JNIEnv* env, jobject obj, jlong nativeEvent) {
+   return Java_vdr_mhp_awt_DFBWindowPeer_00024EventThread_deleteEvent(env, obj, nativeEvent);
 }
-void Java_java_awt_MHPPlane_$EventThread_waitForEvent(JNIEnv* env, jobject obj, jlong nativeData) {
-   return Java_java_awt_MHPPlane_00024EventThread_waitForEvent(env, obj, nativeData);
+void Java_vdr_mhp_awt_DFBWindowPeer_$EventThread_waitForEvent(JNIEnv* env, jobject obj, jlong nativeData) {
+   return Java_vdr_mhp_awt_DFBWindowPeer_00024EventThread_waitForEvent(env, obj, nativeData);
 }
-jboolean Java_java_awt_MHPPlane_$EventThread_getEvent(JNIEnv* env, jobject obj, jlong nativeData, jlong nativeEvent) {
-   return Java_java_awt_MHPPlane_00024EventThread_getEvent(env, obj, nativeData, nativeEvent);
+jboolean Java_vdr_mhp_awt_DFBWindowPeer_$EventThread_getEvent(JNIEnv* env, jobject obj, jlong nativeData, jlong nativeEvent) {
+   return Java_vdr_mhp_awt_DFBWindowPeer_00024EventThread_getEvent(env, obj, nativeData, nativeEvent);
 }
-void Java_java_awt_MHPPlane_$EventThread_fillEventInformation(JNIEnv* env, jobject obj, jlong nativeEvent, jintArray eventData) {
-   return Java_java_awt_MHPPlane_00024EventThread_fillEventInformation(env, obj, nativeEvent, eventData);
+void Java_vdr_mhp_awt_DFBWindowPeer_$EventThread_fillEventInformation(JNIEnv* env, jobject obj, jlong nativeEvent, jintArray eventData) {
+   return Java_vdr_mhp_awt_DFBWindowPeer_00024EventThread_fillEventInformation(env, obj, nativeEvent, eventData);
 }
 /*** MHPScreen ***/
 
