@@ -146,7 +146,7 @@ public static boolean isThreeLayerConfiguration() {
    return hasVideoLayer() && hasBackgroundLayer();
 }
 
-
+/*
     //actual creation methods - not official API
 public static Graphics createClippedGraphics(Component comp) {
    return MHPNativeGraphics.createClippedGraphics(comp);
@@ -156,7 +156,7 @@ public static Graphics getImageGraphics(java.awt.Image img) {
    return MHPNativeGraphics.getImageGraphics(img);
 }
 
-/*
+
 public static void postPaintEvent ( int id, Component c, int x, int y, int width, int height ) {
    Toolkit.getDefaultToolkit().getSystemEventQueue().postPaintEvent( id, c, x, y, width, height);
 }

@@ -73,7 +73,7 @@ public class MHPImageConsumer implements ImageConsumer
   }
   
   // one package-internal method using the native implementation
-  public synchronized void setImageFromProvider(DFBImageProvider provider) {
+  public synchronized void setImage(DFBImageProvider provider) {
     source.removeConsumer(this);
     target.setImage(provider, properties);
   }

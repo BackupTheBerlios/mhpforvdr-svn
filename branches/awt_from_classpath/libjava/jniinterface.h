@@ -46,9 +46,11 @@ union ReturnType {
 
 enum ExceptionHandling { ClearExceptions, DoNotClearExceptions };
 
+enum ThrowMode { ThrowModeTry, ThrowModeConsequent };
+
 class JNIEnvProvider {
 public:
-   //to set JNIEnv when JNI API is used from a JNI function, called from Java code,
+   // to set JNIEnv when JNI API is used from a JNI function, called from Java code,
    //with the thread possibly created by Java (thread need not be attached to VM).
    static void SetJavaEnv(JNIEnv *env) { return s_self->setJavaEnv(env); }
    static JNIEnv *GetEnv() { return s_self->env(); }
@@ -61,10 +63,40 @@ private:
    static JNIEnvProvider *s_self;
 };
 
+class DeletableObject {
+public:
+   virtual ~DeletableObject();
+   // Called when VM is shut down. Shall be implemented by all subclasses which need
+   // to remove any sort of references/IDs with JNI calls. At destruction time, 
+   // the VM may be shut down and JNI no longer available.
+   // As well, this is called from destructor.
+   virtual void Delete() {}
+protected:
+   // Causes Delete() to be called immediately before the VM is shut down
+   void RegisterForDeletion();
+   // Automatically called from destructor
+   void RemoveForDeletion();
+};
+
+class ShutdownManager {
+public:
+   static void RegisterForDeletion(DeletableObject *obj) { return s_self->RegisterForDeletion(obj); }
+   static void RemoveForDeletion(DeletableObject *obj) { return s_self->RemoveForDeletion(obj); }
+protected:
+   ShutdownManager() { s_self = this; }
+   virtual ~ShutdownManager() { s_self = 0; }
+   virtual void registerForDeletion(DeletableObject *obj) = 0;
+   virtual void removeForDeletion(DeletableObject *obj) = 0;
+private:
+   static ShutdownManager *s_self;
+};
+
 class BaseObject {
 public:
    BaseObject();
+   virtual ~BaseObject();
       // Returns a function signature, accepts enum Types.
+      // The returned array is allocated with new[] and must be delete[]'ed by the caller.
       // numArgs is the number of arguments of the Java function.
       // 'Class' requires the class name, 'Array' the type as a second specifier.
       // This second specifier shall be a string given as the following argument
@@ -72,7 +104,6 @@ public:
       // If returnType is either 'Class' or 'Array', then the very last argument
       // is the necessary second specifier. This argument shall _not_ be counted
       // by numArgs.
-      // "buffer" must be sufficiently large.
       // Arrays of class objects are not elegantly supported, the second specifier must be "Lorg/my/Example;
       //
       // Two Examples: public int doIt(int arg1, bool arg2);
@@ -84,11 +115,13 @@ public:
       //                            "java/util/Data", JNI::Array, JNI::Int, "java/lang/String");
       //               myStaticMethod.SetMethod("org/my/Example", "doThat", buf);
       //               myStaticMethod.CallMethod(myReturnType, JNI::Object);
-   static void getSignature(char *buffer, Types returnType, int numArgs, ...);
-   static void getSignature(char *buffer, Types returnType, int numArgs, va_list args);
+   static const char *getSignature(Types returnType, int numArgs, ...);
+   static const char *getSignature(Types returnType, int numArgs, va_list args);
       //Get signature for a constructor. This is equvivalent to calling getSignature with returnType JNI::Void
-   static void getConstructorSignature(char *buffer, int numArgs, ...);
-   static bool checkException();
+   static const char *getConstructorSignature(int numArgs, ...);
+   
+   static bool checkException(ExceptionHandling eh);
+   bool checkException();
    
    // Per default, exceptions (stacktrace written to output) are cleared after each call
    // and only the return value indicates an error: ClearExceptions.
@@ -97,6 +130,7 @@ public:
 private:
    ExceptionHandling exceptionHandling;
 };
+
 
 class ClassRef : public BaseObject {
 public:
@@ -108,7 +142,7 @@ protected:
    jclass classRef;   
 };
 
-class GlobalObjectRef : public BaseObject {
+class GlobalObjectRef : public BaseObject, public DeletableObject {
 public:
    GlobalObjectRef();
    ~GlobalObjectRef();
@@ -116,50 +150,69 @@ public:
    jclass GetClass();
    //a valid local reference
    bool SetObject(jobject localRef);
-   void DeleteReference();
 protected:
+   virtual void Delete();
    jobject objectRef;
 };
 
-class GlobalClassRef : public ClassRef {
+class GlobalClassRef : public ClassRef, public DeletableObject {
 public:
    GlobalClassRef();
    ~GlobalClassRef();
    bool SetClass(const char* classname);
    bool SetClass(jclass localRef);
-   void DeleteReference();
+protected:
+   virtual void Delete();
 };
 
-class InstanceMethod : public BaseObject {
+class Method : public BaseObject, public DeletableObject {
+public:
+   Method();
+   // Calling these four methods is equivalent to obtaining the signature with getSignature
+   // and then calling one the two other methods.
+   // For the arguments returnType, numArgs, and the variable argument list
+   // see the documentation for getSignature above.
+   virtual bool SetMethodWithArguments(const char *classname, const char *methodName, Types returnType, int numArgs, ...);
+   virtual bool SetMethodWithArguments(jclass clazz, const char *methodName, Types returnType, int numArgs, ...);
+   virtual bool SetMethodWithArguments(const char *classname, const char *methodName, Types returnType, int numArgs, va_list args);
+   virtual bool SetMethodWithArguments(jclass clazz, const char *methodName, Types returnType, int numArgs, va_list args);
+   
+   virtual bool SetMethod(const char *classname, const char *methodName, Types returnType, const char *signature) = 0;
+   virtual bool SetMethod(jclass clazz, const char *methodName, Types returnType, const char *signature) = 0;
+protected:
+   virtual void Delete();
+   jmethodID method;
+   GlobalClassRef classRef;
+   Types returnType;
+};
+
+class InstanceMethod : public Method {
 public:
    InstanceMethod();
-   bool SetMethod(const char *classname, const char *methodName, const char *signature);
-   bool SetMethod(jclass clazz, const char *methodName, const char *signature);
+   virtual bool SetMethod(const char *classname, const char *methodName, Types returnType, const char *signature);
+   virtual bool SetMethod(jclass clazz, const char *methodName, Types returnType, const char *signature);
    //calls method set before, which has return type returnType
    //returnValue is valid only if function return true
-   bool CallMethod(jobject object, ReturnType &returnValue, Types returnType, ...);
-   bool CallMethod(jobject object, ReturnType &returnValue, Types returnType, va_list args);
-protected:
-   jmethodID method;
-   GlobalClassRef classRef;
+   bool CallMethod(jobject object, ReturnType &returnValue, ...);
+   bool CallMethod(jobject object, ReturnType &returnValue, va_list args);
 };
 
-class StaticMethod : public BaseObject {
+class StaticMethod : public Method {
 public:
    StaticMethod();
-   bool SetMethod(const char *classname, const char *methodName, const char *signature);
-   bool SetMethod(jclass clazz, const char *methodName, const char *signature);
+   virtual bool SetMethod(const char *classname, const char *methodName, Types returnType, const char *signature);
+   virtual bool SetMethod(jclass clazz, const char *methodName, Types returnType, const char *signature);
    //calls method set before, which has return type returnType
    //returnValue is valid only if function return true
-   bool CallMethod(ReturnType &returnValue, Types returnType, ...);
-protected:
-   jmethodID method;
-   GlobalClassRef classRef;
+   bool CallMethod(ReturnType &returnValue, ...);
+   bool CallMethod(ReturnType &returnValue, va_list args);
 };
 
 class Constructor : protected InstanceMethod {
 public:
    Constructor();
+   bool SetConstructorWithArguments(const char *classname, int numArgs, ...);
+   bool SetConstructorWithArguments(jclass clazz, int numArgs, ...);
    bool SetConstructor(const char *classname, const char *signature);
    bool SetConstructor(jclass clazz, const char *signature);
    //Creates a new object
@@ -167,20 +220,25 @@ public:
    bool NewObject(jobject &newObj, va_list args);
    //Make method from BaseObject available (protected inheritance)
    void SetExceptionHandling(ExceptionHandling eh) { InstanceMethod::SetExceptionHandling(eh); }
-protected:
-   jmethodID method;
-   GlobalClassRef classRef;
 };
 
 class Exception : public BaseObject {
 public:
    Exception();
-   enum ThrowMode { ThrowModeTry, ThrowModeConsequent };
-   //Throws a new exception instance of given class with given error message.
-   //If ThrowMode is Consequent, in case of failure a ClassNotFoundException and
-   //ultimately an internal error is sent. If mode is Try, just try to throw given class
-   //and nothing more. In any case, return value indicates whether the requested attempt was successful.
-   bool Throw(const char *classname, const char *errMsg, ThrowMode mode = ThrowModeTry);
+   bool SetClass(const char *classname);
+   // This method is well suited for use with a preinitialized Exception object
+   bool Throw(const char *errMsg);
+   
+   // Combines SetClass(classname) and then Throw(errMsg, mode) - with error checking!
+   // This call is well suited to be called when an error state is reached and the Exception variable
+   // has not yet been created/initialized.
+   // This call is not affected by a call to SetClass before.
+   // If ThrowMode is Consequent, in case of failure of loading an exception class a ClassNotFoundException and
+   // ultimately an internal error is sent. If mode is Try, just try to throw given class
+   // and nothing more. In any case, return value indicates whether the requested attempt was successful.
+   static bool Throw(const char *classname, const char *errMsg, ThrowMode mode = ThrowModeTry);
+protected:
+   GlobalClassRef classRef;
 };
 
 }//end of namespace JNI

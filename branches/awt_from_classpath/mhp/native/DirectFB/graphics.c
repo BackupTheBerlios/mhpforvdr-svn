@@ -143,6 +143,10 @@ public:
 #define JGREEN(_rgb)	((_rgb & 0x0000ff00) >>  8)
 #define JBLUE(_rgb)		((_rgb & 0x000000ff)      )
 
+static setSurfaceColor(IDirectFBSurface *surface, int color) {
+   surface->SetColor(JRED(color), JGREEN(color), JBLUE(color), JALPHA(color) );
+}
+
 void Java_java_awt_MHPNativeGraphics_addRef(JNIEnv* env, jobject obj, jlong nativeData) {
    ((IDirectFBSurface *)nativeData)->AddRef();
 }
@@ -219,19 +223,19 @@ void Java_java_awt_MHPNativeGraphics_draw3DRect(JNIEnv* env, jobject obj, jlong 
    int color = raised ? bright : dark;
    IDirectFBSurface *surface=((IDirectFBSurface *)nativeData);
    try {
-     surface->SetColor(JRED(color), JGREEN(color), JBLUE(color), JALPHA(color) );
+     setSurfaceColor(surface, color);
      surface->SetDrawingFlags(DSDRAW_BLEND);
 
      surface->DrawLine(x, y, x+width-1, y );     
      surface->DrawLine(x, y+1, x, y+height-0 );
 
      color = raised ? dark : bright;
-     surface->SetColor(JRED(color), JGREEN(color), JBLUE(color), JALPHA(color) );     
+     setSurfaceColor(surface, color);
 
      surface->DrawLine(x+1, y+height-0, x+width-0, y+height-0 );
      surface->DrawLine(x+width-0, y, x+width-0, y+height-1 );
 
-     surface->SetColor(JRED(origColor), JGREEN(origColor), JBLUE(origColor), JALPHA(origColor) );     
+     setSurfaceColor(surface, origColor);
    } catch (DFBException *e) {
       printf("DirectFB: Error %s, %s\n", e->GetAction(), e->GetResult());
       delete e;
@@ -314,24 +318,42 @@ void Java_java_awt_MHPNativeGraphics_drawArc(JNIEnv* env, jobject obj, jlong nat
    miDeletePaintedSet (paintedSet);
 }
 
-void Java_java_awt_MHPNativeGraphics_drawImage(JNIEnv* env, jobject obj, jlong nativeData, jlong nativeFlipData, jlong imgNativeData, 
-                        jint sx, jint sy, jint x, jint y, jint width, jint height, jint origColor, jint bgColor, jint extraAlpha) {
-   IDirectFBSurface *surface=((IDirectFBSurface *)nativeData);
-   Image *img=((Image *)imgNativeData);
-   try {
-     int blittingflags = DSBLIT_NOFX;
-     DFBRectangle rect = { sx, sy, width, height };
-     
-     if (img->desc.caps & DICAPS_COLORKEY) {
-          blittingflags |= DSBLIT_SRC_COLORKEY;
-     }
-     
-     blittingflags |= DSBLIT_BLEND_ALPHACHANNEL;
+static void prepareBlitting(IDirectFBSurface *surface, IDirectFBSurface *sourceSurface, jint x, jint y, jint width, jint height, jint origColor, jint bgColor, jint extraAlpha) {
+   
+   // If bgColor is set, all transparent pixels shall be painted in this color.
+   // Java spec says "This operation is equivalent to filling a rectangle of the width
+   // and height of the specified image with the given color and then drawing the image
+   // on top of it, but possibly more efficient.". So this is what we do.
+   if (bgColor != -1) {
+      surface->SetDrawingFlags(DSDRAW_BLEND);
+      setSurfaceColor(surface, bgColor);
+      surface->FillRectangle(x, y, width+1, height+1);
+      setSurfaceColor(surface, origColor);
+   }
+   
+   int blittingflags = DSBLIT_NOFX;
+   
+   // Information about a possible colorkey is currently not obtained from ImageProvider,
+   // and is not available here. I don't know if this is necessary at all.
+   /*
+   if (imageDescription.caps & DICAPS_COLORKEY) {
+         blittingflags |= DSBLIT_SRC_COLORKEY;
+   }
+   */
+   
+   // always blend with alpha channel
+   blittingflags |= DSBLIT_BLEND_ALPHACHANNEL;
 
-     if (extraAlpha < 255) {
-         blittingflags |= (DFBSurfaceBlittingFlags)DSBLIT_BLEND_COLORALPHA;
-         surface->SetColor(0, 0, 0, extraAlpha );
-     }
+   // possibly additionally blend with the extraAlpha value
+   if (extraAlpha < 255) {
+      blittingflags |= (DFBSurfaceBlittingFlags)DSBLIT_BLEND_COLORALPHA;
+      surface->SetColor(0, 0, 0, extraAlpha );
+   }
+   
+   surface->SetBlittingFlags((DFBSurfaceBlittingFlags)blittingflags);
+   
+   // this is some very old code from the old kawt implementation
+   
      /*if (img->hasalpha || extraAlpha < 255) {
           switch (porter) {
                case DSPD_SRC:
@@ -368,109 +390,100 @@ void Java_java_awt_MHPNativeGraphics_drawImage(JNIEnv* env, jobject obj, jlong n
           blittingflags |= DSBLIT_BLEND_ALPHACHANNEL;
      }*/
 
-     surface->SetBlittingFlags((DFBSurfaceBlittingFlags)blittingflags);
-     
-     //printf("Graphics: blit'ing image, %dx%d-%dx%d, %d,%d,  update region %dx%d-%dx%d\n", rect.x, rect.y, rect.w, rect.h, x, y, x, y, x+width-1, y+height-1);
-     surface->Blit(img->surface, &rect, x, y);
-     
-     surface->SetColor(JRED(origColor), JGREEN(origColor), JBLUE(origColor), JALPHA(origColor) );
+}
+
+void Java_java_awt_MHPNativeGraphics_drawImage(JNIEnv* env, jobject obj, jlong nativeData, jlong nativeFlipData, jlong imgNativeData, 
+                                               jint srcX, jint srcY, jint srcWidth, jint srcHeight,
+                                               jint dstX, jint dstY, jint origColor, jint bgColor, jint extraAlpha)
+{
+   IDirectFBSurface *surface=((IDirectFBSurface *)nativeData);
+   IDirectFBSurface *sourceSurface=((IDirectFBSurface *)nativeData);
+   DFBRectangle rect = { srcX, srcY, srcWidth, srcHeight };
+   // Here is srcWidth == dstWidth, srcHeight == dstHeight
+   
+   try {
+      
+      prepareBlitting(surface, sourceSurface, dstX, dstY, srcWidth, srcHeight, origColor, bgColor, extraAlpha);
+      
+      //printf("Graphics: blit'ing image, %dx%d-%dx%d, %d,%d,  update region %dx%d-%dx%d\n", rect.x, rect.y, rect.w, rect.h, x, y, x, y, x+width-1, y+height-1);
+      surface->Blit(sourceSurface, &rect, dstX, dstY);
+      
+      setSurfaceColor(surface, origColor);
 
    } catch (DFBException *e) {
       printf("DirectFB: Error %s, %s\n", e->GetAction(), e->GetResult());
       delete e;
+      Exception exp;
+      exp.Throw("java/lang/IllegalArgumentException", "Blitting failed");
       return;
    }
-   ((FlipData *)nativeFlipData)->addUpdate(x, y, x+width-1, y+height-1);
+   ((FlipData *)nativeFlipData)->addUpdate(dstX, dstY, dstX+srcWidth-1, dstY+srcHeight-1);
 }
 
 void Java_java_awt_MHPNativeGraphics_drawImageScaled(JNIEnv* env, jobject obj, jlong nativeData, jlong nativeFlipData, jlong imgNativeData, 
-                        jint dx0, jint dy0, jint dx1, jint dy1, jint sx0, jint sy0, jint sx1, jint sy1, jint origColor, jint bgColor, jint extraAlpha) {
+                                                      int srcX, int srcY, int srcWidth, int srcHeight,
+                                                      int dstX, int dstY, int dstWidth, int dstHeight, 
+                                                      jint origColor, jint bgColor, jint extraAlpha) 
+{
 
    IDirectFBSurface *surface=((IDirectFBSurface *)nativeData);
-   Image *img=((Image *)imgNativeData);
-   DFBRectangle sr = { sx0, sy0, sx1 - sx0, sy1 - sy0 };
-   DFBRectangle dr = { dx0, dy0, dx1 - dx0, dy1 - dy0 };
+   IDirectFBSurface *sourceSurface=((IDirectFBSurface *)nativeData);
+   DFBRectangle sr = { srcX, srcY, srcWidth, srcHeight };
+   DFBRectangle dr = { dstX, dstY, dstWidth, dstHeight };
    try {
-     int blittingflags = DSBLIT_NOFX;
-     if (img->desc.caps & DICAPS_COLORKEY) {
-          blittingflags |= (DFBSurfaceBlittingFlags)DSBLIT_SRC_COLORKEY;
-     }
+      prepareBlitting(surface, sourceSurface, dstX, dstY, dstWidth, dstHeight, origColor, bgColor, extraAlpha);
      
-     blittingflags |= (DFBSurfaceBlittingFlags)DSBLIT_BLEND_ALPHACHANNEL;
-
-     if (extraAlpha < 255) {
-         blittingflags |= (DFBSurfaceBlittingFlags)DSBLIT_BLEND_COLORALPHA;
-         surface->SetColor(0, 0, 0, extraAlpha );
-     }
-
-     surface->SetBlittingFlags((DFBSurfaceBlittingFlags)blittingflags);
+      printf("Graphics: StretchBlit'ing image\n");
+      surface->StretchBlit(sourceSurface, &sr, &dr);
      
-     printf("Graphics: StretchBlit'ing image\n");
-     surface->StretchBlit(img->surface, &sr, &dr);
-     
-     surface->SetColor(JRED(origColor), JGREEN(origColor), JBLUE(origColor), JALPHA(origColor) );
+      setSurfaceColor(surface, origColor);
 
    } catch (DFBException *e) {
       printf("DirectFB: Error %s, %s\n", e->GetAction(), e->GetResult());
       delete e;
+      Exception exp;
+      exp.Throw("java/lang/IllegalArgumentException", "StretchBlitting failed");
       return;
    }
    ((FlipData *)nativeFlipData)->addUpdate(dr.x, dr.y, dr.x+dr.w-1, dr.y+dr.h-1 );
 }
 
 void Java_java_awt_MHPNativeGraphics_drawImageTiled(JNIEnv* env, jobject obj, jlong nativeData, jlong nativeFlipData, jlong imgNativeData, 
-                        jint sx, jint sy, jint x, jint y, jint width, jint height, jint origColor, jint bgColor, jint extraAlpha) {
+                                               jint srcX, jint srcY, jint srcWidth, jint srcHeight,
+                                               jint dstX, jint dstY, jint origColor, jint bgColor, jint extraAlpha)
    IDirectFBSurface *surface=((IDirectFBSurface *)nativeData);
-   Image *img=((Image *)imgNativeData);
+   IDirectFBSurface *sourceSurface=((IDirectFBSurface *)nativeData);
+   DFBRectangle rect = { srcX, srcY, srcWidth, srcHeight };
+   
    try {
-     int blittingflags = DSBLIT_NOFX;
-     DFBRectangle rect = { sx, sy, width, height };
-     
-     if (img->desc.caps & DICAPS_COLORKEY) {
-          blittingflags |= DSBLIT_SRC_COLORKEY;
-     }
-     
-     blittingflags |= DSBLIT_BLEND_ALPHACHANNEL;
-
-     if (extraAlpha < 255) {
-         blittingflags |= (DFBSurfaceBlittingFlags)DSBLIT_BLEND_COLORALPHA;
-         surface->SetColor(0, 0, 0, extraAlpha );
-     }
-
-     surface->SetBlittingFlags((DFBSurfaceBlittingFlags)blittingflags);
-     
-     printf("Graphics: TileBlit'ing image, %dx%d-%dx%d, %d,%d,  update region %dx%d-%dx%d\n", rect.x, rect.y, rect.w, rect.h, x, y, x, y, x+width-1, y+height-1);
-     surface->TileBlit(img->surface, &rect, x, y);
-     
-     surface->SetColor(JRED(origColor), JGREEN(origColor), JBLUE(origColor), JALPHA(origColor) );
+      
+      prepareBlitting(surface, sourceSurface, dstX, dstY, srcWidth, srcHeight, origColor, bgColor, extraAlpha);
+      
+      printf("Graphics: TileBlit'ing image, %dx%d-%dx%d, %d,%d,  update region %dx%d-%dx%d\n", rect.x, rect.y, rect.w, rect.h, x, y, x, y, x+width-1, y+height-1);
+      
+      surface->TileBlit(sourceSurface, &rect, dstX, dstY);
+      
+      setSurfaceColor(surface, origColor);
 
    } catch (DFBException *e) {
       printf("DirectFB: Error %s, %s\n", e->GetAction(), e->GetResult());
       delete e;
+      Exception exp;
+      exp.Throw("java/lang/IllegalArgumentException", "TileBlitting failed");
       return;
    }
-   ((FlipData *)nativeFlipData)->addUpdate(x, y, x+width-1, y+height-1);
+   ((FlipData *)nativeFlipData)->addUpdate(dstX, dstY, dstX+srcWidth-1, dstY+srcHeight-1);
 }
 
+// TODO: this does not look clean. Find out of this hack is necessary
 void Java_java_awt_MHPNativeGraphics_tileBlitImageAlpha(JNIEnv* env, jobject obj, jlong nativeData,
              jlong nativeFlipData, jlong imgNativeData, jint x, jint y, jint porterDuffRule) {
    IDirectFBSurface *surface=((IDirectFBSurface *)nativeData);
-   Image *img=((Image *)imgNativeData);
+   IDirectFBSurface *sourceSurface=((IDirectFBSurface *)nativeData);
    int width,height;
    try {
      int blittingflags = DSBLIT_NOFX; //correct?
      surface->GetSize(&width, &height);
-     
-     /*if (img->desc.caps & DICAPS_COLORKEY) {
-          blittingflags |= DSBLIT_SRC_COLORKEY;
-     }
-     
-     blittingflags |= DSBLIT_BLEND_ALPHACHANNEL;
-
-     if (extraAlpha < 255) {
-         blittingflags |= (DFBSurfaceBlittingFlags)DSBLIT_BLEND_COLORALPHA;
-         surface->SetColor(0, 0, 0, extraAlpha );
-     }*/
       
      surface->SetBlittingFlags((DFBSurfaceBlittingFlags)blittingflags);
      
@@ -479,12 +492,14 @@ void Java_java_awt_MHPNativeGraphics_tileBlitImageAlpha(JNIEnv* env, jobject obj
      printf("Graphics: TileBlit'ing image, %d,%d\n", x, y);
      surface->TileBlit(img->surface, NULL, x, y);
      
-     //surface->SetColor(JRED(origColor), JGREEN(origColor), JBLUE(origColor), JALPHA(origColor) );
+     //setSurfaceColor(surface, origColor);
      surface->SetPorterDuff((DFBSurfacePorterDuffRule)porterDuffRule);
 
    } catch (DFBException *e) {
       printf("DirectFB: Error %s, %s\n", e->GetAction(), e->GetResult());
       delete e;
+      Exception exp;
+      exp.Throw("java/lang/IllegalArgumentException", "TileBlitting with alpha failed");
       return;
    }
    ((FlipData *)nativeFlipData)->addUpdate(x, y, x+width, y+height);
@@ -679,11 +694,12 @@ void Java_java_awt_MHPNativeGraphics_drawRoundRect(JNIEnv* env, jobject obj, jlo
    miDeletePaintedSet (paintedSet);
 }
 
-void Java_java_awt_MHPNativeGraphics_drawString(JNIEnv* env, jobject obj, jlong nativeData, jlong nativeFlipData, jlong nativeFontData, jstring s, jint x, jint y) {
+void Java_java_awt_MHPNativeGraphics_drawString(JNIEnv* env, jobject obj, jlong nativeData, jlong nativeFlipData, jstring s, jint x, jint y) {
    const char *str=(const char *)env->GetStringUTFChars(s, NULL);
    IDirectFBSurface *surface=((IDirectFBSurface *)nativeData);
+   IDirectFBFont *font;
    try {
-      IDirectFBFont *font=(IDirectFBFont *)nativeFontData;
+      font=surface->GetFont();
       
       surface->SetDrawingFlags(DSDRAW_BLEND);
       
@@ -708,21 +724,21 @@ void Java_java_awt_MHPNativeGraphics_fill3DRect(JNIEnv* env, jobject obj, jlong 
    int color = raised ? bright : dark;
    IDirectFBSurface *surface=((IDirectFBSurface *)nativeData);
    try {
-     surface->SetColor(JRED(color), JGREEN(color), JBLUE(color), JALPHA(color) );     
+     setSurfaceColor(surface, color);
      surface->SetDrawingFlags(DSDRAW_BLEND);
 
      surface->DrawLine(x, y, x+width-1, y );     
      surface->DrawLine(x, y+1, x, y+height-0 );
 
      color = raised ? dark : bright;
-     surface->SetColor(JRED(color), JGREEN(color), JBLUE(color), JALPHA(color) );     
+     setSurfaceColor(surface, color);
 
      surface->DrawLine(x+1, y+height-0, x+width-0, y+height-0 );
      surface->DrawLine(x+width-0, y, x+width-0, y+height-1 );
 
      surface->FillRectangle(x+1, y+1, width-2, height-2 );
      
-     surface->SetColor(JRED(origColor), JGREEN(origColor), JBLUE(origColor), JALPHA(origColor) );     
+     setSurfaceColor(surface, origColor);
    } catch (DFBException *e) {
       printf("DirectFB: Error %s, %s\n", e->GetAction(), e->GetResult());
       delete e;

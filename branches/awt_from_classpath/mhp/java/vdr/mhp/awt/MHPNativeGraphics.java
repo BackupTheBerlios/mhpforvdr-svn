@@ -7,12 +7,20 @@ import org.dvb.ui.DVBColor;
 import org.dvb.ui.DVBAlphaComposite;
 import org.dvb.ui.DVBBufferedImage;
 import java.awt.Graphics;
+import java.awt.Component;
+import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.Rectangle;
 import java.awt.Shape;
 import java.awt.Color;
+import java.awt.Image;
+import java.awt.Polygon;
+import java.awt.Toolkit;
+import java.text.AttributedCharacterIterator;
+import java.awt.image.ImageObserver;
 import org.dvb.ui.DVBGraphics;
+import java.awt.MHPPlane;
 
 
 
@@ -22,9 +30,11 @@ static Font standardFont=new Font("tiresias", Font.PLAIN, 10);
 static Color standardColor=new DVBColor(0, 0, 0, 0);
 
 static {
+   /*
    if (standardFont.nativeData == 0) {
       throw new NullPointerException("Graphics subsystem: Default font is invalid/null!");
    }
+   */
 }
 
 Font font=null;
@@ -157,7 +167,7 @@ public static Graphics createClippedGraphics(Component comp) {
    if (toplevel == null) //in this implementation, MHPPlane is the only toplevel widget
       return null;
    
-   DFBWindowPeer peer = toplevel.getPeer();
+   DFBWindowPeer peer = (DFBWindowPeer) toplevel.getPeer();
    
    if (peer == null)
       return null;
@@ -171,8 +181,16 @@ public static Graphics createClippedGraphics(Component comp) {
    if (toplevel == comp) //comp is an MHPPlane - dont return a subsurface, but the full surface
       g.initializeNativeData(nativeSurface, true);
    else { //comp is contained in the MHPPlane - return a subsurface
-      Rectangle bounds=comp.getBounds();
-      g.initializeNativeData(createSubSurface(nativeSurface, u, v, bounds.width, bounds.height), false);
+      Dimension dim=comp.getSize();
+      //getX/Y() is always relative to the parent's origin
+      int surfaceX = 0, surfaceY = 0;
+      Component c=comp;
+      while (c != toplevel) {
+         surfaceX += c.getX();
+         surfaceY += c.getY();
+         c = c.getParent();
+      }
+      g.initializeNativeData(createSubSurface(nativeSurface, surfaceX, surfaceY, dim.width, dim.height), false);
    }
    //in contrast to DirectFB itself and other graphics libraries, in MHP the default
    // Porter-Duff-Rule is SRC (see DVBGraphics documentation).
@@ -185,7 +203,7 @@ public static Graphics createClippedGraphics(Component comp) {
 }
 
 //create Graphics object for an Image
-public static Graphics getImageGraphics(Image img) {
+public static Graphics getImageGraphics(MHPImage img) {
    //System.out.println("MHPNativeGraphics.getImageGraphics");
    long surface=img.getNativeSurface();
    
@@ -263,7 +281,7 @@ public void draw3DRect ( int x, int y, int width, int height, boolean raised ) {
    x+=offsetX;
    y+=offsetY;
    checkNativeData();
-   draw3DRect(nativeData, nativeFlipData, x, y, width, height, raised, color.getNativeValue(), color.brighter().getNativeValue(), color.darker().getNativeValue());
+   draw3DRect(nativeData, nativeFlipData, x, y, width, height, raised, color.getRGB(), color.brighter().getRGB(), color.darker().getRGB());
 }
 
 private native void draw3DRect(long nativeData, long nativeFlipData, int x, int y, int width, int height, boolean raised, int color, int brighterColor, int darkerColor);
@@ -288,13 +306,16 @@ public void drawChars ( char data[], int offset, int length, int x, int y ) {
    drawString(s, x, y);
 }
 
+
+
+/* 
 public boolean drawImage (Image img, int x, int y, Color bgcolor,
                            java.awt.image.ImageObserver observer) {
         // if the image isn't loaded yet, start production and return false
             if ( Image.loadImage( img, -1, -1, observer ) == false ) {
                 return ( false );
             } else {
-                drawImg( img, x, y, 0, 0, img.width, img.height, bgcolor, alphaComposite.multiplyAlpha(255) );
+                drawImg( img, x, y, 0, 0, img.width, img.height, bgcolor, alphaComposite.getIntegerAlpha() );
                 return true;
             }
 }
@@ -323,9 +344,9 @@ public boolean drawImage ( Image img, int x, int y, int width, int height, Color
             }
             if ( ( img.width != width ) || ( img.height != height ) ) {
                 drawImgScaled( img, x, y, x + width, y + height, 0, 0,
-                    img.width, img.height, background, alphaComposite.multiplyAlpha(255) );
+                    img.width, img.height, background, alphaComposite.getIntegerAlpha() );
             } else {
-                drawImg( img, x, y, 0, 0, width, height, background, alphaComposite.multiplyAlpha(255) );
+                drawImg( img, x, y, 0, 0, width, height, background, alphaComposite.getIntegerAlpha() );
             }
             return true;
 }
@@ -351,11 +372,11 @@ public boolean drawImage ( Image img,
             if ( ( ( sx1 - sx0 ) == ( dx1 - dx0 ) ) &&
                 ( ( sy1 - sy0 ) == ( dy1 - dy0 ) ) ) {
             // bozo. don't you know about the costs of image scaling?
-                    drawImg( img, dx0, dy0, sx0, sy0, ( sx1 - sx0 ), ( sy1 - sy0 ), bgColor, alphaComposite.multiplyAlpha(255) );
+                    drawImg( img, dx0, dy0, sx0, sy0, ( sx1 - sx0 ), ( sy1 - sy0 ), bgColor, alphaComposite.getIntegerAlpha() );
             } else {
             // We don't create a scaled Image instance since we can draw scaled
                 drawImgScaled( img, dx0, dy0, dx1, dy1, sx0, sy0, sx1,
-                    sy1, bgColor, alphaComposite.multiplyAlpha(255) );
+                    sy1, bgColor, alphaComposite.getIntegerAlpha() );
             }
             return true;
 }
@@ -378,7 +399,7 @@ void drawImg( Image img, int x, int y, int sx, int sy, int width, int height, Co
    y+=offsetY;
    checkNativeData();
    drawImage( nativeData, nativeFlipData, img.nativeData, sx, sy,
-      x, y, width, height, color.getNativeValue(), ( bgColor == null ) ? -1 : bgColor.getNativeValue(), extraAlpha);
+      x, y, width, height, color.getRGB(), ( bgColor == null ) ? -1 : bgColor.getRGB(), extraAlpha);
 }
 
 private native void drawImage(long nativeData, long nativeFlipData, long imgNativeData, int sx, int sy,
@@ -398,7 +419,7 @@ void drawImgScaled( Image img, int dx0, int dy0, int dx1, int dy1, int sx0,
       checkNativeData();
       drawImageScaled( nativeData, nativeFlipData, 
          img.nativeData, dx0, dy0, dx1, dy1, sx0, sy0, sx1, sy1,
-         color.getNativeValue(), ( bgColor == null ) ? -1 : bgColor.getNativeValue(), extraAlpha );
+         color.getRGB(), ( bgColor == null ) ? -1 : bgColor.getRGB(), extraAlpha );
       //System.out.println("drawimg scaled redo");
    //}
 }
@@ -417,25 +438,200 @@ void drawImgTiled( Image img, int x, int y, int sx, int sy, int width, int heigh
    y+=offsetY;
    checkNativeData();
    drawImageTiled( nativeData, nativeFlipData, img.nativeData, sx, sy,
-      x, y, width, height, color.getNativeValue(), ( bgColor == null ) ? -1 : bgColor.getNativeValue(), extraAlpha);
+      x, y, width, height, color.getRGB(), ( bgColor == null ) ? -1 : bgColor.getRGB(), extraAlpha);
 }
 
-private native void drawImageTiled(long nativeData, long nativeFlipData, long imgNativeData, int sx, int sy,
-         int x, int y, int width, int height, int origColor, int bgColor, int extraAlpha);
+*/
 
+// taken from GdkGraphics.java
+
+public boolean drawImage (Image img, int x, int y, 
+                           Color bgcolor, ImageObserver observer)
+{
+   return drawImage(img, x, y, img.getWidth(null), img.getHeight(null),
+                     bgcolor, observer);
+}
+
+public boolean drawImage (Image img, int x, int y, ImageObserver observer)
+{
+   return drawImage (img, x, y, null, observer);
+}
+
+public boolean drawImage (Image img, int x, int y, int width, int height, 
+                           Color bgcolor, ImageObserver observer)
+{
+   if (img instanceof MHPImage)
+      return drawImageImpl ((MHPImage)img, x, y, width, height, 
+                                       bgcolor, observer);
+   else
+      return drawImageImpl (new MHPImage(img.getSource()), x, y, 
+                                                      width, height, 
+                                                      bgcolor, observer);
+}
+
+public boolean drawImage (Image img, int x, int y, int width, int height, 
+                           ImageObserver observer)
+{
+   return drawImage (img, x, y, width, height,  null, observer);
+}
+
+public boolean drawImage (Image img, int dx1, int dy1, int dx2, int dy2, 
+                           int sx1, int sy1, int sx2, int sy2, 
+                           Color bgcolor, ImageObserver observer)
+{
+   if (img instanceof MHPImage)
+      return drawImageImpl((MHPImage)img, dx1, dy1, dx2, dy2, 
+                                       sx1, sy1, sx2, sy2, bgcolor, observer);
+   else
+      return drawImage(new MHPImage(img.getSource()), dx1, dy1, 
+                                                      dx2, dy2, 
+                                                      sx1, sy1, sx2, sy2, 
+                                                      bgcolor, observer);
+}
+
+public boolean drawImage (Image img, int dx1, int dy1, int dx2, int dy2, 
+                           int sx1, int sy1, int sx2, int sy2, 
+                           ImageObserver observer) 
+{
+   return drawImage (img, dx1, dy1, dx2, dy2, 
+                     sx1, sy1, sx2, sy2, 
+                     null, observer);
+}
 
 //tiles the image alpha over the whole destination surface. Not official API.
 public void tileBlitImageAlpha(Image img, int x, int y) {
-   if ( ( img.flags & Image.BLOCK_FRAMELOADER ) != 0 ) {
-      img.activateFrameLoader();
-   }
-   x+=offsetX;
-   y+=offsetY;
+   MHPImage image = (MHPImage) img;
+   x += offsetX;
+   y += offsetY;
    checkNativeData();
-   tileBlitImageAlpha( nativeData, nativeFlipData, img.nativeData, x, y, alphaComposite.getRule());
+   tileBlitImageAlpha( nativeData, nativeFlipData, image.nativeData, x, y, alphaComposite.getRule());
 }
-        
+
+// taken from GtkImage
+  /**
+   * Draws an image with eventual scaling/transforming.
+   */
+  
+public boolean drawImageImpl (MHPImage image, int dx1, int dy1, int dx2, int dy2, 
+                           int sx1, int sy1, int sx2, int sy2, 
+                           Color bgcolor, ImageObserver observer)
+{
+   if (image.addObserver(observer))
+      return false;
+
+   boolean flipX = (dx1 > dx2)^(sx1 > sx2);
+   boolean flipY = (dy1 > dy2)^(sy1 > sy2);
+   int dstWidth = Math.abs (dx2 - dx1);
+   int dstHeight = Math.abs (dy2 - dy1);
+   int srcWidth = Math.abs (sx2 - sx1);
+   int srcHeight = Math.abs (sy2 - sy1);
+   int srcX = (sx1 < sx2) ? sx1 : sx2;
+   int srcY = (sy1 < sy2) ? sy1 : sy2;
+   int dstX = (dx1 < dx2) ? dx1 : dx2;
+   int dstY = (dy1 < dy2) ? dy1 : dy2;
+
+   // TODO: I don't think DirectFB supports "flipping" in the sense of mirroring?
+   if (flipX || flipY)
+      throw new UnsupportedOperationException("Mirroring of images is not supported");
+   
+   // Clipping. This requires the dst to be scaled as well, 
+   if (srcWidth > image.width)
+      {
+      dstWidth = (int)((double)dstWidth*((double)image.width/(double)srcWidth));
+      srcWidth = image.width - srcX;
+      }
+
+   if (srcHeight > image.height) 
+      {
+      dstHeight = (int)((double)dstHeight*((double)image.height/(double)srcHeight));
+      srcHeight = image.height - srcY;
+      }
+
+   if (srcWidth + srcX > image.width)
+      {
+      dstWidth = (int)((double)dstWidth * (double)(image.width - srcX)/(double)srcWidth);
+      srcWidth = image.width - srcX;
+      }
+
+   if (srcHeight + srcY > image.height)
+      {
+      dstHeight = (int)((double)dstHeight * (double)(image.width - srcY)/(double)srcHeight);
+      srcHeight = image.height - srcY;
+      }
+
+   if ( srcWidth <= 0 || srcHeight <= 0 || dstWidth <= 0 || dstHeight <= 0)
+      return true;
+
+   /*
+   if(bgcolor != null)
+      drawPixelsScaledFlipped (g, bgcolor.getRed (), bgcolor.getGreen (), 
+                              bgcolor.getBlue (), 
+                              flipX, flipY,
+                              srcX, srcY,
+                              srcWidth, srcHeight,
+                              dstX,  dstY,
+                              dstWidth, dstHeight,
+                              true);
+   else
+      drawPixelsScaledFlipped (g, 0, 0, 0, flipX, flipY,
+                              srcX, srcY, srcWidth, srcHeight,
+                              dstX,  dstY, dstWidth, dstHeight,
+                              false);
+   */
+   int bgColorValue = ( bgColor == null ) ? -1 : bgColor.getRGB();
+   
+   dstX += offsetX;
+   dstY += offsetY;
+   
+   if (srcWidth != dstWidth || srcHeight != dstHeight)
+      drawImageScaled(nativeData, nativeFlipData, image.nativeData, srcX, srcY, srcWidth, srcHeight, dstX, dstY, dstWidth, dstHeight, color.getRGB(), bgColorValue, alphaComposite.getIntegerAlpha());
+   else
+      drawImage(nativeData, nativeFlipData, image.nativeData, srcX, srcY, srcWidth, srcHeight, dstX, dstY, color.getRGB(), bgColorValue, alphaComposite.getIntegerAlpha());
+   
+   return true;
+}
+
+
+/**
+   * Draws an image to the GdkGraphics context, at (x,y) scaled to 
+   * width and height, with optional compositing with a background color.
+   */
+
+public boolean drawImageImpl (MHPImage image, int x, int y, int width, int height,
+                           Color bgcolor, ImageObserver observer)
+{
+   if (image.addObserver(observer))
+      return false;
+
+   int bgColorValue = ( bgColor == null ) ? -1 : bgColor.getRGB();
+   
+   x += offsetX;
+   y += offsetY;
+   
+   if (width != image.width || height != image.height)
+      drawImageScaled(nativeData, nativeFlipData, image.nativeData, 0, 0, image.width, image.height, x, y, width, height, color.getRGB(), bgColorValue, alphaComposite.getIntegerAlpha());
+   else
+      drawImage(nativeData, nativeFlipData, image.nativeData, 0, 0, image.width, image.height, x, y, color.getRGB(), bgColorValue, alphaComposite.getIntegerAlpha());
+
+   return true;
+}
+
+// Draws the image area specified by the source rectangle { srcX, srcY, srcWidth, srcHeight } to the Point { dstX, dstY } of this surface.
+// The area is not scaled, this means the destination rectangle has the same size as the source rectangle.
+private native void drawImage(long nativeData, long nativeFlipData, long imgNativeData, int srcX, int srcY, int srcWidth, int srcHeight,
+                              int dstX, int dstY, int origColor, int bgColor, int extraAlpha);
+// Draws the image area specified by the source rectangle { srcX, srcY, srcWidth, srcHeight } scaled to the area of this surface
+// specified by the destination rectangle { dstX, dstY, dstWidth, dstHeight }.
+private native void drawImageScaled(long nativeData, long nativeFlipData, long imgNativeData, int srcX, int srcY, int srcWidth, int srcHeight,
+                              int dstX, int dstY, int dstWidth, int dstHeight, int origColor, int bgColor, int extraAlpha);
+// Draws the image area specified by the source rectangle { srcX, srcY, srcWidth, srcHeight } tiled to the area of this surface
+// specified by the destination rectangle { dstX, dstY, dstWidth, dstHeight }.
+private native void drawImageTiled(long nativeData, long nativeFlipData, long imgNativeData, int srcX, int srcY, int srcWidth, int srcHeight,
+                              int dstX, int dstY, int origColor, int bgColor, int extraAlpha);
 private native void tileBlitImageAlpha(long nativeData, long nativeFlipData, long imgNativeData, int x, int y, int porterDuff);
+
+
+        
         
 public void drawLine ( int x1, int y1, int x2, int y2 ) {
    x1=x1+offsetX;
@@ -524,16 +720,20 @@ public void drawString ( String str, int x, int y ) {
    x+=offsetX;
    y+=offsetY;
    checkNativeData();
-   drawString(nativeData, nativeFlipData, font.nativeData, str, x, y);
+   drawString(nativeData, nativeFlipData, str, x, y);
 }
 
-private native void drawString(long nativeData, long nativeFlipData, long nativeFontData, String str, int x, int y);
+private native void drawString(long nativeData, long nativeFlipData, String str, int x, int y);
+
+public void drawString(AttributedCharacterIterator iterator, int x, int y) {
+   throw new UnsupportedOperationException();
+}
 
 public void fill3DRect ( int x, int y, int width, int height, boolean raised )  {
    x+=offsetX;
    y+=offsetY;
    checkNativeData();
-   fill3DRect(nativeData, nativeFlipData, x, y, width, height, raised, color.getNativeValue(), color.brighter().getNativeValue(), color.darker().getNativeValue());
+   fill3DRect(nativeData, nativeFlipData, x, y, width, height, raised, color.getRGB(), color.brighter().getRGB(), color.darker().getRGB());
 }
 
 private native void fill3DRect(long nativeData, long nativeFlipData, int x, int y, int width, int height, boolean raised, int color, int brighterColor, int darkerColor);
@@ -647,7 +847,7 @@ public FontMetrics getFontMetrics () {
 }
 
 public FontMetrics getFontMetrics ( Font fnt ) {
-   return new FontMetrics(fnt);
+   return Toolkit.getDefaultToolkit().getFontMetrics(fnt);
 }
 
 
@@ -731,11 +931,14 @@ public void setColor ( Color clr ) {
 
 private native void setColor(long nativeData, int r, int g, int b, int a);
 
-public void setFont ( Font newFnt ) {
-   if (newFnt != null && newFnt.nativeData != 0) {
-      font=newFnt;
+public void setFont ( Font newFont ) {
+   if (newFont == null)
+      return;
+   MHPFontPeer peer = (MHPFontPeer) newFont.getPeer();
+   if (peer.nativeData != 0) {
+      font=newFont;
       checkNativeData();
-      setFont(nativeData, font.nativeData);
+      setFont(nativeData, peer.nativeData);
    }
 }
 

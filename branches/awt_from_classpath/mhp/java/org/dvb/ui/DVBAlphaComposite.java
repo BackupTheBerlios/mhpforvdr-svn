@@ -258,7 +258,12 @@ public final class DVBAlphaComposite {
         return extraAlpha;
     }
     
-    //not API
+    //internal API
+    public int getIntegerAlpha() {
+       return multiplyAlpha(255);
+    }
+    
+    //internal API
     public int multiplyAlpha(int otherIntegerAlpha) {
       if (extraAlpha==1.0f)
          return otherIntegerAlpha;

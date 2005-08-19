@@ -18,7 +18,7 @@ public class AlphaColor extends Color {
     }
 
     public AlphaColor( Color c ) {
-        super( c );
+       super(c.getRed(), c.getGreen(), c.getBlue(), c.getAlpha());
     }
 
 }

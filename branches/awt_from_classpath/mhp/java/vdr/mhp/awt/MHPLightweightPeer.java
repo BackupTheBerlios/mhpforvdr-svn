@@ -2,6 +2,7 @@
 package vdr.mhp.awt;
 
 import java.awt.Component;
+import java.awt.Graphics;
 
 // GLightweightPeer is the peer for all lightweight components and implements ComponentPeer.
 // In MHP all component except the toplevel MHPPlanes are lightweight.
@@ -21,7 +22,7 @@ public Graphics getGraphics() {
    // which tells Component that this is lightweight,
    // Component will take the parent's graphics and translate it.
    // For DirectFB there is a more elegant method:
-   return MHPNativeGRaphics.createClippedGraphics(comp);
+   return MHPNativeGraphics.createClippedGraphics(comp);
 }
 
 

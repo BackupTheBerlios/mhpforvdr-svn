@@ -46,6 +46,7 @@ import java.awt.Component;
 import java.awt.Container;
 import java.awt.Cursor;
 import java.awt.Dimension;
+import java.awt.EventQueue;
 import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.Graphics;
@@ -54,6 +55,7 @@ import java.awt.GraphicsConfiguration;
 import java.awt.Image;
 import java.awt.Insets;
 import java.awt.ItemSelectable;
+import java.awt.KeyboardFocusManager;
 import java.awt.Point;
 import java.awt.Rectangle;
 import java.awt.Toolkit;
@@ -72,6 +74,7 @@ import java.awt.image.VolatileImage;
 import java.awt.peer.WindowPeer;
 import java.awt.MHPPlane;
 import java.awt.MHPScreen;
+import java.util.Date;
 
 public class DFBWindowPeer
   implements WindowPeer
@@ -126,7 +129,6 @@ public class DFBWindowPeer
   }
   
   public void create(int x, int y, int width, int height, long nativeLayer, boolean withEventThread) {
-     nativeLayer = MHPScreen.getNativeLayer();
      //do the actual native creation
      nativeData=createDFBWindow(nativeLayer,x,y,width, height);
      if (withEventThread) {
@@ -203,12 +205,13 @@ public class DFBWindowPeer
 
     setBounds (bounds.x, bounds.y, bounds.width, bounds.height);
   }
-  */
+  
   void setVisibleAndEnabled ()
   {
     setVisible (awtComponent.isVisible ());
     setEnabled (awtComponent.isEnabled ());
   }
+  */
 
   public int checkImage (Image image, int width, int height, 
 			 ImageObserver observer) 
@@ -757,6 +760,9 @@ public class DFBWindowPeer
 
   public void endValidate ()
   {
+     // this code seems to set parent and boundss for non-lightweight children.
+     // Since there are none in MHP, skip it.
+     /*
      Component parent = awtComponent.getParent ();
 
     // Only set our parent on the GTK side if our parent on the AWT
@@ -780,6 +786,7 @@ public class DFBWindowPeer
         if (!(awtComponent instanceof Window))
            setParentAndBounds ();
      }
+     */
 
      isValidating = false;
   }
@@ -792,11 +799,6 @@ public class DFBWindowPeer
   public Insets insets() 
   {
      return getInsets ();
-  }
-
-  public void setBounds (int x, int y, int width, int height)
-  {
-     super.setBounds (x, y, width, height);
   }
 
   public void setFont(Font f)
@@ -934,7 +936,7 @@ class EventThread extends Thread implements DFBEventConstants {
          while (running) {
             e=getNextEvent();
             if (e != null)
-               Toolkit.eventQueue.postEvent(e);
+               Toolkit.getDefaultToolkit().getSystemEventQueue().postEvent(e);
          }
          running=false;
       } catch (Exception ex) {

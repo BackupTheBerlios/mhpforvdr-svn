@@ -8,6 +8,8 @@
  *                                                                         *
  ***************************************************************************/
 
+#include <vector>
+
 #include <stdlib.h>
 #include <dlfcn.h> 
  
@@ -34,13 +36,13 @@ bool JavaInterface::InitializeSystem() {
 bool JavaInterface::StartApplication(ApplicationInfo::cApplication::Ptr app) {
    JNI::ReturnType ret;
    self()->CheckAttachThread();
-   return self()->methods->startApplication.CallMethod(ret, JNI::Int, (void *)new ApplicationInfo::cApplication::Ptr(app)) && ret.TypeInt == 0;
+   return self()->methods->startApplication.CallMethod(ret, (void *)new ApplicationInfo::cApplication::Ptr(app)) && ret.TypeInt == 0;
 }
 
 bool JavaInterface::StopApplication(ApplicationInfo::cApplication::Ptr app) {
    JNI::ReturnType ret;
    self()->CheckAttachThread();
-   return self()->methods->stopApplication.CallMethod(ret, JNI::Int, (void *)new ApplicationInfo::cApplication::Ptr(app)) && ret.TypeInt == 0;
+   return self()->methods->stopApplication.CallMethod(ret, (void *)new ApplicationInfo::cApplication::Ptr(app)) && ret.TypeInt == 0;
 }
 
 bool JavaInterface::StopApplications() {
@@ -52,32 +54,32 @@ bool JavaInterface::StopApplications() {
 bool JavaInterface::PauseApplication(ApplicationInfo::cApplication::Ptr app) {
    JNI::ReturnType ret;
    self()->CheckAttachThread();
-   return self()->methods->pauseApplication.CallMethod(ret, JNI::Int, (void *)new ApplicationInfo::cApplication::Ptr(app)) && ret.TypeInt == 0;
+   return self()->methods->pauseApplication.CallMethod(ret, (void *)new ApplicationInfo::cApplication::Ptr(app)) && ret.TypeInt == 0;
 }
 
 bool JavaInterface::ResumeApplication(ApplicationInfo::cApplication::Ptr app) {
    JNI::ReturnType ret;
    self()->CheckAttachThread();
-   return self()->methods->resumeApplication.CallMethod(ret, JNI::Int, (void *)new ApplicationInfo::cApplication::Ptr(app)) && ret.TypeInt == 0;
+   return self()->methods->resumeApplication.CallMethod(ret, (void *)new ApplicationInfo::cApplication::Ptr(app)) && ret.TypeInt == 0;
 }
 
 
 bool JavaInterface::NewApplication(ApplicationInfo::cApplication::Ptr app) {
    JNI::ReturnType ret;
    self()->CheckAttachThread();
-   return self()->methods->newApplication.CallMethod(ret, JNI::Int, (void *)new ApplicationInfo::cApplication::Ptr(app)) && ret.TypeInt == 0;
+   return self()->methods->newApplication.CallMethod(ret, (void *)new ApplicationInfo::cApplication::Ptr(app)) && ret.TypeInt == 0;
 }
 
 bool JavaInterface::ApplicationRemoved(ApplicationInfo::cApplication::Ptr app) {
    JNI::ReturnType ret;
    self()->CheckAttachThread();
-   return self()->methods->applicationRemoved.CallMethod(ret, JNI::Int, (void *)new ApplicationInfo::cApplication::Ptr(app)) && ret.TypeInt == 0;
+   return self()->methods->applicationRemoved.CallMethod(ret, (void *)new ApplicationInfo::cApplication::Ptr(app)) && ret.TypeInt == 0;
 }
 
 bool JavaInterface::ProcessKey(eKeys Key) {
    JNI::ReturnType ret;
    self()->CheckAttachThread();
-   return self()->methods->processKey.CallMethod(ret, JNI::Int, (int)Key) && ret.TypeInt == 0;
+   return self()->methods->processKey.CallMethod(ret, (int)Key) && ret.TypeInt == 0;
 }
 
 void JavaInterface::CheckAttachCurrentThread() {
@@ -152,30 +154,30 @@ bool JavaInterface::StartJava() {
 
    CheckAttachThread();
    
-   char format[50];
-   JNI::BaseObject::getSignature(format, JNI::Int, 1, JNI::Long);
+   const char *format=JNI::BaseObject::getSignature(JNI::Int, 1, JNI::Long);
    JNI::ReturnType ret;
-   if ( !methods->initialize.SetMethod("vdr/mhp/ApplicationManager", "Initialize", format) ||
-        !methods->initialize.CallMethod(ret, JNI::Int, (int)&ApplicationInfo::Applications) || ret.TypeInt != 0) {
+   if ( !methods->initialize.SetMethod("vdr/mhp/ApplicationManager", "Initialize", JNI::Int, format) ||
+        !methods->initialize.CallMethod(ret, (int)&ApplicationInfo::Applications) || ret.TypeInt != 0) {
       esyslog("Failed to initialize Java system: Cannot call method of ApplicationManager");
       jniInitialized=false;
       return false;
    }
    
    //they all have the same signature
-   methods->newApplication.SetMethod("vdr/mhp/ApplicationManager", "NewApplication", format);
-   methods->applicationRemoved.SetMethod("vdr/mhp/ApplicationManager", "ApplicationRemoved", format);
-   methods->startApplication.SetMethod("vdr/mhp/ApplicationManager", "StartApplication", format);
-   methods->stopApplication.SetMethod("vdr/mhp/ApplicationManager", "StopApplication", format);
-   methods->pauseApplication.SetMethod("vdr/mhp/ApplicationManager", "PauseApplication", format);
-   methods->resumeApplication.SetMethod("vdr/mhp/ApplicationManager", "ResumeApplication", format);
+   methods->newApplication.SetMethod("vdr/mhp/ApplicationManager", "NewApplication", JNI::Int, format);
+   methods->applicationRemoved.SetMethod("vdr/mhp/ApplicationManager", "ApplicationRemoved", JNI::Int, format);
+   methods->startApplication.SetMethod("vdr/mhp/ApplicationManager", "StartApplication", JNI::Int, format);
+   methods->stopApplication.SetMethod("vdr/mhp/ApplicationManager", "StopApplication", JNI::Int, format);
+   methods->pauseApplication.SetMethod("vdr/mhp/ApplicationManager", "PauseApplication", JNI::Int, format);
+   methods->resumeApplication.SetMethod("vdr/mhp/ApplicationManager", "ResumeApplication", JNI::Int, format);
+   delete[] format;
    
-   JNI::BaseObject::getSignature(format, JNI::Int, 1, JNI::Int);
-   methods->processKey.SetMethod("vdr/mhp/ApplicationManager", "ProcessKey", format);
+   methods->processKey.SetMethodWithArguments("vdr/mhp/ApplicationManager", "ProcessKey", JNI::Int, 1, JNI::Int);
    
-   JNI::BaseObject::getSignature(format, JNI::Int, 0);
-   methods->shutdown.SetMethod("vdr/mhp/ApplicationManager", "Shutdown", format);
-   methods->stopApplications.SetMethod("vdr/mhp/ApplicationManager", "StopApplications", format);
+   format=JNI::BaseObject::getSignature(JNI::Int, 0);
+   methods->shutdown.SetMethod("vdr/mhp/ApplicationManager", "Shutdown", JNI::Int, format);
+   methods->stopApplications.SetMethod("vdr/mhp/ApplicationManager", "StopApplications", JNI::Int, format);
+   delete[] format;
 
    jniInitialized = true;
    return true;
@@ -211,27 +213,84 @@ void LibraryPreloader::Close() {
 namespace JNI {
 
 BaseObject::BaseObject()
-   : ExceptionHandling(ClearExceptions)
+   : exceptionHandling(ClearExceptions)
 {
 }
 
-void BaseObject::getSignature(char *format, Types returnType, int args, ...) {
-   va_list ap;
-   va_start(ap, args);
-   bool ret = getSignature(format, returnType, args, ap);
-   va_end(ap);
-   return ret;
+BaseObject::~BaseObject() {
 }
 
-void BaseObject::getConstructorSignature(char *format, int args, ...) {
+const char *BaseObject::getSignature(Types returnType, int args, ...) {
    va_list ap;
    va_start(ap, args);
-   bool ret = getSignature(format, JNI::Void, args, ap);
+   const char *sig=getSignature(returnType, args, ap);
    va_end(ap);
-   return ret;
+   return sig;
 }
 
-void BaseObject::getSignature(char *format, Types returnType, int args, va_list ap) {
+const char *BaseObject::getConstructorSignature(int args, ...) {
+   va_list ap;
+   va_start(ap, args);
+   const char *sig=getSignature(JNI::Void, args, ap);
+   va_end(ap);
+   return sig;
+}
+
+// Attempt at a string optimized for appending
+class StringBuffer : public std::vector<char> {
+public:
+   StringBuffer(int n = 10) : std::vector<char>(n) {}
+   StringBuffer &operator+=(char c) {
+      push_back(c);
+      return *this;
+   }
+   StringBuffer &operator+=(const char *str) {
+      int len=strlen(str);
+      for (int i=0; i<len; i++)
+         push_back(str[i]);
+      return *this;
+   }
+   char *getCharArray() {
+      int len=size();
+      char *a=new char[len];
+      for (int i=0; i<len; i++)
+         a[i]=operator[](i);
+      return a;
+   }
+};
+
+const char *BaseObject::getSignature(Types returnType, int args, va_list ap) {
+   StringBuffer format(2*args);
+   
+   format+='(';
+   
+   Types t;
+   for (int i=0;i<args;i++) {
+      t=(Types)va_arg(ap, int);
+      if (t != Void) {
+         format+=(char)t;
+         if (t == JNI::Object || t == Array) {
+            const char *c=va_arg(ap, const char *);
+            format+=c;
+         }
+         if (t == JNI::Object)
+            format+=';';
+      }
+   }
+   format+=')';
+   
+   format+=(char)returnType;
+   if (returnType == JNI::Object || returnType == Array) {
+      const char *c=va_arg(ap, const char *);
+      format+=c;
+   }
+   if (returnType == JNI::Object)
+      format+=';';
+   
+   format+='\0';
+   
+   return format.getCharArray();
+   /*
    int index=0;
    
    format[index++]='(';
@@ -263,9 +322,10 @@ void BaseObject::getSignature(char *format, Types returnType, int args, va_list 
       format[index++]=';';
    
    format[index++]=0;
+   */
 }
 
-bool BaseObject::checkException() {
+bool BaseObject::checkException(ExceptionHandling exceptionHandling) {
    if (JNIEnvProvider::GetEnv()->ExceptionOccurred()) {
       JNIEnvProvider::GetEnv()->ExceptionDescribe();
       if (exceptionHandling==ClearExceptions)
@@ -275,7 +335,25 @@ bool BaseObject::checkException() {
    return true;
 }
 
+bool BaseObject::checkException() {
+   return checkException(exceptionHandling);
+}
+
+DeletableObject::~DeletableObject() {
+   RemoveForDeletion();
+   Delete();
+}
+
+void DeletableObject::RegisterForDeletion() {
+   ShutdownManager::RegisterForDeletion(this);
+}
+
+void DeletableObject::RemoveForDeletion() {
+   ShutdownManager::RemoveForDeletion(this);
+}
+
 JNIEnvProvider *JNIEnvProvider::s_self = 0;
+ShutdownManager *ShutdownManager::s_self = 0;
 
 ClassRef::ClassRef() {
    classRef=0;
@@ -291,10 +369,10 @@ GlobalClassRef::GlobalClassRef() {
 }
 
 GlobalClassRef::~GlobalClassRef() {
-   DeleteReference();
+   Delete();
 }
 
-void GlobalClassRef::DeleteReference() {
+void GlobalClassRef::Delete() {
    if (classRef) {
       JNIEnvProvider::GetEnv()->DeleteGlobalRef(classRef);
       classRef=0;
@@ -302,6 +380,7 @@ void GlobalClassRef::DeleteReference() {
 }
 
 bool GlobalClassRef::SetClass(const char* classname) {
+   RegisterForDeletion();
    if (!ClassRef::SetClass(classname))
       return false;
    classRef=JNIEnvProvider::GetEnv()->NewGlobalRef(classRef);
@@ -310,6 +389,7 @@ bool GlobalClassRef::SetClass(const char* classname) {
 }
 
 bool GlobalClassRef::SetClass(jclass localRef) {
+   RegisterForDeletion();
    classRef=JNIEnvProvider::GetEnv()->NewGlobalRef(localRef);
    checkException();
    return classRef;
@@ -320,10 +400,10 @@ GlobalObjectRef::GlobalObjectRef() {
 }
 
 GlobalObjectRef::~GlobalObjectRef() {
-   DeleteReference();
+   Delete();
 }
 
-void GlobalObjectRef::DeleteReference() {
+void GlobalObjectRef::Delete() {
    if (objectRef) {
       JNIEnvProvider::GetEnv()->DeleteGlobalRef(objectRef);
       objectRef=0;
@@ -331,6 +411,7 @@ void GlobalObjectRef::DeleteReference() {
 }
 
 bool GlobalObjectRef::SetObject(jobject localRef) {
+   RegisterForDeletion();
    objectRef=JNIEnvProvider::GetEnv()->NewGlobalRef(localRef);
    checkException();
    return objectRef;
@@ -346,35 +427,76 @@ jclass GlobalObjectRef::GetClass() {
 
 
 
-StaticMethod::StaticMethod() {
+
+Method::Method()
+   : method(0), returnType(JNI::Void)
+{
+}
+
+void Method::Delete() {
    method=0;
 }
 
-bool StaticMethod::SetMethod(const char *classname, const char *methodName, const char *signature) {
+bool Method::SetMethodWithArguments(const char *classname, const char *methodName, Types returnType, int numArgs, ...) {
+   va_list ap;
+   va_start(ap, numArgs);
+   bool success=SetMethod(classname, methodName, returnType, ap);
+   va_end(ap);
+   return success;
+}
+
+bool Method::SetMethodWithArguments(jclass clazz, const char *methodName, Types returnType, int numArgs, ...) {
+   va_list ap;
+   va_start(ap, numArgs);
+   bool success=SetMethod(clazz, methodName, returnType, ap);
+   va_end(ap);
+   return success;
+}
+
+bool Method::SetMethodWithArguments(const char *classname, const char *methodName, Types returnType, int numArgs, va_list args) {
+   const char *signature=getSignature(returnType, numArgs, args);
+   bool success=SetMethod(classname, methodName, returnType, signature);
+   delete[] signature;
+   return success;
+}
+
+bool Method::SetMethodWithArguments(jclass clazz, const char *methodName, Types returnType, int numArgs, va_list args) {
+   const char *signature=getSignature(returnType, numArgs, args);
+   bool success=SetMethod(clazz, methodName, returnType, signature);
+   delete[] signature;
+   return success;
+}
+
+StaticMethod::StaticMethod() {
+}
+
+bool StaticMethod::SetMethod(const char *classname, const char *methodName, Types rt, const char *signature) {
    if (!classRef.SetClass(classname))
       return false;
+   returnType=rt;
    method=JNIEnvProvider::GetEnv()->GetStaticMethodID((jclass)classRef, methodName, signature);
    checkException();
    return method;
 }
 
-bool StaticMethod::SetMethod(jclass clazz, const char *methodName, const char *signature) {
+bool StaticMethod::SetMethod(jclass clazz, const char *methodName, Types rt, const char *signature) {
    if (!classRef.SetClass(clazz))
       return false;
+   returnType=rt;
    method=JNIEnvProvider::GetEnv()->GetStaticMethodID((jclass)classRef, methodName, signature);
    checkException();
    return method;
 }
 
-bool StaticMethod::CallMethod(ReturnType &ret, Types returnType, ...) {
+bool StaticMethod::CallMethod(ReturnType &ret, ...) {
    va_list ap;
-   va_start(ap, returnType);
-   bool ret = CallMethod(ret, returnType, ap);
+   va_start(ap, ret);
+   bool success = CallMethod(ret, ap);
    va_end(ap);
-   return ret;
+   return success;
 }
 
-bool StaticMethod::CallMethod(ReturnType &ret, Types returnType, va_list ap) {
+bool StaticMethod::CallMethod(ReturnType &ret, va_list ap) {
    ret.TypeLong=0;
    if (!method)
       return false;
@@ -416,36 +538,39 @@ bool StaticMethod::CallMethod(ReturnType &ret, Types returnType, va_list ap) {
 }
 
 
-
 InstanceMethod::InstanceMethod() {
-   method=0;
 }
 
-bool InstanceMethod::SetMethod(const char *classname, const char *methodName, const char *signature) {
+// The following functions seem to be duplicated from StaticMethod,
+// but if you have a closer look, it is not identical.
+
+bool InstanceMethod::SetMethod(const char *classname, const char *methodName, Types rt, const char *signature) {
    if (!classRef.SetClass(classname))
       return false;
+   returnType=rt;
    method=JNIEnvProvider::GetEnv()->GetMethodID((jclass)classRef, methodName, signature);
    checkException();
    return method;
 }
 
-bool InstanceMethod::SetMethod(jclass clazz, const char *methodName, const char *signature) {
+bool InstanceMethod::SetMethod(jclass clazz, const char *methodName, Types rt, const char *signature) {
    if (!classRef.SetClass(clazz))
       return false;
+   returnType=rt;
    method=JNIEnvProvider::GetEnv()->GetMethodID((jclass)classRef, methodName, signature);
    checkException();
    return method;
 }
 
-bool InstanceMethod::CallMethod(ReturnType &ret, Types returnType, ...) {
+bool InstanceMethod::CallMethod(jobject object, ReturnType &ret, ...) {
    va_list ap;
-   va_start(ap, returnType);
-   bool ret = CallMethod(ret, returnType, ap);
+   va_start(ap, ret);
+   bool success = CallMethod(object, ret, ap);
    va_end(ap);
-   return ret;
+   return success;
 }
 
-bool InstanceMethod::CallMethod(jobject object, ReturnType &ret, Types returnType, va_list ap) {
+bool InstanceMethod::CallMethod(jobject object, ReturnType &ret, va_list ap) {
    ret.TypeLong=0;
    if (!method)
       return false;
@@ -486,54 +611,82 @@ bool InstanceMethod::CallMethod(jobject object, ReturnType &ret, Types returnTyp
    return checkException();
 }
 
-Constructor() {
+
+Constructor::Constructor() {
 }
 
-bool SetConstructor(const char *classname, const char *signature) {
-   InstanceMethod::SetMethod(classname, "<init>", signature);
+bool Constructor::SetConstructorWithArguments(const char *classname, int numArgs, ...) {
+   va_list ap;
+   va_start(ap, numArgs);
+   bool success=InstanceMethod::SetMethodWithArguments(classname, "<init>", JNI::Void, numArgs, ap);
+   va_end(ap);
+   return success;
 }
 
-bool SetConstructor(jclass clazz, const char *signature) {
-   InstanceMethod::SetMethod(clazz, "<init>", signature);
+bool Constructor::SetConstructorWithArguments(jclass clazz, int numArgs, ...) {
+   va_list ap;
+   va_start(ap, numArgs);
+   bool success=InstanceMethod::SetMethodWithArguments(clazz, "<init>", JNI::Void, numArgs, ap);
+   va_end(ap);
+   return success;
 }
 
-bool NewObject(jobject &newObj, ...) {
+bool Constructor::SetConstructor(const char *classname, const char *signature) {
+   return InstanceMethod::SetMethod(classname, "<init>", JNI::Void, signature);
+}
+
+bool Constructor::SetConstructor(jclass clazz, const char *signature) {
+   return InstanceMethod::SetMethod(clazz, "<init>", JNI::Void, signature);
+}
+
+bool Constructor::NewObject(jobject &newObj, ...) {
    va_list ap;
    va_start(ap, newObj);
-   bool ret = NewObject(newObj, ap);
+   bool success = NewObject(newObj, ap);
    va_end(ap);
-   return ret;
+   return success;
 }
 
-bool NewObject(jobject &newObj, va_list args) {
+bool Constructor::NewObject(jobject &newObj, va_list args) {
    if (!method)
       return false;
-   newObj=JNIEnvProvider::GetEnv()->NewObjectV(classRef, method, args)
+   newObj=JNIEnvProvider::GetEnv()->NewObjectV(classRef, method, args);
    return checkException();
 }
 
+bool Exception::SetClass(const char *classname){
+   return classRef.SetClass(classname);
+}
+
+bool Exception::Throw(const char *errMsg) {
+   if (!classRef)
+      return false;
+   return JNIEnvProvider::GetEnv()->ThrowNew(classRef, errMsg) == 0;
+}
+
 //inspired by jcl.c from GNU Classpath
-bool Exception::Throw(const char *classname, const char *errMsg, ThrowMode mode = ThrowModeTry) {
-   checkException();
+bool Exception::Throw(const char *classname, const char *errMsg, ThrowMode mode) {
+   checkException(ClearExceptions);
    ClassRef exc;
    if (!exc.SetClass(classname)) {
       if (mode == ThrowModeConsequent) {
-         const char *errExcClass = "java/lang/ClassNotFoundException";
-         if (!exc.SetClass(errExcClass)) {
-            errExcClass = "java/lang/InternalError";
-            if (!exc.SetClass(errExcClass)) {
+         checkException(ClearExceptions);
+         if (!exc.SetClass("java/lang/ClassNotFoundException")) {
+            if (!exc.SetClass("java/lang/InternalError")) {
+               checkException(ClearExceptions);
                fprintf (stderr, "JNI::Exception: Utterly failed to throw exeption ");
-               fprintf (stderr, className);
+               fprintf (stderr, classname);
                fprintf (stderr, " with message ");
                fprintf (stderr, errMsg);
                return false;
             }
+            JNIEnvProvider::GetEnv()->ThrowNew(exc, "Class java/lang/ClassNotFoundException not found");
          }
-         JNIEnvProvider::GetEnv()->ThrowNew(className, classname);
+         JNIEnvProvider::GetEnv()->ThrowNew(exc, classname);
       }
       return false;
    }
-   return JNIEnvProvider::GetEnv()->ThrowNew(className, errMsg) == 0;
+   return JNIEnvProvider::GetEnv()->ThrowNew(exc, errMsg) == 0;
 }
 
 

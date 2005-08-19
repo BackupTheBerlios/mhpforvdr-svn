@@ -7,6 +7,7 @@ import org.dvb.event.RepositoryDescriptor;
 import java.awt.MHPPlane;
 import java.awt.KeyboardFocusManager;
 import java.awt.Component;
+import java.awt.event.KeyEvent;
 
 public class ExclusiveAWTChainElement extends FilterChainElement implements ExclusiveFilterElement {
 
@@ -35,7 +36,7 @@ public void dispatch(UserEvent e) {
    if ( (getMask(e.getType()) & mask) != 0) {
       KeyboardFocusManager manager;
       manager = KeyboardFocusManager.getCurrentKeyboardFocusManager ();
-      Component focusComponent = manager.getGlobalFocusOwner();
+      Component focusComponent = manager.getFocusOwner();
       if (focusComponent==null)
          return;
       if (MHPPlane.getApplication(focusComponent) == app)

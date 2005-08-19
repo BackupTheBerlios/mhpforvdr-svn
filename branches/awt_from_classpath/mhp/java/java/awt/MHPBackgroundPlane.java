@@ -2,6 +2,7 @@ package java.awt;
 
 import org.dvb.application.MHPApplication;
 import java.awt.MHPScreen;
+import vdr.mhp.awt.DFBWindowPeer;
 
 public class MHPBackgroundPlane extends MHPPlane implements java.awt.image.ImageObserver {
 
@@ -10,7 +11,7 @@ Image image=null;
 Rectangle imageRectangle=null;
 
 MHPBackgroundPlane(int x, int y, int width, int height) {
-   super(x, y, width, height, null, false, getBackgroundStacking(), hasBackgroundLayer() ? getBackgroundLayer() : (hasVideoLayer() ? getVideoLayer() : getMainLayer()) );
+   super(x, y, width, height, null, false, getBackgroundStacking(), MHPScreen.hasBackgroundLayer() ? MHPScreen.getBackgroundLayer() : (MHPScreen.hasVideoLayer() ? MHPScreen.getVideoLayer() : MHPScreen.getMainLayer()) );
    System.out.println("Creating MHPBackgroundPlane");
 }
 
@@ -52,8 +53,8 @@ public void displayImage(java.awt.Image image, int x, int y, int w, int h) {
 }
 
 public void displayDripfeed(byte[] data) {
-   if ( (flags & IS_ADD_NOTIFIED) != 0 )
-      displayDripfeed(getNativeSurface(), data);
+   if ( getPeer() != null )
+      displayDripfeed(((DFBWindowPeer) getPeer()).getNativeSurface(), data);
       //the native surface is Release'd in the native code
 }
 private native void displayDripfeed(long nativeSurface, byte[] data);

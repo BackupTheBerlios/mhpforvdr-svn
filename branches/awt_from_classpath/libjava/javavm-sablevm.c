@@ -8,6 +8,8 @@
  *                                                                         *
  ***************************************************************************/
 
+#include <list>
+
 #include <stdlib.h>
 #include <stdarg.h>
 #include <string.h>
@@ -352,7 +354,7 @@ const char *cJavaVM::ClassHome() {
 }*/
 
 
-class JavaInterfaceSableVM : public JavaInterface, private cJavaVM {
+class JavaInterfaceSableVM : public JavaInterface, private cJavaVM, public JNI::ShutdownManager {
 public:
    JavaInterfaceSableVM();
 protected:
@@ -366,14 +368,33 @@ protected:
    virtual void CheckDetachThread() { return cJavaVM::CheckDetachThread(); }
    virtual bool InitializeVM();
    virtual bool CheckVM() { return cJavaVM::CheckSystem(); }
-   static JavaInterfaceSableVM *asVM() { return ((JavaInterfaceSableVM*)s_self); }
+   static JavaInterfaceSableVM *asVM() { return ((JavaInterfaceSableVM*)JavaInterface::s_self); }
+   virtual void registerForDeletion(JNI::DeletableObject *obj);
+   virtual void removeForDeletion(JNI::DeletableObject *obj);
+private:
+   std::list<JNI::DeletableObject *> delObjs;
+   cMutex objsMutex;
 };
+
+void JavaInterfaceSableVM::registerForDeletion(JNI::DeletableObject *obj) {
+   cMutexLock lock(&objsMutex);
+   delObjs.push_back(obj);
+}
+
+void JavaInterfaceSableVM::removeForDeletion(JNI::DeletableObject *obj) {
+   cMutexLock lock(&objsMutex);
+   delObjs.remove(obj);
+}
 
 void JavaInterfaceSableVM::SyncShutdown() {
    //do this in the right order - when the VM is shut down, the methods cannot be released
    try {
-      delete methods;
-      methods=0;
+      cMutexLock lock(&objsMutex);
+      for (std::list<JNI::DeletableObject *>::iterator it = delObjs.begin(); it != delObjs.end(); ++it)
+         (*it)->Delete();
+      delObjs.clear();
+      //delete methods;
+      //methods=0;
       ShutdownVM(true);
    } catch (JavaStartException &e) {}
 }
@@ -383,7 +404,7 @@ void JavaInterfaceSableVM::jvmExit(jint exitCode) {
 }
 
 void JavaInterfaceSableVM::jvmAbort() {
-   if (s_self) {
+   if (JavaInterface::s_self) {
       switch (asVM()->state) {
       case Waiting:
       case Starting:

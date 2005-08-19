@@ -60,7 +60,7 @@ import java.util.Locale;
 import java.util.Vector;
 
 
-public class MHPImageDecoder extends gnu.java.awt.image.ImageDecoder
+public class MHPImageDecoder implements java.awt.image.ImageProducer
 {
 
   Vector consumers = new Vector ();
@@ -111,15 +111,15 @@ public class MHPImageDecoder extends gnu.java.awt.image.ImageDecoder
     consumers.removeElement (ic);
   }
 
-  public void startProduction (ImageConsumer ic)
+  public void startProduction (ImageConsumer newIc)
   {
-    if (!isConsumer(ic))
-      addConsumer(ic);
+    if (!isConsumer(newIc))
+      addConsumer(newIc);
 
     Vector list = (Vector) consumers.clone ();
     
-    DFBDataBuffer buffer;
-    DFBImageProvider provider;
+    DFBDataBuffer buffer = null;
+    DFBImageProvider provider = null;
     
     try {
       // Create the data buffer and image provider here rather than in the
@@ -136,9 +136,9 @@ public class MHPImageDecoder extends gnu.java.awt.image.ImageDecoder
       } else {
          InputStream stream;
          if (url != null) {
-            buffer = new MHPDataBuffer(url.openStream());
+            buffer = new DFBDataBuffer(url.openStream());
          } else if (input != null) {
-            buffer = new MHPDataBuffer(input);
+            buffer = new DFBDataBuffer(input);
          } else
             throw new IllegalArgumentException("Null value");
          provider = new DFBImageProvider(buffer);
@@ -148,21 +148,26 @@ public class MHPImageDecoder extends gnu.java.awt.image.ImageDecoder
       e.printStackTrace();
       for (int i = 0; i < list.size (); i++)
       {
-         ImageConsumer ic2 = (ImageConsumer) list.elementAt (i);
-         ic2.imageComplete (ImageConsumer.IMAGEERROR);
+         ImageConsumer ic = (ImageConsumer) list.elementAt (i);
+         ic.imageComplete (ImageConsumer.IMAGEERROR);
       }
+      if (provider != null)
+         provider.dispose();
+      if (buffer != null)
+         buffer.dispose();
+      return;
     }
     
       // For MHPImages respectively MHPImageConsumers, its helper class,
       // there is a special handling which does everything on the native side.
       // For other consumers, the pixel must be passed through Java.
     
-    MHPImage image;
+    MHPImage image = null;
     for (int i = 0; i < list.size (); i++) {
        ImageConsumer ic = (ImageConsumer) list.elementAt (i);
        try {
          if (ic instanceof MHPImageConsumer) {
-            ((MHPImageConsumer)ic).setImageFromProvider(provider);
+            ((MHPImageConsumer)ic).setImage(provider);
          } else {
             ic.setDimensions (provider.getWidth(), provider.getHeight());
             ic.setColorModel (provider.getColorModel());
@@ -170,7 +175,7 @@ public class MHPImageDecoder extends gnu.java.awt.image.ImageDecoder
             //create temporary image to copy pixels from
             if (image == null)
                image = provider.createImage();
-            ic.setPixels (0, 0, image.getWidth(), image.getHeight(), provider.getColorModel(), image.getPixels(), 0, image.getWidth());
+            ic.setPixels (0, 0, image.width, image.height, provider.getColorModel(), image.getPixels(), 0, image.width);
          }
        } catch (Exception e) {
           e.printStackTrace();
@@ -191,32 +196,6 @@ public class MHPImageDecoder extends gnu.java.awt.image.ImageDecoder
   }
   
   
-  // --- package-internal API ---
-
-  MHPImage createImage() {
-     DFBImageProvider provider = createProvider();
-  }
-  
-  private DFBImageProvider createProvider() throws IOException, IllegalArgumentException {
-     DFBImageProvider provider;
-     if (filename != null) {
-         //no buffer needed
-        provider = new DFBImageProvider(filename);
-     } else if (data != null) {
-        buffer = new DFBDataBuffer(data, offset, length);
-        provider = new DFBImageProvider(buffer);
-     } else {
-        InputStream stream;
-        if (url != null) {
-           buffer = new MHPDataBuffer(url.openStream());
-        } else if (input != null) {
-           buffer = new MHPDataBuffer(input);
-        } else
-           throw new IllegalArgumentException("Null value");
-        provider = new DFBImageProvider(buffer);
-     }
-     return provider;
-  }
   /*
   // called back by native side
   void areaPrepared (int width, int height)
@@ -248,6 +227,7 @@ public class MHPImageDecoder extends gnu.java.awt.image.ImageDecoder
       }
   }
   */
+
   
   // called from an async image loader of one sort or another, this method
   // repeatedly reads bytes from the input stream and passes them through a

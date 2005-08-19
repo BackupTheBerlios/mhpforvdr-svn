@@ -2,6 +2,8 @@
 package vdr.mhp.awt;
 
 import java.io.IOException;
+import java.awt.image.ColorModel;
+import java.awt.image.DirectColorModel;
 
 import vdr.mhp.io.PathConverter;
 
@@ -34,7 +36,7 @@ public DFBImageProvider(String filename) throws IllegalArgumentException {
    nativeData = createImageProviderFromFile( PathConverter.toNativeString(filename) );
 }
 
-public DFBImageProvider(MHPDataBuffer data) throws IllegalArgumentException {
+public DFBImageProvider(DFBDataBuffer data) throws IllegalArgumentException {
    nativeData = createImageProviderFromDataBuffer( data.nativeData );
 }
 
@@ -50,7 +52,7 @@ public int getHeight() {
    return height;
 }
 
-public int isValid() {
+public boolean isValid() {
    return valid;
 }
 

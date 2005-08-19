@@ -57,6 +57,9 @@ import java.util.Hashtable;
 import java.util.Vector;
 //import gnu.classpath.RawData;
 
+import org.dvb.ui.DVBGraphics;
+import org.dvb.ui.DVBRasterFormatException;
+
 /**
  * MHPImage - wraps a GdkPixbuf or GdkPixmap.
  *
@@ -100,11 +103,6 @@ public class MHPImage extends Image
   Vector observers;
 
   /**
-   * If offScreen is set, a GdkBitmap is wrapped and not a Pixbuf.
-   */
-  boolean offScreen;
-
-  /**
    * Original source, if created from an ImageProducer.
    */
   ImageProducer source;
@@ -121,8 +119,8 @@ public class MHPImage extends Image
   /**
    * Returns a copy of the pixel data as a java array.
    */
-  private int[] getPixels() {
-      int[] data = newe int[nativeModel.getPixelSize() * width * height];
+  int[] getPixels() {
+      int[] data = new int[nativeModel.getPixelSize() * width * height];
       getRGBRegion(nativeData, 0, 0, width, height, data, 0, width);
       return data;
   }
@@ -181,7 +179,7 @@ native static long getSubImage( long nativeData, int x, int y, int w, int h);
     observers = new Vector();
     source = producer;
     source.startProduction(new MHPImageConsumer(this, source));
-    offScreen = false;
+    //offScreen = false;
   }
 
   /**
@@ -193,8 +191,8 @@ native static long getSubImage( long nativeData, int x, int y, int w, int h);
   {
     isLoaded = true;
     observers = null;
-    offScreen = false;
-    setImageFromProvider(new DFBImageProvider(filename), new Hashtable());
+    //offScreen = false;
+    setImage(new DFBImageProvider(filename), new Hashtable());
   }
 
   /**
@@ -208,19 +206,36 @@ native static long getSubImage( long nativeData, int x, int y, int w, int h);
     props = new Hashtable();
     isLoaded = true;
     observers = null;
-    offScreen = true;
+    //offScreen = true;
   }
 
   /**
    * Constructs a scaled version of the src bitmap, using the GDK.
    */
-  private MHPImage (MHPImage src, int width, int height, int hints)
+  protected MHPImage (MHPImage src, int width, int height, int hints)
   {
     this(width, height);
     //offScreen = false;
     if (src.nativeData == 0)
        throw new IllegalArgumentException();
     stretchBlit(this.nativeData, src.nativeData);
+  }
+
+  /**
+    * Creates an image which contains the specified part of the src image
+    */
+  protected MHPImage (MHPImage src, int x, int y, int width, int height)
+  {
+    if (x+width <= src.width || y+height <= src.height || x < 0 || y < 0)
+       throw new IllegalArgumentException();
+    if (!src.isLoaded)
+       throw new IllegalStateException();
+    this.width = width;
+    this.height = height;
+    nativeData = getSubImage(src.nativeData, x, y, width, height);
+    props = new Hashtable();
+    isLoaded = true;
+    observers = null;
   }
 
   /**
@@ -489,7 +504,7 @@ native static long getSubImage( long nativeData, int x, int y, int w, int h);
    * Adds an observer, if we need to.
    * @return true if an observer was added.
    */
-  private boolean addObserver(ImageObserver observer)
+  boolean addObserver(ImageObserver observer)
   {
     if (!isLoaded)
       {
@@ -617,33 +632,5 @@ native static long getSubImage( long nativeData, int x, int y, int w, int h);
     }
 
 
-    /**
-     * Returns a subimage defined by a specified rectangular region.
-     * The returned <code>DVBBufferedImage</code> shares the same
-     * data array as the original image.
-     * @param x,&nbsp;y the coordinates of the upper-left corner of the
-     * specified rectangular region
-     * @param w the width of the specified rectangular region
-     * @param h the height of the specified rectangular region
-     * @return a <code>DVBBufferdImage</code> that is the subimage of this
-     * <code>DVBBufferdImage</code>.
-     * @exception <code>RasterFormatException</code> if the specified
-     * area is not contained within this <code>DVBBufferdImage</code>.
-     * @since MHP 1.0
-     */
-    //Cannot call this getSubimage, because BufferedImage needs this signature.
-    public DVBBufferedImage getSubimageDVB( int x, int y, int w, int h ) 
-                            throws DVBRasterFormatException {
-        if (x<width || y<height || x<0 || y<0)
-            throw new IllegalArgumentException();
-        if (!isLoaded)
-           throw new IllegalStateException();
-        Image ret=new DVBBufferedImage();
-        ret.nativeData = getSubImage( nativeData, x, y, w, h );
-        ret.width = w;
-        ret.height = h;
-        ret.flags = READY | SCREEN;
-        return ret;
-    }
 
 }

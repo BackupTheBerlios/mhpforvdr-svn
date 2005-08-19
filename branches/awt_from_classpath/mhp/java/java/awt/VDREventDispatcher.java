@@ -185,9 +185,9 @@ static java.awt.Component findKeyTarget() {
    KeyboardFocusManager manager;
    manager = KeyboardFocusManager.getCurrentKeyboardFocusManager ();
    Component focusComponent = manager.getGlobalFocusOwner();
-   if (comp == null)
+   if (focusComponent == null)
       System.out.println("java.awt.VDREventDispatcher: KeyboardFocusManager.getGlobalFocusOwner() is Null, don't know where to send VDR event!");
-   return comp;
+   return focusComponent;
 }
 
 

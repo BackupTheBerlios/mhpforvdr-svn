@@ -47,27 +47,23 @@ public DFBDataBuffer(InputStream stream) throws IOException {
          this.data=data;
          this.length=length;
       }
-      static Frame read(InputStream is) {
-         byte[] data = new byte[4096];
-         int len;
-         if ((len = is.read (bytes)) != -1)
-            return new Frame(data, len);
-         return null;
-      }
    }
+   int len;
+   do {
+      byte[] data = new byte[4096];
+      if ((len = stream.read (data)) != -1)
+         v.add(new Frame(data, len));
+   } while (len != -1);
    Frame f;
-   while ((f=Frame.read(is)) != null) {
-      Vector.add(f);
-   }
    int size = 0;
    for (int i = 0; i < v.size (); i++)
       size += ((Frame)v.elementAt(i)).length;
    byte[] data = new byte[size];
    int pos = 0;
    for (int i = 0; i < v.size (); i++) {
-      Frame f = (Frame)v.elementAt(i);
+      f = (Frame)v.elementAt(i);
       System.arraycopy(f.data, 0, data, pos, f.length);
-      pos += length;
+      pos += f.length;
    }
    nativeData = createBufferFromData(data, 0, size);
 }

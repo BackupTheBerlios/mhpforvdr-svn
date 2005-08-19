@@ -57,7 +57,8 @@ public class DVBBufferedImage extends vdr.mhp.awt.MHPImage {
     // color channels
     
     //not API
-    public DVBBufferedImage() {
+    DVBBufferedImage(DVBBufferedImage src, int x, int y, int width, int height) {
+       super(src, x, y, width, height);
     }
 
     /**
@@ -85,9 +86,9 @@ public class DVBBufferedImage extends vdr.mhp.awt.MHPImage {
      *    @param type - the ColorSpace of the DVBBufferedImage
      *    @since MHP 1.0
      */
-    public DVBBufferedImage( int width, int height, int typ ) {
+    public DVBBufferedImage( int width, int height, int type ) {
         super(width, height);
-        type = typ;
+        this.type = type;
     }
 
     /* * private DVBBufferedImage(BufferedImage b) * { *    bimg = b; * } */
@@ -151,9 +152,23 @@ public class DVBBufferedImage extends vdr.mhp.awt.MHPImage {
         /* return bimg.getProperty(name,observer); */
     }
     
+    /**
+     * Returns a subimage defined by a specified rectangular region.
+     * The returned <code>DVBBufferedImage</code> shares the same
+     * data array as the original image.
+     * @param x,&nbsp;y the coordinates of the upper-left corner of the
+     * specified rectangular region
+     * @param w the width of the specified rectangular region
+     * @param h the height of the specified rectangular region
+     * @return a <code>DVBBufferdImage</code> that is the subimage of this
+     * <code>DVBBufferdImage</code>.
+     * @exception <code>RasterFormatException</code> if the specified
+     * area is not contained within this <code>DVBBufferdImage</code>.
+     * @since MHP 1.0
+     */
     public DVBBufferedImage getSubimage( int x, int y, int w, int h ) 
                             throws DVBRasterFormatException {
-        return getSubimageDVB(x, y, w, h);
+       return new DVBBufferedImage(this, x, y, w, h);
     }
 
     
