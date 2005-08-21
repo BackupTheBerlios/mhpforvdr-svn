@@ -45,8 +45,14 @@ union ReturnType {
 };
 
 enum ExceptionHandling { ClearExceptions, DoNotClearExceptions };
-
 enum ThrowMode { ThrowModeTry, ThrowModeConsequent };
+enum PredefinedException {
+   JavaLangIllegalArgumentException,
+   JavaLangIllegalStateException,
+   JavaLangNullPointerException,
+   JavaLangRuntimeException,
+   JavaIoIOException
+};
 
 class JNIEnvProvider {
 public:
@@ -70,6 +76,8 @@ public:
    // to remove any sort of references/IDs with JNI calls. At destruction time, 
    // the VM may be shut down and JNI no longer available.
    // As well, this is called from destructor.
+   // This method shall be implemented so that it may be called multiple times,
+   // where only the first call has the specified effect, subsequent calls doing nothing.
    virtual void Delete() {}
 protected:
    // Causes Delete() to be called immediately before the VM is shut down
@@ -150,8 +158,8 @@ public:
    jclass GetClass();
    //a valid local reference
    bool SetObject(jobject localRef);
-protected:
    virtual void Delete();
+protected:
    jobject objectRef;
 };
 
@@ -161,7 +169,6 @@ public:
    ~GlobalClassRef();
    bool SetClass(const char* classname);
    bool SetClass(jclass localRef);
-protected:
    virtual void Delete();
 };
 
@@ -179,8 +186,8 @@ public:
    
    virtual bool SetMethod(const char *classname, const char *methodName, Types returnType, const char *signature) = 0;
    virtual bool SetMethod(jclass clazz, const char *methodName, Types returnType, const char *signature) = 0;
-protected:
    virtual void Delete();
+protected:
    jmethodID method;
    GlobalClassRef classRef;
    Types returnType;
@@ -228,6 +235,7 @@ public:
    bool SetClass(const char *classname);
    // This method is well suited for use with a preinitialized Exception object
    bool Throw(const char *errMsg);
+   static bool Throw(PredefinedException e, const char *errMsg);
    
    // Combines SetClass(classname) and then Throw(errMsg, mode) - with error checking!
    // This call is well suited to be called when an error state is reached and the Exception variable
@@ -237,7 +245,15 @@ public:
    // ultimately an internal error is sent. If mode is Try, just try to throw given class
    // and nothing more. In any case, return value indicates whether the requested attempt was successful.
    static bool Throw(const char *classname, const char *errMsg, ThrowMode mode = ThrowModeTry);
+   
+   //internal initialization
+   static bool Initialize();
 protected:
+   static Exception javaLangIllegalArgumentException;
+   static Exception javaLangIllegalStateException;
+   static Exception javaLangNullPointerException;
+   static Exception javaLangRuntimeException;
+   static Exception javaIoIOException;
    GlobalClassRef classRef;
 };
 

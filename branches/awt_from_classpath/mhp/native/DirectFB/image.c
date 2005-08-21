@@ -42,9 +42,8 @@ Java_vdr_mhp_awt_MHPImage_createScreenImage ( JNIEnv* env, jobject obj, jint wid
    } catch (DFBException *e) {
       printf("DirectFB: Error %s, %s\n", e->GetAction(), e->GetResult());
       delete e;
-      Exception exp;
       //What kind of exception should be thrown?
-      exp.Throw("java/lang/RuntimeException", "Failed to create DFBSurface for Image");
+      JNI::Exception::Throw(JNI::JavaLangRuntimeException, "Failed to create DFBSurface for Image");
       return 0;
    }
 
@@ -59,13 +58,13 @@ Java_vdr_mhp_awt_MHPImage_stretchBlit( JNIEnv* env, jobject obj,
    IDirectFBSurface *destination = ((IDirectFBSurface *)nativeDataDestination);
    
    try {
+      destination->SetBlittingFlags(DSBLIT_NOFX);
       destination->StretchBlit(source, 0, 0);
    } catch (DFBException *e) {
       printf("DirectFB: Error %s, %s\n", e->GetAction(), e->GetResult());
       delete e;
-      Exception exp;
       //What kind of exception should be thrown?
-      exp.Throw("java/lang/RuntimeException", "Failed to StretchBlit");
+      JNI::Exception::Throw(JNI::JavaLangRuntimeException, "Failed to StretchBlit image");
       return;
    }
 }
@@ -260,30 +259,26 @@ Java_vdr_mhp_awt_MHPImage_imgGetHeight ( JNIEnv* env, jobject obj, jint nativeHa
 
 // ------- DFBImageProvider --------
 
-static JNI::InstanceMethod setProperties;
+static JNI::InstanceMethod setPropertiesMethod;
 
 void Java_vdr_mhp_awt_DFBImageProvider_initStaticState(JNIEnv* env, jclass clazz) {
-   char sig[100];
-   JNI::BaseObject::getSignature(sig, JNI::Void, 3, JNI::Boolean, JNI::Int, JNI::Int);
-   setProperties.SetExceptionHandling(JNI::DoNotClearExceptions);
-   setProperties.SetMethod(clazz, "setProperties", sig);
+   setPropertiesMethod.SetMethodWithArguments(clazz, "setProperties", JNI::Void, 3, JNI::Boolean, JNI::Int, JNI::Int);
+   setPropertiesMethod.SetExceptionHandling(JNI::DoNotClearExceptions);
 }
 
 static bool setProperties(IDirectFBImageProvider *provider, jobject obj) {
+   DFBSurfaceDescription desc;
    try {
       provider->GetSurfaceDescription(&desc);
    } catch (DFBException *e) {
-      buffer->Release();
-      provider->Release();
       printf("DirectFB: Error %s, %s\n", e->GetAction(), e->GetResult());
-      Exception exp;
-      exp.Throw("java/lang/IllegalArgumentException", "Failed to get image information from ImageProvider");
+      JNI::Exception::Throw(JNI::JavaLangIllegalArgumentException, "Failed to get image information from ImageProvider");
       delete e;
       return false;
    }
    
-   ReturnType type;
-   return setProperties.CallMethod(obj, type, JNI::Void, valid, width, height);
+   JNI::ReturnType type;
+   return setPropertiesMethod.CallMethod(obj, type, true, desc.width, desc.height);
 }
 
 jlong Java_vdr_mhp_awt_DFBImageProvider_createImageProviderFromFile(JNIEnv* env, jobject obj, jbyteArray filename) //throws IllegalArgumentException
@@ -292,7 +287,7 @@ jlong Java_vdr_mhp_awt_DFBImageProvider_createImageProviderFromFile(JNIEnv* env,
    DFBSurfaceDescription desc;
    const char* fn = 0;
 
-   fn = (const char *)env->GetByteArrayElements(fileName, 0);
+   fn = (const char *)env->GetByteArrayElements(filename, 0);
    //fn = env->GetStringUTFChars(fileName, NULL);
 
    printf( "Java_vdr_mhp_awt_DFBImageProvider_createImageProviderFromFile(\"%s\") called.\n", fn );
@@ -303,11 +298,10 @@ jlong Java_vdr_mhp_awt_DFBImageProvider_createImageProviderFromFile(JNIEnv* env,
       fprintf( stderr, "Unable to create the "
                "Media Provider for `%s': %s", fn, e->GetResult() );
       printf("DirectFB: Error %s, %s\n", e->GetAction(), e->GetResult());
-      env->ReleaseByteArrayElements(fileName, (jbyte *)fn, JNI_ABORT);
-      Exception exp;
+      env->ReleaseByteArrayElements(filename, (jbyte *)fn, JNI_ABORT);
       char *msg;
       asprintf(&msg, "Error trying to create ImageProvider from file %s", fn);
-      exp.Throw("java/io/IllegalArgumentException", msg);
+      JNI::Exception::Throw(JNI::JavaLangIllegalArgumentException, "Failed to get image information from ImageProvider");
       free(msg);
       delete e;
       return 0;
@@ -325,8 +319,7 @@ jlong Java_vdr_mhp_awt_DFBImageProvider_createImageProviderFromDataBuffer(JNIEnv
    DFBSurfaceDescription desc;
    
    if (!buffer) {
-      Exception exp;
-      exp.Throw("java/lang/IllegalArgumentException", "Invalid data buffer");
+      JNI::Exception::Throw(JNI::JavaLangIllegalArgumentException, "Invalid data buffer");
       return 0;
    }
    
@@ -335,8 +328,7 @@ jlong Java_vdr_mhp_awt_DFBImageProvider_createImageProviderFromDataBuffer(JNIEnv
    } catch (DFBException *e) {
       fprintf( stderr, "Unable to create image provider from data buffer: %s", e->GetResult() );
       printf("DirectFB: Error %s, %s\n", e->GetAction(), e->GetResult());
-      Exception exp;
-      exp.Throw("java/lang/IllegalArgumentException", "Failed to create ImageProvider from DataBuffer");
+      JNI::Exception::Throw(JNI::JavaLangIllegalArgumentException, "Failed to create ImageProvider from DataBuffer");
       delete e;
       return 0;
    }
@@ -353,17 +345,14 @@ void Java_vdr_mhp_awt_DFBImageProvider_renderTo(JNIEnv* env, jobject obj, jlong 
    try {
       provider->RenderTo(surface, NULL);
    } catch (DFBException *e) {
-      provider->Release();
-      env->ReleaseByteArrayElements(fileName, (jbyte *)fn, JNI_ABORT);
       printf("DirectFB: Error %s, %s\n", e->GetAction(), e->GetResult());
-      Exception exp;
-      exp.Throw("java/lang/IllegalArgumentException", "Failed to render image");
+      JNI::Exception::Throw(JNI::JavaLangIllegalArgumentException, "Failed to render image");
       delete e;
    }
 }
 
 void Java_vdr_mhp_awt_DFBImageProvider_removeRef(jlong nativeData) {
-   IDirectFBImageProvider *provider = (IDirectFBImageProvider *)nativeProviderData;
+   IDirectFBImageProvider *provider = (IDirectFBImageProvider *)nativeData;
    provider->Release();
 }
 
@@ -379,7 +368,7 @@ jlong Java_vdr_mhp_awt_DFBDataBuffer_createBufferFromFile(JNIEnv* env, jobject o
    DFBDataBufferDescription bufDesc;
    const char* fn;
 
-   fn = (const char *)env->GetByteArrayElements(fileName, 0);
+   fn = (const char *)env->GetByteArrayElements(filename, 0);
    bufDesc.flags=DBDESC_FILE;
    bufDesc.file=fn;
 
@@ -388,46 +377,41 @@ jlong Java_vdr_mhp_awt_DFBDataBuffer_createBufferFromFile(JNIEnv* env, jobject o
    } catch (DFBException *e) {
       fprintf( stderr, "Unable to create the Data buffer: %s", e->GetResult() );
       printf("DirectFB: Error %s, %s\n", e->GetAction(), e->GetResult());
-      env->ReleaseByteArrayElements(fileName, (jbyte *)fn, JNI_ABORT);
-      Exception exp;
-      exp.Throw("java/io/IOException", "Unable to create data buffer for filename");
+      env->ReleaseByteArrayElements(filename, (jbyte *)fn, JNI_ABORT);
+      JNI::Exception::Throw(JNI::JavaIoIOException, "Unable to create data buffer for filename");
       delete e;
       return 0;
    }
    
-   env->ReleaseByteArrayElements(fileName, (jbyte *)fn, JNI_ABORT);
+   env->ReleaseByteArrayElements(filename, (jbyte *)fn, JNI_ABORT);
    
-   return buffer;
+   return (jlong)buffer;
 }
 
-jlong Java_vdr_mhp_awt_DFBDataBuffer_createBufferFromData(JNIEnv* env, jobject obj, jbyteArray data, jint offset, jint len) //throws IOException;
+jlong Java_vdr_mhp_awt_DFBDataBuffer_createBufferFromData(JNIEnv* env, jobject obj, jbyteArray jbuffer, jint off, jint len) //throws IOException;
 {
-   if (len <= 0 || offset < 0) {
-      Exception exp;
-      exp.Throw("java/lang/IllegalArgumentException", "Invalid length parameter");
-      return 0;
-   }
-   
    int       n;
    jboolean  isCopy;
    jbyte     *jcomplete, *joffset;
 
-   
    n = env->GetArrayLength(jbuffer);                             // length
+   if ( off+len > n )
+      len = n - off;
+   
+   if (len <= 0 || off < 0) {
+      JNI::Exception::Throw(JNI::JavaLangIllegalArgumentException, "Invalid length/offset parameter");
+      return 0;
+   }
+   
    jcomplete = env->GetByteArrayElements(jbuffer, &isCopy);      // complete copy
    joffset = jcomplete + off;                                    // copy after +offset
 
    if (jcomplete == NULL) {
          env->ReleaseByteArrayElements(jbuffer, jcomplete, JNI_ABORT);
-         Exception exp;
-         exp.Throw("java/lang/IllegalArgumentException", "Invalid byte array");
+         JNI::Exception::Throw(JNI::JavaLangIllegalArgumentException, "Invalid byte array");
          return 0;
    }
 
-   if ( off+len > n )
-         len = n - off;
-   if (len <= 0)
-      return 0;
    
    IDirectFBDataBuffer *buffer;
    DFBDataBufferDescription bufDesc;
@@ -441,8 +425,7 @@ jlong Java_vdr_mhp_awt_DFBDataBuffer_createBufferFromData(JNIEnv* env, jobject o
       fprintf( stderr, "Unable to create the Data buffer: %s", e->GetResult() );
       printf("DirectFB: Error %s, %s\n", e->GetAction(), e->GetResult());
       env->ReleaseByteArrayElements(jbuffer, jcomplete, JNI_ABORT);
-      Exception exp;
-      exp.Throw("java/io/IOException", "Unable to create data buffer");
+      JNI::Exception::Throw(JNI::JavaIoIOException, "Unable to create data buffer");
       delete e;
       return 0;
    }
@@ -477,13 +460,12 @@ jlong Java_vdr_mhp_awt_DFBDataBuffer_createBufferForStreaming(JNIEnv* env, jobje
 
 void Java_vdr_mhp_awt_DFBDataBuffer_putData(JNIEnv* env, jobject obj, jlong nativeData, jbyteArray data, jint len) {
    jbyte *d = env->GetByteArrayElements(data, 0);
-   ((IDirectFBDataBuffer *)nativeData)->PutData(d, length);
+   ((IDirectFBDataBuffer *)nativeData)->PutData(d, len);
    env->ReleaseByteArrayElements(data, (jbyte *)d, JNI_ABORT);
 }
 
 void Java_vdr_mhp_awt_DFBDataBuffer_removeRef(JNIEnv* env, jobject obj, jlong nativeData) {
-   ((IDirectFBDataBuffer *)nativeData)->RemoveRef();
+   ((IDirectFBDataBuffer *)nativeData)->Release();
 }
 
 
-}

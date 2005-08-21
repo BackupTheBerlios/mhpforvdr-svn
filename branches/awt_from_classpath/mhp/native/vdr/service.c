@@ -80,15 +80,13 @@ jlong Java_javax_tv_service_navigation_VDRServiceList_nextChannel(JNIEnv* env, j
 class VDRServiceStatus : public Service::ServiceStatus {
 public:
    VDRServiceStatus(jclass clazz) {
-      char signature[15];
-      JNI::BaseObject::getSignature(signature, JNI::Void, 1, JNI::Int);
-      callback.SetMethod(clazz, "nativeServiceEvent", signature);
+      callback.SetMethodWithArguments(clazz, "nativeServiceEvent", JNI::Void, 1, JNI::Int);
    }
 protected:
    virtual void ServiceEvent(Message event, Service::Service service)
    {
       JNI::ReturnType type;
-      callback.CallMethod(type, JNI::Void, (jint)event);
+      callback.CallMethod(type, (jint)event);
    }
 private:
    static JNI::StaticMethod callback;

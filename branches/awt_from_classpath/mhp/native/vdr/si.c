@@ -38,9 +38,7 @@ public:
    SpecializedRequestWrapper(jobject javaRequest)
      : req(0) {
       jniobject.SetObject(javaRequest);
-      char sig[100];
-      JNI::BaseObject::getSignature(sig, JNI::Void, 1, JNI::Long);
-      if (!jnimethod.SetMethod(jniobject.GetClass(), "Result", sig))
+      if (!jnimethod.SetMethodWithArguments(jniobject.GetClass(), "Result", JNI::Void, 1, JNI::Long))
          printf("SetMethod failed!\n");     
    }
    
@@ -70,11 +68,11 @@ protected:
       printf("Received result %d\n", re->getResultCode());
       JNI::ReturnType ret;
       JNI::Thread::CheckAttachThread();
-      jnimethod.CallMethod((jobject)jniobject, ret, JNI::Void, (jlong )this);
+      jnimethod.CallMethod((jobject)jniobject, ret, (jlong )this);
       //this holds reference to jniobject, and this is deleted when
       //jniobject is finalized, so if we don't delete the reference
       //both won't be deleted.
-      jniobject.DeleteReference();
+      jniobject.Delete();
    }
    
    struct STLIteratorData {

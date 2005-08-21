@@ -143,7 +143,7 @@ public:
 #define JGREEN(_rgb)	((_rgb & 0x0000ff00) >>  8)
 #define JBLUE(_rgb)		((_rgb & 0x000000ff)      )
 
-static setSurfaceColor(IDirectFBSurface *surface, int color) {
+static void setSurfaceColor(IDirectFBSurface *surface, int color) {
    surface->SetColor(JRED(color), JGREEN(color), JBLUE(color), JALPHA(color) );
 }
 
@@ -397,7 +397,7 @@ void Java_java_awt_MHPNativeGraphics_drawImage(JNIEnv* env, jobject obj, jlong n
                                                jint dstX, jint dstY, jint origColor, jint bgColor, jint extraAlpha)
 {
    IDirectFBSurface *surface=((IDirectFBSurface *)nativeData);
-   IDirectFBSurface *sourceSurface=((IDirectFBSurface *)nativeData);
+   IDirectFBSurface *sourceSurface=((IDirectFBSurface *)imgNativeData);
    DFBRectangle rect = { srcX, srcY, srcWidth, srcHeight };
    // Here is srcWidth == dstWidth, srcHeight == dstHeight
    
@@ -413,8 +413,7 @@ void Java_java_awt_MHPNativeGraphics_drawImage(JNIEnv* env, jobject obj, jlong n
    } catch (DFBException *e) {
       printf("DirectFB: Error %s, %s\n", e->GetAction(), e->GetResult());
       delete e;
-      Exception exp;
-      exp.Throw("java/lang/IllegalArgumentException", "Blitting failed");
+      JNI::Exception::Throw(JNI::JavaLangIllegalArgumentException, "Blitting failed");
       return;
    }
    ((FlipData *)nativeFlipData)->addUpdate(dstX, dstY, dstX+srcWidth-1, dstY+srcHeight-1);
@@ -427,7 +426,7 @@ void Java_java_awt_MHPNativeGraphics_drawImageScaled(JNIEnv* env, jobject obj, j
 {
 
    IDirectFBSurface *surface=((IDirectFBSurface *)nativeData);
-   IDirectFBSurface *sourceSurface=((IDirectFBSurface *)nativeData);
+   IDirectFBSurface *sourceSurface=((IDirectFBSurface *)imgNativeData);
    DFBRectangle sr = { srcX, srcY, srcWidth, srcHeight };
    DFBRectangle dr = { dstX, dstY, dstWidth, dstHeight };
    try {
@@ -441,8 +440,7 @@ void Java_java_awt_MHPNativeGraphics_drawImageScaled(JNIEnv* env, jobject obj, j
    } catch (DFBException *e) {
       printf("DirectFB: Error %s, %s\n", e->GetAction(), e->GetResult());
       delete e;
-      Exception exp;
-      exp.Throw("java/lang/IllegalArgumentException", "StretchBlitting failed");
+      JNI::Exception::Throw(JNI::JavaLangIllegalArgumentException, "StretchBlitting failed");
       return;
    }
    ((FlipData *)nativeFlipData)->addUpdate(dr.x, dr.y, dr.x+dr.w-1, dr.y+dr.h-1 );
@@ -451,15 +449,16 @@ void Java_java_awt_MHPNativeGraphics_drawImageScaled(JNIEnv* env, jobject obj, j
 void Java_java_awt_MHPNativeGraphics_drawImageTiled(JNIEnv* env, jobject obj, jlong nativeData, jlong nativeFlipData, jlong imgNativeData, 
                                                jint srcX, jint srcY, jint srcWidth, jint srcHeight,
                                                jint dstX, jint dstY, jint origColor, jint bgColor, jint extraAlpha)
+{
    IDirectFBSurface *surface=((IDirectFBSurface *)nativeData);
-   IDirectFBSurface *sourceSurface=((IDirectFBSurface *)nativeData);
+   IDirectFBSurface *sourceSurface=((IDirectFBSurface *)imgNativeData);
    DFBRectangle rect = { srcX, srcY, srcWidth, srcHeight };
    
    try {
       
       prepareBlitting(surface, sourceSurface, dstX, dstY, srcWidth, srcHeight, origColor, bgColor, extraAlpha);
       
-      printf("Graphics: TileBlit'ing image, %dx%d-%dx%d, %d,%d,  update region %dx%d-%dx%d\n", rect.x, rect.y, rect.w, rect.h, x, y, x, y, x+width-1, y+height-1);
+      //printf("Graphics: TileBlit'ing image, %dx%d-%dx%d, %d,%d,  update region %dx%d-%dx%d\n", rect.x, rect.y, rect.w, rect.h, x, y, x, y, x+width-1, y+height-1);
       
       surface->TileBlit(sourceSurface, &rect, dstX, dstY);
       
@@ -468,8 +467,7 @@ void Java_java_awt_MHPNativeGraphics_drawImageTiled(JNIEnv* env, jobject obj, jl
    } catch (DFBException *e) {
       printf("DirectFB: Error %s, %s\n", e->GetAction(), e->GetResult());
       delete e;
-      Exception exp;
-      exp.Throw("java/lang/IllegalArgumentException", "TileBlitting failed");
+      JNI::Exception::Throw(JNI::JavaLangIllegalArgumentException, "TileBlitting failed");
       return;
    }
    ((FlipData *)nativeFlipData)->addUpdate(dstX, dstY, dstX+srcWidth-1, dstY+srcHeight-1);
@@ -477,9 +475,10 @@ void Java_java_awt_MHPNativeGraphics_drawImageTiled(JNIEnv* env, jobject obj, jl
 
 // TODO: this does not look clean. Find out of this hack is necessary
 void Java_java_awt_MHPNativeGraphics_tileBlitImageAlpha(JNIEnv* env, jobject obj, jlong nativeData,
-             jlong nativeFlipData, jlong imgNativeData, jint x, jint y, jint porterDuffRule) {
+             jlong nativeFlipData, jlong imgNativeData, jint x, jint y, jint porterDuffRule)
+{
    IDirectFBSurface *surface=((IDirectFBSurface *)nativeData);
-   IDirectFBSurface *sourceSurface=((IDirectFBSurface *)nativeData);
+   IDirectFBSurface *sourceSurface=((IDirectFBSurface *)imgNativeData);
    int width,height;
    try {
      int blittingflags = DSBLIT_NOFX; //correct?
@@ -490,7 +489,7 @@ void Java_java_awt_MHPNativeGraphics_tileBlitImageAlpha(JNIEnv* env, jobject obj
      surface->SetPorterDuff(DSPD_DST_IN);
      
      printf("Graphics: TileBlit'ing image, %d,%d\n", x, y);
-     surface->TileBlit(img->surface, NULL, x, y);
+     surface->TileBlit(sourceSurface, NULL, x, y);
      
      //setSurfaceColor(surface, origColor);
      surface->SetPorterDuff((DFBSurfacePorterDuffRule)porterDuffRule);
@@ -498,8 +497,7 @@ void Java_java_awt_MHPNativeGraphics_tileBlitImageAlpha(JNIEnv* env, jobject obj
    } catch (DFBException *e) {
       printf("DirectFB: Error %s, %s\n", e->GetAction(), e->GetResult());
       delete e;
-      Exception exp;
-      exp.Throw("java/lang/IllegalArgumentException", "TileBlitting with alpha failed");
+      JNI::Exception::Throw(JNI::JavaLangIllegalArgumentException, "TileBlitting with alpha failed");
       return;
    }
    ((FlipData *)nativeFlipData)->addUpdate(x, y, x+width, y+height);

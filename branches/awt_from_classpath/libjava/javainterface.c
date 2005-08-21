@@ -48,7 +48,7 @@ bool JavaInterface::StopApplication(ApplicationInfo::cApplication::Ptr app) {
 bool JavaInterface::StopApplications() {
    JNI::ReturnType ret;
    self()->CheckAttachThread();
-   return self()->methods->stopApplications.CallMethod(ret, JNI::Int) && ret.TypeInt == 0;
+   return self()->methods->stopApplications.CallMethod(ret) && ret.TypeInt == 0;
 }
 
 bool JavaInterface::PauseApplication(ApplicationInfo::cApplication::Ptr app) {
@@ -99,7 +99,7 @@ bool JavaInterface::ShutdownMHP() {
       
    JNI::ReturnType ret;
    self()->CheckAttachThread();
-   return self()->methods->shutdown.CallMethod(ret, JNI::Int) && ret.TypeInt == 0;  
+   return self()->methods->shutdown.CallMethod(ret) && ret.TypeInt == 0;  
 }
 
 //shall be called from VDR's main thread
@@ -179,6 +179,8 @@ bool JavaInterface::StartJava() {
    methods->stopApplications.SetMethod("vdr/mhp/ApplicationManager", "StopApplications", JNI::Int, format);
    delete[] format;
 
+   JNI::Exception::Initialize();
+   
    jniInitialized = true;
    return true;
 }
@@ -687,6 +689,39 @@ bool Exception::Throw(const char *classname, const char *errMsg, ThrowMode mode)
       return false;
    }
    return JNIEnvProvider::GetEnv()->ThrowNew(exc, errMsg) == 0;
+}
+
+Exception Exception::javaLangIllegalArgumentException;
+Exception Exception::javaLangIllegalStateException;
+Exception Exception::javaLangNullPointerException;
+Exception Exception::javaLangRuntimeException;
+Exception Exception::javaIoIOException;
+
+bool Exception::Initialize() {
+   bool success = true;
+   success = success && javaLangIllegalArgumentException.SetClass("java/lang/IllegalArgumentException");
+   success = success && javaLangIllegalStateException.SetClass("java/lang/IllegalArgumentException");
+   success = success && javaLangNullPointerException.SetClass("java/lang/NullPointerException");
+   success = success && javaLangRuntimeException.SetClass("java/lang/RuntimeException");
+   success = success && javaIoIOException.SetClass("java/io/IOException");
+   return success;
+}
+
+bool Exception::Throw(PredefinedException e, const char *errMsg) {
+   switch(e) {
+      case JavaLangIllegalArgumentException:
+         return javaLangIllegalArgumentException.Throw(errMsg);
+      case JavaLangIllegalStateException:
+         return javaLangIllegalStateException.Throw(errMsg);
+      case JavaLangNullPointerException:
+         return javaLangNullPointerException.Throw(errMsg);
+      case JavaLangRuntimeException:
+         return javaLangRuntimeException.Throw(errMsg);
+      case JavaIoIOException:
+         return javaIoIOException.Throw(errMsg);
+      default:
+         return false;
+   }
 }
 
 
