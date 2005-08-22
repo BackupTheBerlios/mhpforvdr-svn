@@ -935,8 +935,9 @@ class EventThread extends Thread implements DFBEventConstants {
       try {
          while (running) {
             e=getNextEvent();
-            if (e != null)
-               Toolkit.getDefaultToolkit().getSystemEventQueue().postEvent(e);
+            if (e != null) {
+               ((MHPToolkit) Toolkit.getDefaultToolkit()).postEvent(e);
+            }
          }
          running=false;
       } catch (Exception ex) {

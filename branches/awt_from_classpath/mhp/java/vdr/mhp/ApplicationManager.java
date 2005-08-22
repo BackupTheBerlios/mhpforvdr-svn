@@ -91,10 +91,12 @@ public static int Initialize(long appDatabase) {
       //set some properties for System.getProperty()
       setupProperties();
    } catch (Exception e) {
+      System.out.println("ApplicationManager.Init(): Caught exception");
       e.printStackTrace();
       return -1;
    }
    getManager().init=true;
+   System.out.println("Leaving successfully ApplicationManager.Init()");
    return 0;
 }
 

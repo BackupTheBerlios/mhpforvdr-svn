@@ -17,6 +17,9 @@
 #include "javainterface.h"
 
 bool JavaInterface::CheckStart() {
+   if (self()->jniError)
+      return false;
+   
    if (!self()->isStarted()) {
       //starts VM and initializes JNI access to ApplicationManager
       return self()->StartJava();
@@ -136,6 +139,7 @@ JavaInterface::JavaInterface() {
    methods = new StaticMethods;
 
    jniInitialized = false;
+   jniError = false;
 }
 
 JavaInterface::~JavaInterface() {
@@ -145,6 +149,9 @@ JavaInterface::~JavaInterface() {
 
 //Calls StartVM and initializes JNI structures to access ApplicationManager
 bool JavaInterface::StartJava() {
+   if (jniError)
+      return false;
+   
    StartVM();
    if (!isStarted())
       return false;
@@ -154,33 +161,42 @@ bool JavaInterface::StartJava() {
 
    CheckAttachThread();
    
-   const char *format=JNI::BaseObject::getSignature(JNI::Int, 1, JNI::Long);
    JNI::ReturnType ret;
-   if ( !methods->initialize.SetMethod("vdr/mhp/ApplicationManager", "Initialize", JNI::Int, format) ||
-        !methods->initialize.CallMethod(ret, (int)&ApplicationInfo::Applications) || ret.TypeInt != 0) {
-      esyslog("Failed to initialize Java system: Cannot call method of ApplicationManager");
+   //share signatures
+   const char *formatOneLong=JNI::BaseObject::getSignature(JNI::Int, 1, JNI::Long);
+   const char *formatNoArguments=JNI::BaseObject::getSignature(JNI::Int, 0);
+   
+   if ( !(
+      methods->initialize.SetMethod("vdr/mhp/ApplicationManager", "Initialize", JNI::Int, formatOneLong) &&
+      methods->newApplication.SetMethod("vdr/mhp/ApplicationManager", "NewApplication", JNI::Int, formatOneLong) &&
+      methods->applicationRemoved.SetMethod("vdr/mhp/ApplicationManager", "ApplicationRemoved", JNI::Int, formatOneLong) &&
+      methods->startApplication.SetMethod("vdr/mhp/ApplicationManager", "StartApplication", JNI::Int, formatOneLong) &&
+      methods->stopApplication.SetMethod("vdr/mhp/ApplicationManager", "StopApplication", JNI::Int, formatOneLong) &&
+      methods->pauseApplication.SetMethod("vdr/mhp/ApplicationManager", "PauseApplication", JNI::Int, formatOneLong) &&
+      methods->resumeApplication.SetMethod("vdr/mhp/ApplicationManager", "ResumeApplication", JNI::Int, formatOneLong) &&
+      
+      methods->processKey.SetMethodWithArguments("vdr/mhp/ApplicationManager", "ProcessKey", JNI::Int, 1, JNI::Int) &&
+      
+      methods->shutdown.SetMethod("vdr/mhp/ApplicationManager", "Shutdown", JNI::Int, formatNoArguments) &&
+      methods->stopApplications.SetMethod("vdr/mhp/ApplicationManager", "StopApplications", JNI::Int, formatNoArguments) &&
+      JNI::Exception::Initialize() 
+         )
+      ) {
+      esyslog("Failed to initialize Java system: Cannot find method ID");
       jniInitialized=false;
+      jniError=true;
       return false;
    }
    
-   //they all have the same signature
-   methods->newApplication.SetMethod("vdr/mhp/ApplicationManager", "NewApplication", JNI::Int, format);
-   methods->applicationRemoved.SetMethod("vdr/mhp/ApplicationManager", "ApplicationRemoved", JNI::Int, format);
-   methods->startApplication.SetMethod("vdr/mhp/ApplicationManager", "StartApplication", JNI::Int, format);
-   methods->stopApplication.SetMethod("vdr/mhp/ApplicationManager", "StopApplication", JNI::Int, format);
-   methods->pauseApplication.SetMethod("vdr/mhp/ApplicationManager", "PauseApplication", JNI::Int, format);
-   methods->resumeApplication.SetMethod("vdr/mhp/ApplicationManager", "ResumeApplication", JNI::Int, format);
-   delete[] format;
-   
-   methods->processKey.SetMethodWithArguments("vdr/mhp/ApplicationManager", "ProcessKey", JNI::Int, 1, JNI::Int);
-   
-   format=JNI::BaseObject::getSignature(JNI::Int, 0);
-   methods->shutdown.SetMethod("vdr/mhp/ApplicationManager", "Shutdown", JNI::Int, format);
-   methods->stopApplications.SetMethod("vdr/mhp/ApplicationManager", "StopApplications", JNI::Int, format);
-   delete[] format;
+   delete[] formatOneLong;
+   delete[] formatNoArguments;
 
-   JNI::Exception::Initialize();
-   
+   if (!methods->initialize.CallMethod(ret, (int)&ApplicationInfo::Applications) || ret.TypeInt != 0) {
+      esyslog("Failed to initialize Java system: Cannot call method of ApplicationManager");
+      jniInitialized=false;
+      jniError=true;
+      return false;
+   }
    jniInitialized = true;
    return true;
 }
@@ -214,6 +230,29 @@ void LibraryPreloader::Close() {
 
 namespace JNI {
 
+JNIEnvProvider *JNIEnvProvider::s_self = 0;
+
+JNIEnv *PerThreadAutomagicJNIEnvProvider::env() {
+   JNIEnv *env=Get();
+   if (env)
+      return env;
+   JavaInterface::CheckAttachCurrentThread();
+   return Get();
+}
+
+ShutdownManager *ShutdownManager::s_self = 0;
+
+void ShutdownManager::RegisterForDeletion(DeletableObject *obj) {
+   if (s_self)
+      s_self->registerForDeletion(obj);
+}
+
+void ShutdownManager::RemoveForDeletion(DeletableObject *obj) {
+   if (s_self)
+      s_self->removeForDeletion(obj);
+}
+
+
 BaseObject::BaseObject()
    : exceptionHandling(ClearExceptions)
 {
@@ -241,28 +280,34 @@ const char *BaseObject::getConstructorSignature(int args, ...) {
 // Attempt at a string optimized for appending
 class StringBuffer : public std::vector<char> {
 public:
-   StringBuffer(int n = 10) : std::vector<char>(n) {}
+   StringBuffer(int assumedLength = 10)
+     : std::vector<char>()
+   {
+      reserve(assumedLength);
+   }
    StringBuffer &operator+=(char c) {
       push_back(c);
       return *this;
    }
    StringBuffer &operator+=(const char *str) {
-      int len=strlen(str);
-      for (int i=0; i<len; i++)
+      int l=strlen(str);
+      for (int i=0; i<l; i++)
          push_back(str[i]);
       return *this;
    }
    char *getCharArray() {
-      int len=size();
-      char *a=new char[len];
-      for (int i=0; i<len; i++)
+      int length=size();
+      char *a=new char[length+1];
+      for (int i=0; i<length; i++) {
          a[i]=operator[](i);
+      }
+      a[length]='\0';
       return a;
    }
 };
 
 const char *BaseObject::getSignature(Types returnType, int args, va_list ap) {
-   StringBuffer format(2*args);
+   StringBuffer format(2*args+3);
    
    format+='(';
    
@@ -288,8 +333,6 @@ const char *BaseObject::getSignature(Types returnType, int args, va_list ap) {
    }
    if (returnType == JNI::Object)
       format+=';';
-   
-   format+='\0';
    
    return format.getCharArray();
    /*
@@ -341,6 +384,7 @@ bool BaseObject::checkException() {
    return checkException(exceptionHandling);
 }
 
+
 DeletableObject::~DeletableObject() {
    RemoveForDeletion();
    Delete();
@@ -354,8 +398,6 @@ void DeletableObject::RemoveForDeletion() {
    ShutdownManager::RemoveForDeletion(this);
 }
 
-JNIEnvProvider *JNIEnvProvider::s_self = 0;
-ShutdownManager *ShutdownManager::s_self = 0;
 
 ClassRef::ClassRef() {
    classRef=0;
@@ -442,7 +484,7 @@ void Method::Delete() {
 bool Method::SetMethodWithArguments(const char *classname, const char *methodName, Types returnType, int numArgs, ...) {
    va_list ap;
    va_start(ap, numArgs);
-   bool success=SetMethod(classname, methodName, returnType, ap);
+   bool success=SetMethodWithArguments(classname, methodName, returnType, numArgs, ap);
    va_end(ap);
    return success;
 }
@@ -450,7 +492,7 @@ bool Method::SetMethodWithArguments(const char *classname, const char *methodNam
 bool Method::SetMethodWithArguments(jclass clazz, const char *methodName, Types returnType, int numArgs, ...) {
    va_list ap;
    va_start(ap, numArgs);
-   bool success=SetMethod(clazz, methodName, returnType, ap);
+   bool success=SetMethodWithArguments(clazz, methodName, returnType, numArgs, ap);
    va_end(ap);
    return success;
 }
@@ -654,6 +696,10 @@ bool Constructor::NewObject(jobject &newObj, va_list args) {
       return false;
    newObj=JNIEnvProvider::GetEnv()->NewObjectV(classRef, method, args);
    return checkException();
+}
+
+
+Exception::Exception() {
 }
 
 bool Exception::SetClass(const char *classname){

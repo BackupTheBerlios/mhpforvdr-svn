@@ -43,7 +43,7 @@ protected:
    int attachedThreads;
    JavaVM *jvm;
    JNIEnv *jvmEnv;
-   PerThreadJNIEnvProvider provider;
+   PerThreadAutomagicJNIEnvProvider provider;
    
    void (*javaExitFunc)(jint);
    void (*javaAbortFunc)(void);
@@ -109,6 +109,7 @@ cJavaVM::cJavaVM() {
    //doShutdown=false;
    //loadingAborted=false;
    state=Waiting;
+   error=false;
 }
 
 cJavaVM::~cJavaVM() {
@@ -121,14 +122,14 @@ cJavaVM::~cJavaVM() {
 //JavaInterface calls the method.
 
 void cJavaVM::CheckAttachThread() {
-   if (!provider.GetEnv()) {
+   if (!provider.GetEnvNoMagic()) {
       AttachCurrentThread();
    }
 }
 
 
 void cJavaVM::CheckDetachThread() {
-   if (!provider.GetEnv()) {
+   if (!provider.GetEnvNoMagic()) {
       if (DetachCurrentThread());
    }
 }
@@ -140,7 +141,7 @@ bool cJavaVM::AttachCurrentThread() {
       if (jvm->AttachCurrentThread((void **)&env, NULL) != JNI_OK)
          return false;
       attachedThreads++;
-      provider.SetEnvForCurrentThread(env);
+      provider.SetJavaEnv(env);
       return true;
    }
    return false;
@@ -151,7 +152,7 @@ bool cJavaVM::DetachCurrentThread() {
       if (jvm->DetachCurrentThread() != JNI_OK)
          return false;
       attachedThreads--;
-      provider.SetEnvForCurrentThread(0);
+      provider.SetJavaEnv(0);
       return true;
    }
    return false;
@@ -289,7 +290,7 @@ bool cJavaVM::DoStartVM() {
          fprintf( stderr, "Failed to create JVM\n" );
          error=true; //disable use of plugin for subsequent attempts
       } else {
-         provider.SetEnvForCurrentThread(jvmEnv); //main thread is attached by VM
+         provider.SetJavaEnv(jvmEnv); //main thread is attached by VM
          printf("JVM Created successfully\n");
          return true;
       }

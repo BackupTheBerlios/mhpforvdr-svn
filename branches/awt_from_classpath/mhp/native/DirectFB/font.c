@@ -328,4 +328,4 @@ jint Java_java_awt_FontMetrics_stringWidth(JNIEnv* env, jobject obj, jlong nativ
 }
 */
 
-}
+} // extern "C"

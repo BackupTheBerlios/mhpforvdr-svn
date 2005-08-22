@@ -443,6 +443,5 @@ void Java_java_awt_MHPBackgroundPlane_displayDripfeed(JNIEnv* env, jobject obj, 
 }
 
 
-
-}
+} // extern "C"
 

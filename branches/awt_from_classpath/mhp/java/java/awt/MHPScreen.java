@@ -23,15 +23,16 @@ static Dimension deviceResolution;
 
 
 static {
-   //don't catch any exception, if an exception is thrown,
-   //let it go toplevel, since the whole thing won't work without this lib.
+   // don't catch any exception, if an exception is thrown,
+   // let it go toplevel, since the whole thing won't work without this lib.
    AccessController.doPrivileged(new PrivilegedAction() {
             public Object run() {
                 System.loadLibrary("mhpjni_directfbawt");
                 return null;
             }
         });
-   //Toolkit.initToolkit();
+        
+   // Set this property so that our Toolkit is loaded by AWT
    System.setProperty("awt.toolkit", "vdr.mhp.awt.MHPToolkit");
 }
 

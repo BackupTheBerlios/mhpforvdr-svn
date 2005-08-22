@@ -17,6 +17,7 @@
 #include <libmhpoutput/output.h>
 #include "image.h"
 
+extern "C" {
 
 // ----------- MHPImage ------------
 
@@ -467,5 +468,8 @@ void Java_vdr_mhp_awt_DFBDataBuffer_putData(JNIEnv* env, jobject obj, jlong nati
 void Java_vdr_mhp_awt_DFBDataBuffer_removeRef(JNIEnv* env, jobject obj, jlong nativeData) {
    ((IDirectFBDataBuffer *)nativeData)->Release();
 }
+
+} // extern "C"
+
 
 

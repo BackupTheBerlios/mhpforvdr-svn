@@ -1,8 +1,12 @@
 
 import java.awt.Color;
 import java.awt.Font;
+import java.awt.Component;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
+import java.awt.Image;
+import java.awt.Toolkit;
+import java.awt.image.ImageObserver;
 
 import javax.tv.xlet.Xlet;
 import javax.tv.xlet.XletContext;
@@ -12,13 +16,16 @@ import org.dvb.event.*;
 import org.davic.resources.*;
 import org.davic.net.dvb.*;
 import org.dvb.si.*;
-
+import org.dvb.ui.DVBGraphics;
+import org.dvb.ui.DVBAlphaComposite;
 
 import org.havi.ui.HDefaultTextLayoutManager;
 import org.havi.ui.HScene;
 import org.havi.ui.HSceneFactory;
 import org.havi.ui.HScreen;
 import org.havi.ui.HStaticText;
+import org.havi.ui.HComponent;
+import org.havi.ui.HContainer;
 
 import org.dvb.user.*;
 import org.dvb.io.ixc.IxcRegistry;
@@ -32,17 +39,16 @@ import java.io.FileOutputStream;
 import java.io.RandomAccessFile;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.net.URL;
 
 /**
 * Xlet used to debug Java stack
 */
-public class SimpleXlet implements Xlet, KeyListener {
+public class SimpleXlet implements Xlet {
 
-    private XletContext context;
-    private HScene scene;
-    private HStaticText label;
-    private Color[] colors = { Color.black, Color.red, Color.blue };
-    private int intColor;
+    XletContext context;
+    HScene scene;
+    
 
     public SimpleXlet() {
     }
@@ -52,6 +58,19 @@ public class SimpleXlet implements Xlet, KeyListener {
         context = xletContext;
     }
 
+    public void pauseXlet() {
+    }
+
+    public void destroyXlet(boolean flag) throws XletStateChangeException {
+       System.out.println("destroyXlet");
+       if (scene != null) {
+          scene.setVisible(false);
+          scene.removeAll();
+          scene = null;
+       }
+       context.notifyDestroyed();
+    }
+    
     public void startXlet() throws XletStateChangeException {
         System.out.println("begin startXlet");
         //testOrgDvbEvent();
@@ -65,68 +84,142 @@ public class SimpleXlet implements Xlet, KeyListener {
         //testXMI();
         //testStackTrace();
         //testJavaIO();
-        testUI();
+        testUI_Image();
     }
     
-    void testUI() {
-        /*
-        class PrintSomething implements Runnable {
-              public void run() {
-                 System.out.println("Ich bin ein Thread");
-                 java.awt.Image im=java.awt.Toolkit.getDefaultToolkit().getImage("/usr/local/vdr/apps/HaviExample/foreground.png");
-              }
-        }
-        (new Thread(
-           new PrintSomething()
-        )).start();
-        */
-        
+    // helper method
+    HScene testComponent(Component comp) {
         HSceneFactory hsceneFactory = HSceneFactory.getInstance();
         System.out.println("Creating scene");
         scene = hsceneFactory.getFullScreenScene(HScreen.getDefaultHScreen().getDefaultHGraphicsDevice());
-
-        scene.setSize(720, 576);
-        scene.setLayout(null);
-        scene.addKeyListener(this);
-        //scene.requestFocus();
         
-        System.out.println("Creating text");
-        label = new HStaticText("This text should be yellow", 100, 100, 200, 200, new Font("Tiresias", Font.BOLD, 22), Color.yellow, colors[0], new HDefaultTextLayoutManager());
-        scene.add(label);
-        
-        /*java.awt.Graphics g=scene.getGraphics();
-        System.out.println("Having graphics and drawing line "+g);
-        g.setColor(java.awt.Color.black);
-        g.drawLine(0,0,50,50);*/
-
+        comp.setBounds(scene.getBounds());
+        comp.setVisible(true);
+        scene.add(comp);
         scene.setVisible(true);
+        return scene;
     }
     
-    public void pauseXlet() {
+    
+    // --- Here are the unit tests ---
+    
+    
+    void testUI_basic() {
+       class SimpleComponent extends HComponent {
+          public void paint(java.awt.Graphics g) {
+             g.setColor(Color.black);
+             g.drawLine(10, 10, 200, 10);
+             g.setColor(Color.yellow);
+             g.drawLine(200, 10, 200, 300);
+             g.setColor(Color.red);
+             g.drawLine(200, 300, 10, 300);
+             g.setColor(Color.blue);
+             g.drawLine(10, 300, 10, 10);
+          }
+       }
+       testComponent(new SimpleComponent());
     }
+    
+    void testUI_KeyEvent() {
+       class KeyListenerComponent extends HComponent {
+       }
+       class Listener implements KeyListener {
+          String message;
+          Listener(String message) {
+             this.message=message;
+          }
+          public void keyTyped(KeyEvent e) {
+             System.out.println("KeyListener.keyTyped "+message+": "+e);
+          }
 
-    public void destroyXlet(boolean flag) throws XletStateChangeException {
-        System.out.println("destroyXlet");
-        if (scene != null) {
-            scene.setVisible(false);
-            scene.removeAll();
-            scene = null;
-        }
-        context.notifyDestroyed();
-    }
-    public void keyTyped(KeyEvent e) {
-    }
+          public void keyReleased(KeyEvent e) {
+          }
 
-    public void keyReleased(KeyEvent e) {
+          public void keyPressed(KeyEvent e) {
+          }
+       }
+       KeyListenerComponent comp=new KeyListenerComponent();
+       HScene s=testComponent(comp);
+       comp.addKeyListener(new Listener("from Component"));
+       s.addKeyListener(new Listener("from HScene"));
     }
+    
+    void testUI_Image() {
+       class ImageComponent extends HComponent implements ImageObserver {
+          Image imageSpektrum, imageInternet;
+          ImageComponent() {
+             Toolkit tk=Toolkit.getDefaultToolkit();
+             if (tk == null)
+                System.out.println("Toolkit is null!");
+             imageSpektrum=tk.getImage("farbspektrum.jpg");
+             URL url=null;
+             try {
+                url=new URL("http://www.mhp.org/graphics/mhp-sitewide/logo.gif");
+             } catch (java.net.MalformedURLException e) {
+                e.printStackTrace();
+             }
+             imageInternet=tk.getImage(url);
+          }
+          public void paint(java.awt.Graphics g) {
+             g.drawImage(imageSpektrum, 0, 0, this);
+             g.drawImage(imageInternet, 400, 300, this);
+             Image scaled=imageSpektrum.getScaledInstance(400, 400, 0);
+             DVBAlphaComposite transparent=DVBAlphaComposite.getInstance(DVBAlphaComposite.SRC, 0.5f);
+             try {
+                ((DVBGraphics) g).setDVBComposite(transparent);
+             } catch (org.dvb.ui.UnsupportedDrawingOperationException e) {
+                e.printStackTrace();
+             }
+             g.drawImage(scaled, 50, 50, this);
+          }
+          public boolean imageUpdate(Image img, int infoflags, int x, int y, int width, int height) {
+             return false;
+          }
+       }
+       testComponent(new ImageComponent());
+    }
+    
+    void testUI_Font() {
+    }
+    
+    void testUI_text() {
+        /*
+       class PrintSomething implements Runnable {
+       public void run() {
+       System.out.println("Ich bin ein Thread");
+       java.awt.Image im=java.awt.Toolkit.getDefaultToolkit().getImage("/usr/local/vdr/apps/HaviExample/foreground.png");
+    }
+    }
+       (new Thread(
+       new PrintSomething()
+        )).start();
+        */
+       class TestTextComponent extends HContainer implements KeyListener {
+          private HStaticText label;
+          private Color[] colors = { Color.black, Color.red, Color.blue };
+          private int intColor;
+          TestTextComponent() {
+             System.out.println("Creating text");
+             label = new HStaticText("This text should be yellow", 100, 100, 200, 200, new Font("Tiresias", Font.BOLD, 22), Color.yellow, colors[0], new HDefaultTextLayoutManager());
+             add(label);
+          }
+          public void keyTyped(KeyEvent e) {
+          }
 
-    public void keyPressed(KeyEvent e) {
-        /*intColor++;
-        if (intColor == colors.length) {
-            intColor = 0;
-        }
-        label.setBackground(colors[intColor]);
-        label.repaint();*/
+          public void keyReleased(KeyEvent e) {
+          }
+
+          public void keyPressed(KeyEvent e) {
+            intColor++;
+               if (intColor == colors.length) {
+               intColor = 0;
+            }
+               label.setBackground(colors[intColor]);
+               label.repaint();
+          }
+       }
+       TestTextComponent comp=new TestTextComponent();
+       testComponent(comp);
     }
     
     //1.7.2005: test passed
@@ -211,29 +304,7 @@ public class SimpleXlet implements Xlet, KeyListener {
                g.fillPolygon(x,y,6);
            }
         }
-        HSceneFactory hsceneFactory = HSceneFactory.getInstance();
-        System.out.println("Creating scene");
-        scene = hsceneFactory.getFullScreenScene(HScreen.getDefaultHScreen().getDefaultHGraphicsDevice());
-        
-        XMIComponent comp=new XMIComponent();
-        
-        comp.setBounds(scene.getBounds());
-        comp.setVisible(true);
-        scene.add(comp);
-
-        //setSize(720, 576);
-        //scene.setLayout(null);
-        scene.addKeyListener(this);
-        //scene.requestFocus();
-        
-        scene.add(comp);
-        
-        /*java.awt.Graphics g=scene.getGraphics();
-        System.out.println("Having graphics and drawing line "+g);
-        g.setColor(java.awt.Color.black);
-        g.drawLine(0,0,50,50);*/
-
-        scene.setVisible(true);
+        testComponent(new XMIComponent());
     }
     
    //12.04.2005: test passed

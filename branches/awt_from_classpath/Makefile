@@ -21,6 +21,7 @@ PLUGINDIR_RELATIVE = .
 # testapps-install  copy the contents of testapps to /usr/local/vdr/apps,
 #                   currently simply copies the whole dir to that location
 # testcase  Compile the "SimpleXlet" test suite found in testapps/
+# ti        = testcase testapps-install
 
 
 
@@ -175,7 +176,8 @@ library-install:
 dist: distclean
 	@-rm -rf $(TMPDIR)/$(ARCHIVE)
 	@mkdir $(TMPDIR)/$(ARCHIVE)
-	@cp -a * $(TMPDIR)/$(ARCHIVE)
+	@find -not -path "*.svn*" -and -not -type d -exec cp -a --parents "{}" $(TMPDIR)/$(ARCHIVE) \;
+##	@cp -a * $(TMPDIR)/$(ARCHIVE)
 	@tar czf $(PACKAGE).tgz -C $(TMPDIR) $(ARCHIVE)
 	@-rm -rf $(TMPDIR)/$(ARCHIVE)
 	@echo Distribution package created as $(PACKAGE).tgz
@@ -196,7 +198,9 @@ plugin-clean:
    
 testapps-install:
 	@install -d $(BASEDIR)/apps
-	cp -r testapps/* $(BASEDIR)/apps
+	@( cd testapps; \
+	  find -not -path "*.svn*" -and -not -type d -and -not -name "*.java" -exec cp -av --parents "{}" $(BASEDIR)/apps \; \
+	)
 
 ##Do not delete testapps in distclean, include .class files in distribution
 testapps-clean-all:
@@ -216,6 +220,8 @@ javas: java java-install
 
 testcase:
 	make -C mhp/java testcase
+
+ti: testcase testapps-install
         
 getjikes:
 	make -C mhp/java getjikes-for-topdir

@@ -809,9 +809,10 @@ public class MHPToolkit extends gnu.java.awt.ClasspathToolkit
          }
       }
    }
-   // Called from MHPPlane's event thread
-   public void postEvent(AWTEvent e) {
+   // Called from DFBWindow's event thread
+   void postEvent(AWTEvent e) {
       EventQueue q = getSystemEventQueueImpl();
+      q.postEvent(e);
       synchronized (q) {
          q.notifyAll();
       }

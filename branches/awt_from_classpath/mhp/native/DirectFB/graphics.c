@@ -1192,4 +1192,5 @@ void Java_java_awt_MHPNativeGraphics_removeRefFlip(JNIEnv* env, jobject obj, int
 }*/
 
 
-}
+} // extern "C"
+

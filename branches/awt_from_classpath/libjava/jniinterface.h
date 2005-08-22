@@ -88,8 +88,8 @@ protected:
 
 class ShutdownManager {
 public:
-   static void RegisterForDeletion(DeletableObject *obj) { return s_self->RegisterForDeletion(obj); }
-   static void RemoveForDeletion(DeletableObject *obj) { return s_self->RemoveForDeletion(obj); }
+   static void RegisterForDeletion(DeletableObject *obj);
+   static void RemoveForDeletion(DeletableObject *obj);
 protected:
    ShutdownManager() { s_self = this; }
    virtual ~ShutdownManager() { s_self = 0; }
@@ -105,24 +105,34 @@ public:
    virtual ~BaseObject();
       // Returns a function signature, accepts enum Types.
       // The returned array is allocated with new[] and must be delete[]'ed by the caller.
+      // First argument is the return type of the method.
       // numArgs is the number of arguments of the Java function.
+      // The arguments of the method are then appended.
       // 'Class' requires the class name, 'Array' the type as a second specifier.
       // This second specifier shall be a string given as the following argument
       // and _not_ be counted by numArgs.
       // If returnType is either 'Class' or 'Array', then the very last argument
       // is the necessary second specifier. This argument shall _not_ be counted
       // by numArgs.
-      // Arrays of class objects are not elegantly supported, the second specifier must be "Lorg/my/Example;
+      // Arrays of class objects are not elegantly supported, the second specifier must be "Lorg/my/Example;"
       //
-      // Two Examples: public int doIt(int arg1, bool arg2);
-      //               getSignature(buf, JNI::Int, 2, JNI::Int, JNI::Boolean);
-      //               myInstanceMethod.SetMethod("org/my/Example", "doIt", buf);
-      // 
+      // Examples:     public int doIt(int arg1, bool arg2);
+      //               const char *sig = getSignature(JNI::Int, 2, JNI::Int, JNI::Boolean);
+      //               myInstanceMethod.SetMethod("org/my/Example", "doIt", sig);
+      //               delete[] sig;
+      //
+      //               //There are convenience methods with the same semantics, see below
       //               public static String doThat(int arg1, java.util.Date arg2, int[] arg3)
-      //               getSignature(buf, JNI::Object, 3, JNI::Int, JNI::Object, 
-      //                            "java/util/Data", JNI::Array, JNI::Int, "java/lang/String");
-      //               myStaticMethod.SetMethod("org/my/Example", "doThat", buf);
+      //               myStaticMethod.SetMethodWithArguments("org/my/Example", "doThat",
+      //                            JNI::Object, 3, JNI::Int, JNI::Object, 
+      //                            "java/util/Data", JNI::Array, JNI::Int, "java/lang/String"););
       //               myStaticMethod.CallMethod(myReturnType, JNI::Object);
+      //
+      //               //I told you arrays of objects are not elegantly supported
+      //               public String[] doSomethingWithArray(Object[] args)
+      //               const char *sig = getSignature(JNI::Array, 1, JNI::Array, "Ljava/lang/object;", "Ljava/lang/String;")
+      //               myThirdMethod.SetMethod("org/my/Example", "doSomethingWithArray", sig);
+      //               delete[] sig;
    static const char *getSignature(Types returnType, int numArgs, ...);
    static const char *getSignature(Types returnType, int numArgs, va_list args);
       //Get signature for a constructor. This is equvivalent to calling getSignature with returnType JNI::Void
