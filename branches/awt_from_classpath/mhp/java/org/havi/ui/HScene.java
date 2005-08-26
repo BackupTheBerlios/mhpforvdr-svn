@@ -126,6 +126,7 @@ public static final int IMAGE_TILE = 3;
       itself.
       @param g Graphics context to use for this operation */   
 public void paint(Graphics g) {
+    System.out.println("HScene.paint");
     org.dvb.ui.DVBGraphics dvbG=(org.dvb.ui.DVBGraphics)g;
     
     dvbG.enterBuffered();

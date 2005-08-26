@@ -176,6 +176,7 @@ public class MHPImageDecoder implements java.awt.image.ImageProducer
             if (image == null)
                image = provider.createImage();
             ic.setPixels (0, 0, image.width, image.height, provider.getColorModel(), image.getPixels(), 0, image.width);
+            ic.imageComplete (ImageConsumer.STATICIMAGEDONE);
          }
        } catch (Exception e) {
           e.printStackTrace();
@@ -191,7 +192,7 @@ public class MHPImageDecoder implements java.awt.image.ImageProducer
   }
 
   public void requestTopDownLeftRightResend (ImageConsumer ic) 
-  { 
+  {
      //TODO?
   }
   

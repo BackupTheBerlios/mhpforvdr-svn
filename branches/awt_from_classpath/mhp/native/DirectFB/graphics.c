@@ -147,26 +147,26 @@ static void setSurfaceColor(IDirectFBSurface *surface, int color) {
    surface->SetColor(JRED(color), JGREEN(color), JBLUE(color), JALPHA(color) );
 }
 
-void Java_java_awt_MHPNativeGraphics_addRef(JNIEnv* env, jobject obj, jlong nativeData) {
+void Java_vdr_mhp_awt_MHPNativeGraphics_addRef(JNIEnv* env, jobject obj, jlong nativeData) {
    ((IDirectFBSurface *)nativeData)->AddRef();
 }
 
-void Java_java_awt_MHPNativeGraphics_removeRef(JNIEnv* env, jobject obj, jlong nativeData) {
+void Java_vdr_mhp_awt_MHPNativeGraphics_removeRef(JNIEnv* env, jobject obj, jlong nativeData) {
    ((IDirectFBSurface *)nativeData)->Release();
 }
 
-jlong Java_java_awt_MHPNativeGraphics_createFlipData(JNIEnv* env, jobject obj, jlong nativeData) {
+jlong Java_vdr_mhp_awt_MHPNativeGraphics_createFlipData(JNIEnv* env, jobject obj, jlong nativeData) {
    if (((IDirectFBSurface *)nativeData)->GetCapabilities() & DSCAPS_FLIPPING)
       return (jlong )new ActualFlipData((IDirectFBSurface *)nativeData);
    else 
       return (jlong)new DummyFlipData();
 }
 
-void Java_java_awt_MHPNativeGraphics_deleteFlipData(JNIEnv* env, jobject obj, jlong nativeFlipData) {
+void Java_vdr_mhp_awt_MHPNativeGraphics_deleteFlipData(JNIEnv* env, jobject obj, jlong nativeFlipData) {
    delete (FlipData *)nativeFlipData;
 }
 
-jlong Java_java_awt_MHPNativeGraphics_createSubSurface(JNIEnv* env, jclass clazz, jlong nativeParentSurface, jint x, jint y, jint width, jint height) {
+jlong Java_vdr_mhp_awt_MHPNativeGraphics_createSubSurface(JNIEnv* env, jclass clazz, jlong nativeParentSurface, jint x, jint y, jint width, jint height) {
    try {
       return (jlong ) ((IDirectFBSurface *)nativeParentSurface)->GetSubSurface(x, y, width, height);
    } catch (DFBException *e) {
@@ -176,11 +176,11 @@ jlong Java_java_awt_MHPNativeGraphics_createSubSurface(JNIEnv* env, jclass clazz
    }
 }
 
-jlong Java_java_awt_MHPNativeGraphics_createSubFlipData(JNIEnv* env, jclass clazz, jlong nativeFlipData, jint x, jint y) {
+jlong Java_vdr_mhp_awt_MHPNativeGraphics_createSubFlipData(JNIEnv* env, jclass clazz, jlong nativeFlipData, jint x, jint y) {
    return (jlong )new VirtualFlipData((FlipData *)nativeFlipData, x, y);
 }
 
-jint Java_java_awt_MHPNativeGraphics_getHeight(JNIEnv* env, jobject obj, jlong nativeData) {
+jint Java_vdr_mhp_awt_MHPNativeGraphics_getHeight(JNIEnv* env, jobject obj, jlong nativeData) {
    int height;
    try {
       ((IDirectFBSurface *)nativeData)->GetSize(0, &height);
@@ -192,7 +192,7 @@ jint Java_java_awt_MHPNativeGraphics_getHeight(JNIEnv* env, jobject obj, jlong n
    return height;
 }
 
-jint Java_java_awt_MHPNativeGraphics_getWidth(JNIEnv* env, jobject obj, jlong nativeData) {
+jint Java_vdr_mhp_awt_MHPNativeGraphics_getWidth(JNIEnv* env, jobject obj, jlong nativeData) {
    int width;
    try {
       ((IDirectFBSurface *)nativeData)->GetSize(&width, 0);
@@ -204,7 +204,7 @@ jint Java_java_awt_MHPNativeGraphics_getWidth(JNIEnv* env, jobject obj, jlong na
    return width;
 }
 
-void Java_java_awt_MHPNativeGraphics_copyArea(JNIEnv* env, jobject obj, jlong nativeData, jlong nativeFlipData, jint x, jint y, jint width, jint height, jint dx, jint dy) {
+void Java_vdr_mhp_awt_MHPNativeGraphics_copyArea(JNIEnv* env, jobject obj, jlong nativeData, jlong nativeFlipData, jint x, jint y, jint width, jint height, jint dx, jint dy) {
    IDirectFBSurface *surface=((IDirectFBSurface *)nativeData);
    try {
       DFBRectangle rect = { x, y, width, height };
@@ -218,7 +218,7 @@ void Java_java_awt_MHPNativeGraphics_copyArea(JNIEnv* env, jobject obj, jlong na
    ((FlipData *)nativeFlipData)->addUpdate(dx, dy, dx+width-1, dx+height-1);
 }
 
-void Java_java_awt_MHPNativeGraphics_draw3DRect(JNIEnv* env, jobject obj, jlong nativeData, jlong nativeFlipData, 
+void Java_vdr_mhp_awt_MHPNativeGraphics_draw3DRect(JNIEnv* env, jobject obj, jlong nativeData, jlong nativeFlipData, 
          jint x, jint y, jint width, jint height, jboolean raised, jint origColor, jint bright, jint dark) {
    int color = raised ? bright : dark;
    IDirectFBSurface *surface=((IDirectFBSurface *)nativeData);
@@ -244,7 +244,7 @@ void Java_java_awt_MHPNativeGraphics_draw3DRect(JNIEnv* env, jobject obj, jlong 
    ((FlipData *)nativeFlipData)->addUpdate(x, y, x+width-0, y+height-0);   
 }
 
-void Java_java_awt_MHPNativeGraphics_drawArc(JNIEnv* env, jobject obj, jlong nativeData, jlong nativeFlipData, jint x, jint y, jint width, jint height, jint startAngle, jint arcAngle) {
+void Java_vdr_mhp_awt_MHPNativeGraphics_drawArc(JNIEnv* env, jobject obj, jlong nativeData, jlong nativeFlipData, jint x, jint y, jint width, jint height, jint startAngle, jint arcAngle) {
 
    IDirectFBSurface *surface=((IDirectFBSurface *)nativeData);
    
@@ -392,7 +392,7 @@ static void prepareBlitting(IDirectFBSurface *surface, IDirectFBSurface *sourceS
 
 }
 
-void Java_java_awt_MHPNativeGraphics_drawImage(JNIEnv* env, jobject obj, jlong nativeData, jlong nativeFlipData, jlong imgNativeData, 
+void Java_vdr_mhp_awt_MHPNativeGraphics_drawImage(JNIEnv* env, jobject obj, jlong nativeData, jlong nativeFlipData, jlong imgNativeData, 
                                                jint srcX, jint srcY, jint srcWidth, jint srcHeight,
                                                jint dstX, jint dstY, jint origColor, jint bgColor, jint extraAlpha)
 {
@@ -419,7 +419,7 @@ void Java_java_awt_MHPNativeGraphics_drawImage(JNIEnv* env, jobject obj, jlong n
    ((FlipData *)nativeFlipData)->addUpdate(dstX, dstY, dstX+srcWidth-1, dstY+srcHeight-1);
 }
 
-void Java_java_awt_MHPNativeGraphics_drawImageScaled(JNIEnv* env, jobject obj, jlong nativeData, jlong nativeFlipData, jlong imgNativeData, 
+void Java_vdr_mhp_awt_MHPNativeGraphics_drawImageScaled(JNIEnv* env, jobject obj, jlong nativeData, jlong nativeFlipData, jlong imgNativeData, 
                                                       int srcX, int srcY, int srcWidth, int srcHeight,
                                                       int dstX, int dstY, int dstWidth, int dstHeight, 
                                                       jint origColor, jint bgColor, jint extraAlpha) 
@@ -446,7 +446,7 @@ void Java_java_awt_MHPNativeGraphics_drawImageScaled(JNIEnv* env, jobject obj, j
    ((FlipData *)nativeFlipData)->addUpdate(dr.x, dr.y, dr.x+dr.w-1, dr.y+dr.h-1 );
 }
 
-void Java_java_awt_MHPNativeGraphics_drawImageTiled(JNIEnv* env, jobject obj, jlong nativeData, jlong nativeFlipData, jlong imgNativeData, 
+void Java_vdr_mhp_awt_MHPNativeGraphics_drawImageTiled(JNIEnv* env, jobject obj, jlong nativeData, jlong nativeFlipData, jlong imgNativeData, 
                                                jint srcX, jint srcY, jint srcWidth, jint srcHeight,
                                                jint dstX, jint dstY, jint origColor, jint bgColor, jint extraAlpha)
 {
@@ -474,7 +474,7 @@ void Java_java_awt_MHPNativeGraphics_drawImageTiled(JNIEnv* env, jobject obj, jl
 }
 
 // TODO: this does not look clean. Find out of this hack is necessary
-void Java_java_awt_MHPNativeGraphics_tileBlitImageAlpha(JNIEnv* env, jobject obj, jlong nativeData,
+void Java_vdr_mhp_awt_MHPNativeGraphics_tileBlitImageAlpha(JNIEnv* env, jobject obj, jlong nativeData,
              jlong nativeFlipData, jlong imgNativeData, jint x, jint y, jint porterDuffRule)
 {
    IDirectFBSurface *surface=((IDirectFBSurface *)nativeData);
@@ -503,7 +503,7 @@ void Java_java_awt_MHPNativeGraphics_tileBlitImageAlpha(JNIEnv* env, jobject obj
    ((FlipData *)nativeFlipData)->addUpdate(x, y, x+width, y+height);
 }
 
-void Java_java_awt_MHPNativeGraphics_drawLine(JNIEnv* env, jobject obj, jlong nativeData, jlong nativeFlipData, jint x1, jint y1, jint x2, jint y2) {
+void Java_vdr_mhp_awt_MHPNativeGraphics_drawLine(JNIEnv* env, jobject obj, jlong nativeData, jlong nativeFlipData, jint x1, jint y1, jint x2, jint y2) {
    IDirectFBSurface *surface=((IDirectFBSurface *)nativeData);
    try {
       //printf("DrawLine\n");
@@ -517,9 +517,9 @@ void Java_java_awt_MHPNativeGraphics_drawLine(JNIEnv* env, jobject obj, jlong na
    ((FlipData *)nativeFlipData)->addUpdate(x1 <? x2, y1 <? y2, x1 >? x2, y1 >? y2);
 }
 
-void Java_java_awt_MHPNativeGraphics_drawOval(JNIEnv* env, jobject obj, jlong nativeData, jlong nativeFlipData, jint x, jint y, jint width, jint height) {
+void Java_vdr_mhp_awt_MHPNativeGraphics_drawOval(JNIEnv* env, jobject obj, jlong nativeData, jlong nativeFlipData, jint x, jint y, jint width, jint height) {
    //draw a 360* arc
-   Java_java_awt_MHPNativeGraphics_drawArc(env, obj, nativeData, nativeFlipData, x, y, width, height, 0, 360);
+   Java_vdr_mhp_awt_MHPNativeGraphics_drawArc(env, obj, nativeData, nativeFlipData, x, y, width, height, 0, 360);
 }
 
 static void drawPoly(JNIEnv* env, jlong nativeData, jlong nativeFlipData, jintArray xPoints, jintArray yPoints, jint nPoints, bool closed) {
@@ -563,15 +563,15 @@ static void drawPoly(JNIEnv* env, jlong nativeData, jlong nativeFlipData, jintAr
    env->ReleaseIntArrayElements(yPoints, ys, JNI_ABORT);
 }
 
-void Java_java_awt_MHPNativeGraphics_drawPolygon(JNIEnv* env, jobject obj, jlong nativeData, jlong nativeFlipData, jintArray xPoints, jintArray yPoints, jint nPoints) {
+void Java_vdr_mhp_awt_MHPNativeGraphics_drawPolygon(JNIEnv* env, jobject obj, jlong nativeData, jlong nativeFlipData, jintArray xPoints, jintArray yPoints, jint nPoints) {
    drawPoly(env, nativeData, nativeFlipData, xPoints, yPoints, nPoints, true);
 }
 
-void Java_java_awt_MHPNativeGraphics_drawPolyline(JNIEnv* env, jobject obj, jlong nativeData, jlong nativeFlipData, jintArray xPoints, jintArray yPoints, jint nPoints) {
+void Java_vdr_mhp_awt_MHPNativeGraphics_drawPolyline(JNIEnv* env, jobject obj, jlong nativeData, jlong nativeFlipData, jintArray xPoints, jintArray yPoints, jint nPoints) {
    drawPoly(env, nativeData, nativeFlipData, xPoints, yPoints, nPoints, false);
 }
 
-void Java_java_awt_MHPNativeGraphics_drawRect(JNIEnv* env, jobject obj, jlong nativeData, jlong nativeFlipData, jint x, jint y, jint width, jint height) {
+void Java_vdr_mhp_awt_MHPNativeGraphics_drawRect(JNIEnv* env, jobject obj, jlong nativeData, jlong nativeFlipData, jint x, jint y, jint width, jint height) {
    IDirectFBSurface *surface=((IDirectFBSurface *)nativeData);
    try {
       surface->SetDrawingFlags(DSDRAW_BLEND);
@@ -584,10 +584,10 @@ void Java_java_awt_MHPNativeGraphics_drawRect(JNIEnv* env, jobject obj, jlong na
    ((FlipData *)nativeFlipData)->addUpdate(x, y, x+width, y+height);
 }
 
-void Java_java_awt_MHPNativeGraphics_drawRoundRect(JNIEnv* env, jobject obj, jlong nativeData, jlong nativeFlipData, jint x, jint y, jint width, jint height, jint arcWidth, jint arcHeight) {
+void Java_vdr_mhp_awt_MHPNativeGraphics_drawRoundRect(JNIEnv* env, jobject obj, jlong nativeData, jlong nativeFlipData, jint x, jint y, jint width, jint height, jint arcWidth, jint arcHeight) {
 
    IDirectFBSurface *surface=((IDirectFBSurface *)nativeData);
-   //printf("Java_java_awt_MHPNativeGraphics_fillRoundRect: %dx%d, %dx%d\n", x, y, width, height);
+   //printf("Java_vdr_mhp_awt_MHPNativeGraphics_fillRoundRect: %dx%d, %dx%d\n", x, y, width, height);
    
    if (width<=0 || height<=0 || arcWidth<0 || arcHeight<0)
       return;
@@ -596,7 +596,7 @@ void Java_java_awt_MHPNativeGraphics_drawRoundRect(JNIEnv* env, jobject obj, jlo
    if (y<0)
       y=0;
    if (height<arcHeight || width<arcWidth)
-      return Java_java_awt_MHPNativeGraphics_drawRect(env, obj, nativeData, nativeFlipData, x,y,width, height);
+      return Java_vdr_mhp_awt_MHPNativeGraphics_drawRect(env, obj, nativeData, nativeFlipData, x,y,width, height);
    
    //libxmi operations
    miPixel pixels[2];
@@ -692,7 +692,7 @@ void Java_java_awt_MHPNativeGraphics_drawRoundRect(JNIEnv* env, jobject obj, jlo
    miDeletePaintedSet (paintedSet);
 }
 
-void Java_java_awt_MHPNativeGraphics_drawString(JNIEnv* env, jobject obj, jlong nativeData, jlong nativeFlipData, jstring s, jint x, jint y) {
+void Java_vdr_mhp_awt_MHPNativeGraphics_drawString(JNIEnv* env, jobject obj, jlong nativeData, jlong nativeFlipData, jstring s, jint x, jint y) {
    const char *str=(const char *)env->GetStringUTFChars(s, NULL);
    IDirectFBSurface *surface=((IDirectFBSurface *)nativeData);
    IDirectFBFont *font;
@@ -717,7 +717,7 @@ void Java_java_awt_MHPNativeGraphics_drawString(JNIEnv* env, jobject obj, jlong 
    env->ReleaseStringUTFChars(s, str);
 }
 
-void Java_java_awt_MHPNativeGraphics_fill3DRect(JNIEnv* env, jobject obj, jlong nativeData, jlong nativeFlipData, 
+void Java_vdr_mhp_awt_MHPNativeGraphics_fill3DRect(JNIEnv* env, jobject obj, jlong nativeData, jlong nativeFlipData, 
          jint x, jint y, jint width, jint height, jboolean raised, jint origColor, jint bright, jint dark) {
    int color = raised ? bright : dark;
    IDirectFBSurface *surface=((IDirectFBSurface *)nativeData);
@@ -745,10 +745,10 @@ void Java_java_awt_MHPNativeGraphics_fill3DRect(JNIEnv* env, jobject obj, jlong 
    ((FlipData *)nativeFlipData)->addUpdate(x, y, x+width-0, y+height-0);   
 }
 
-void Java_java_awt_MHPNativeGraphics_fillArc(JNIEnv* env, jobject obj, jlong nativeData, jlong nativeFlipData, jint x, jint y, jint width, jint height, jint startAngle, jint arcAngle) {
+void Java_vdr_mhp_awt_MHPNativeGraphics_fillArc(JNIEnv* env, jobject obj, jlong nativeData, jlong nativeFlipData, jint x, jint y, jint width, jint height, jint startAngle, jint arcAngle) {
 
    IDirectFBSurface *surface=((IDirectFBSurface *)nativeData);
-   //printf("Java_java_awt_MHPNativeGraphics_fillRoundRect: %dx%d, %dx%d\n", x, y, width, height);
+   //printf("Java_vdr_mhp_awt_MHPNativeGraphics_fillRoundRect: %dx%d, %dx%d\n", x, y, width, height);
    
    if (width<=0 || height<=0 || width<0 || height<0)
       return;
@@ -820,7 +820,7 @@ void Java_java_awt_MHPNativeGraphics_fillArc(JNIEnv* env, jobject obj, jlong nat
    miDeletePaintedSet (paintedSet);
 }
 
-void Java_java_awt_MHPNativeGraphics_fillOval(JNIEnv* env, jobject obj, jlong nativeData, jlong nativeFlipData, jint x, jint y, jint width, jint height) {
+void Java_vdr_mhp_awt_MHPNativeGraphics_fillOval(JNIEnv* env, jobject obj, jlong nativeData, jlong nativeFlipData, jint x, jint y, jint width, jint height) {
    IDirectFBSurface *surface=((IDirectFBSurface *)nativeData);
    try {
      surface->SetDrawingFlags(DSDRAW_BLEND);
@@ -905,9 +905,9 @@ void Java_java_awt_MHPNativeGraphics_fillOval(JNIEnv* env, jobject obj, jlong na
 
 }
 
-void Java_java_awt_MHPNativeGraphics_fillPolygon(JNIEnv* env, jobject obj, jlong nativeData, jlong nativeFlipData, jintArray xPoints, jintArray yPoints, jint nPoints) {
+void Java_vdr_mhp_awt_MHPNativeGraphics_fillPolygon(JNIEnv* env, jobject obj, jlong nativeData, jlong nativeFlipData, jintArray xPoints, jintArray yPoints, jint nPoints) {
 
-   //printf("Java_java_awt_MHPNativeGraphics_fillPolygon\n");
+   //printf("Java_vdr_mhp_awt_MHPNativeGraphics_fillPolygon\n");
 
    IDirectFBSurface *surface=((IDirectFBSurface *)nativeData);
    int xmax=0, xmin, ymax=0, ymin;
@@ -981,9 +981,9 @@ void Java_java_awt_MHPNativeGraphics_fillPolygon(JNIEnv* env, jobject obj, jlong
    env->ReleaseIntArrayElements(yPoints, ys, JNI_ABORT);
 }
 
-void Java_java_awt_MHPNativeGraphics_fillRect(JNIEnv* env, jobject obj, jlong nativeData, jlong nativeFlipData, jint x, jint y, jint width, jint height) {
+void Java_vdr_mhp_awt_MHPNativeGraphics_fillRect(JNIEnv* env, jobject obj, jlong nativeData, jlong nativeFlipData, jint x, jint y, jint width, jint height) {
    IDirectFBSurface *surface=((IDirectFBSurface *)nativeData);
-   //printf("Java_java_awt_MHPNativeGraphics_fillRect: %dx%d, %dx%d\n", x, y, width, height);
+   //printf("Java_vdr_mhp_awt_MHPNativeGraphics_fillRect: %dx%d, %dx%d\n", x, y, width, height);
    if (x<0)
       x=0;
    if (y<0)
@@ -1001,10 +1001,10 @@ void Java_java_awt_MHPNativeGraphics_fillRect(JNIEnv* env, jobject obj, jlong na
    ((FlipData *)nativeFlipData)->addUpdate(x, y, x+width+1, y+height+1);
 }
 
-void Java_java_awt_MHPNativeGraphics_fillRoundRect(JNIEnv* env, jobject obj, jlong nativeData, jlong nativeFlipData, jint x, jint y, jint width, jint height, int arcWidth, int arcHeight) {
+void Java_vdr_mhp_awt_MHPNativeGraphics_fillRoundRect(JNIEnv* env, jobject obj, jlong nativeData, jlong nativeFlipData, jint x, jint y, jint width, jint height, int arcWidth, int arcHeight) {
 
    IDirectFBSurface *surface=((IDirectFBSurface *)nativeData);
-   //printf("Java_java_awt_MHPNativeGraphics_fillRoundRect: %dx%d, %dx%d\n", x, y, width, height);
+   //printf("Java_vdr_mhp_awt_MHPNativeGraphics_fillRoundRect: %dx%d, %dx%d\n", x, y, width, height);
    
    if (width<=0 || height<=0 || arcWidth<0 || arcHeight<0)
       return;
@@ -1013,7 +1013,7 @@ void Java_java_awt_MHPNativeGraphics_fillRoundRect(JNIEnv* env, jobject obj, jlo
    if (y<0)
       y=0;
    if (height<arcHeight || width<arcWidth)
-      return Java_java_awt_MHPNativeGraphics_fillRect(env, obj, nativeData, nativeFlipData, x,y,width, height);
+      return Java_vdr_mhp_awt_MHPNativeGraphics_fillRect(env, obj, nativeData, nativeFlipData, x,y,width, height);
    
    //libxmi operations
    miPixel pixels[2];
@@ -1131,7 +1131,7 @@ void Java_java_awt_MHPNativeGraphics_fillRoundRect(JNIEnv* env, jobject obj, jlo
    miDeletePaintedSet (paintedSet);
 }
 
-void Java_java_awt_MHPNativeGraphics_setClip(JNIEnv* env, jobject obj, jlong nativeData, jint x, jint y, jint width, jint height) {
+void Java_vdr_mhp_awt_MHPNativeGraphics_setClip(JNIEnv* env, jobject obj, jlong nativeData, jint x, jint y, jint width, jint height) {
    try {
       //printf("MHPNativeGraphics_setClip for %p: %dx%d, %dx%d\n", nativeData, x, y, width, height);
       if (x==-1 && y==-1 && width==-1 && height==-1) //internal special case
@@ -1145,7 +1145,7 @@ void Java_java_awt_MHPNativeGraphics_setClip(JNIEnv* env, jobject obj, jlong nat
    }  
 }
 
-void Java_java_awt_MHPNativeGraphics_setColor(JNIEnv* env, jobject obj, jlong nativeData, jint r, jint g, jint b, jint a) {
+void Java_vdr_mhp_awt_MHPNativeGraphics_setColor(JNIEnv* env, jobject obj, jlong nativeData, jint r, jint g, jint b, jint a) {
    try {
       return ((IDirectFBSurface *)nativeData)->SetColor(r, g, b, a);
    } catch (DFBException *e) {
@@ -1155,7 +1155,7 @@ void Java_java_awt_MHPNativeGraphics_setColor(JNIEnv* env, jobject obj, jlong na
    }  
 }
 
-void Java_java_awt_MHPNativeGraphics_setFont(JNIEnv* env, jobject obj, jlong nativeData, jlong nativeDataFont) {
+void Java_vdr_mhp_awt_MHPNativeGraphics_setFont(JNIEnv* env, jobject obj, jlong nativeData, jlong nativeDataFont) {
    try {
       return ((IDirectFBSurface *)nativeData)->SetFont((IDirectFBFont *)nativeDataFont);
    } catch (DFBException *e) {
@@ -1165,7 +1165,7 @@ void Java_java_awt_MHPNativeGraphics_setFont(JNIEnv* env, jobject obj, jlong nat
    }     
 }
 
-void Java_java_awt_MHPNativeGraphics_setPorterDuff(JNIEnv* env, jobject obj, jlong nativeData, jint rule) {
+void Java_vdr_mhp_awt_MHPNativeGraphics_setPorterDuff(JNIEnv* env, jobject obj, jlong nativeData, jint rule) {
    try {
       return ((IDirectFBSurface *)nativeData)->SetPorterDuff((DFBSurfacePorterDuffRule)rule);
    } catch (DFBException *e) {
@@ -1175,19 +1175,19 @@ void Java_java_awt_MHPNativeGraphics_setPorterDuff(JNIEnv* env, jobject obj, jlo
    }
 }
 
-void Java_java_awt_MHPNativeGraphics_enterBuffered(JNIEnv* env, jobject obj, jlong nativeFlipData) {
+void Java_vdr_mhp_awt_MHPNativeGraphics_enterBuffered(JNIEnv* env, jobject obj, jlong nativeFlipData) {
    ((FlipData *)nativeFlipData)->enterBuffered();
 }
 
-void Java_java_awt_MHPNativeGraphics_leaveBuffered(JNIEnv* env, jobject obj, jlong nativeFlipData) {
+void Java_vdr_mhp_awt_MHPNativeGraphics_leaveBuffered(JNIEnv* env, jobject obj, jlong nativeFlipData) {
    ((FlipData *)nativeFlipData)->leaveBuffered();
 }
 
-/*void Java_java_awt_MHPNativeGraphics_addRefFlip(JNIEnv* env, jobject obj, int nativeFlipData) {
+/*void Java_vdr_mhp_awt_MHPNativeGraphics_addRefFlip(JNIEnv* env, jobject obj, int nativeFlipData) {
    ((FlipData *)nativeFlipData)->addRef(nativeFlipData);
 }
 
-void Java_java_awt_MHPNativeGraphics_removeRefFlip(JNIEnv* env, jobject obj, int nativeFlipData) {
+void Java_vdr_mhp_awt_MHPNativeGraphics_removeRefFlip(JNIEnv* env, jobject obj, int nativeFlipData) {
    ((FlipData *)nativeFlipData)->removeRef(nativeFlipData);
 }*/
 

@@ -1,4 +1,8 @@
-/* DFBWindowPeer.java -- Implements ComponentPeer with GTK
+/* 
+
+Taken and adapted from:
+
+   Gtk{Component, Container, Window, Frame}Peer.java -- Implements *Peer with GTK
    Copyright (C) 1998, 1999, 2002, 2004, 2005  Free Software Foundation, Inc.
 
 This file is part of GNU Classpath.
@@ -56,34 +60,40 @@ import java.awt.Image;
 import java.awt.Insets;
 import java.awt.ItemSelectable;
 import java.awt.KeyboardFocusManager;
+import java.awt.MenuBar;
 import java.awt.Point;
 import java.awt.Rectangle;
 import java.awt.Toolkit;
 import java.awt.Window;
 import java.awt.event.FocusEvent;
 import java.awt.event.ComponentEvent;
+import java.awt.event.InputEvent;
 import java.awt.event.ItemEvent;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseEvent;
 import java.awt.event.PaintEvent;
+import java.awt.event.WindowEvent;
 import java.awt.image.BufferedImage;
 import java.awt.image.ColorModel;
 import java.awt.image.ImageObserver;
 import java.awt.image.ImageProducer;
 import java.awt.image.VolatileImage;
-import java.awt.peer.WindowPeer;
+import java.awt.peer.FramePeer;
 import java.awt.MHPPlane;
 import java.awt.MHPScreen;
 import java.util.Date;
 
 public class DFBWindowPeer
-  implements WindowPeer
+  implements FramePeer
 {
-   long nativeData = 0; //pointer to an IDirectFBWindow
-   long nativeEventBuffer=0;//pointer to an IDirectFBEventBuffer
-   long nativeLayer=0; //pointer to an IDirectFBDisplayLayer
+   long nativeData = 0; // pointer to an IDirectFBWindow
+   long nativeEventBuffer = 0; // pointer to an IDirectFBEventBuffer
+   long nativeLayer = 0; // pointer to an IDirectFBDisplayLayer
+   
    EventThread eventThread;
-   boolean withEventThread=true;
+   boolean withEventThread = true;
+   
+   boolean initiallyPainted = false;
    
   //VolatileImage backBuffer;
   //BufferCapabilities caps;
@@ -92,14 +102,27 @@ public class DFBWindowPeer
 
   Insets insets;
 
-  boolean isInRepaint;
+  //boolean isInRepaint;
 
-  void create ()
-  {
-    throw new RuntimeException ();
-  }
-
-  native void connectSignals ();
+  private native long createDFBWindow(long layer, int x, int y, int width, int height);
+  private native long attachEventBuffer(long nativeData);
+  private native void destroy(long nativeData);
+  private native void removeRefs(long nativeWindow, long nativeEventBuffer);
+  private native void getPosition(long nativeData, int[] position);
+  private native void getSize(long nativeData, int[] position);
+  private native void requestFocus(long nativeData);
+  private native void setSize (long nativeData, int width, int height);
+  private native void moveTo (long nativeData, int x, int y);
+  private native int getOpacity(long nativeData);
+  private native void setOpacity(long nativeData, int opacity);
+  private native long getSurface(long nativeData);
+  private native void setStackingClass(long nativeData, int stacking);
+  private native void raise(long nativeData);
+  private native void lower(long nativeData);
+  private native void raiseToTop(long nativeData);
+  private native void lowerToBottom(long nativeData);
+  private native void putAtop(long nativeData, long otherNativeData);
+  private native void putBelow(long nativeData, long otherNativeData);
 
   protected DFBWindowPeer (MHPPlane awtComponent)
   {
@@ -128,8 +151,9 @@ public class DFBWindowPeer
     */
   }
   
+  // called from MHPPlane's addNotify()
   public void create(int x, int y, int width, int height, long nativeLayer, boolean withEventThread) {
-     //do the actual native creation
+     // do the actual native creation
      nativeData=createDFBWindow(nativeLayer,x,y,width, height);
      if (withEventThread) {
         //MHPScreen.checkEventDispatching(); //make sure dispatching thread started
@@ -137,19 +161,21 @@ public class DFBWindowPeer
         if (nativeEventBuffer!=0)
            eventThread=new EventThread(awtComponent, nativeEventBuffer);
      }
+     // Need to trigger initial painting here and in setVisible().
+     // DirectFB does not send expose events or something else to trigger initial repaint
+     if (awtComponent.isVisible()) {
+        initiallyPainted = true;
+        triggerRepaint();
+     }
   }
-  private native long createDFBWindow(long layer, int x, int y, int width, int height);
-  private native long attachEventBuffer(long nativeData);
 
-  public void dispose() {
+  public synchronized void dispose() {
      if (nativeData == 0) {
         destroy(nativeData);
         removeRefs(nativeData, nativeEventBuffer);
         nativeData = 0;
      }
   }
-  private native void destroy(long nativeData);
-  private native void removeRefs(long nativeWindow, long nativeEventBuffer);
 
   /*
   void setParentAndBounds ()
@@ -278,7 +304,13 @@ public class DFBWindowPeer
     getPosition(nativeData, point);
     return new Point (point[0], point[1]);
   }
-  private native void getPosition(long nativeData, int[] position);
+  
+  // this is internal, not needed for WindowPeer interface
+  Dimension getSize() {
+     int size[] = new int[2];
+     getSize(nativeData, size);
+     return new Dimension(size[0], size[1]);
+  }
 
   public Dimension getMinimumSize () 
   {
@@ -297,9 +329,9 @@ public class DFBWindowPeer
   
   public void handleEvent (AWTEvent event)
   {
-     /*
+     System.out.println("DFBWindowPeer.handleEvent "+event);
     int id = event.getID();
-    KeyEvent ke = null;
+    //KeyEvent ke = null;
 
     switch (id)
       {
@@ -329,6 +361,7 @@ public class DFBWindowPeer
             }
         }
         break;
+        /*
       case KeyEvent.KEY_PRESSED:
         ke = (KeyEvent) event;
         gtkWidgetDispatchKeyEvent (ke.getID (), ke.getWhen (), ke.getModifiersEx (),
@@ -339,8 +372,8 @@ public class DFBWindowPeer
         gtkWidgetDispatchKeyEvent (ke.getID (), ke.getWhen (), ke.getModifiersEx (),
                                    ke.getKeyCode (), ke.getKeyLocation ());
         break;
+        */
       }
-     */
   }
   
   public boolean isFocusTraversable () 
@@ -389,7 +422,8 @@ public class DFBWindowPeer
 
   public void repaint (long tm, int x, int y, int width, int height)
   {
-    if (x == 0 && y == 0 && width == 0 && height == 0)
+     System.out.println("DFBWindowPeer.repaint "+x+","+y+", "+width+"-"+height);
+     if (x == 0 && y == 0 && width == 0 && height == 0)
       return;
 
     q().postEvent (new PaintEvent (awtComponent, PaintEvent.UPDATE,
@@ -402,7 +436,6 @@ public class DFBWindowPeer
     //gtkWidgetRequestFocus();
     postFocusEvent(FocusEvent.FOCUS_GAINED, false);
   }
-  private native void requestFocus(long nativeData);
 
 
   public void reshape (int x, int y, int width, int height) 
@@ -417,8 +450,6 @@ public class DFBWindowPeer
   }
   */
 
-  private native void setSize (long nativeData, int width, int height);
-  private native void moveTo (long nativeData, int x, int y);
 
   public void setBounds (int x, int y, int width, int height)
   {
@@ -470,21 +501,32 @@ public class DFBWindowPeer
   }
   */
 
+  public void show() {
+     setVisible(true);
+  }
+  
+  public void hide() {
+     setVisible(false);
+  }
+  
   public void setVisible (boolean b)
   {
-    if (b)
-      show ();
-    else
-      hide ();
+     // Need to check here if an initial painting is necessary. (Possibly triggered in create() as well)
+     // DirectFB does not send expose events or something else to trigger initial repaint
+     if (b) {
+       setOpacity(0xFF);
+       if (!initiallyPainted) {
+          initiallyPainted = true;
+          triggerRepaint();
+       }
+     } else
+       setOpacity(0x00);
   }
 
-  public native void hide ();
-  public native void show ();
 
   public int getOpacity() {
      return getOpacity(nativeData);
   }
-  private native int getOpacity(long nativeData);
 
   public void setOpacity(int opacity) {
      if ( 0x00 <= opacity && opacity <= 0xFF )
@@ -492,18 +534,15 @@ public class DFBWindowPeer
      else
         throw new IllegalArgumentException("Opacity "+opacity+" out of range");
   }
-  private native void setOpacity(long nativeData, int opacity);
 
 //the returned IDirectedFBSurface must be Release'd!
   public long getNativeSurface() {
      return nativeData == 0 ? 0 : getSurface(nativeData);
   }
-  private native long getSurface(long nativeData);
 
   public void setStackingClass(int stacking) {
      setStackingClass(nativeData, stacking);
   }
-  private native void setStackingClass(long nativeData, int stacking);
 
 //These functions work on the native DirectFB window stack.
 //Please note that they take the stacking class into account,
@@ -513,36 +552,30 @@ public class DFBWindowPeer
      //if (nativeData != 0)
         raise(nativeData);
   }
-  private native void raise(long nativeData);
 
   public void lower() {
      //if (nativeData != 0)
         lower(nativeData);
   }
-  private native void lower(long nativeData);
 
   public void raiseToTop() {
      //if (nativeData != 0)
         raiseToTop(nativeData);
   }
-  private native void raiseToTop(long nativeData);
 
   public void lowerToBottom() {
      //if (nativeData != 0)
         lowerToBottom(nativeData);
   }
-  private native void lowerToBottom(long nativeData);
 
   public void putAtop(DFBWindowPeer other) {
         putAtop(nativeData, other.nativeData);
   }
-  private native void putAtop(long nativeData, long otherNativeData);
 
   public void putBelow(DFBWindowPeer other) {
      //if (nativeData != 0 && other.nativeData != 0)
         putBelow(nativeData, other.nativeData);
   }
-  private native void putBelow(long nativeData, long otherNativeData);
   
   // The two function from WindowPeer
   public void toBack() {
@@ -563,6 +596,38 @@ public class DFBWindowPeer
   {
      q().postEvent (new FocusEvent (awtComponent, id, temporary));
   }
+  
+  protected void triggerRepaint()
+  {
+     //if (!isInRepaint)
+     q().postEvent (new PaintEvent (awtComponent, PaintEvent.PAINT, new Rectangle (0, 0, awtComponent.getWidth(), awtComponent.getHeight())));
+  }
+
+  protected void postKeyEvent (int id, long when, int mods,
+                               int keyCode, char keyChar)
+  {
+     KeyEvent keyEvent = new KeyEvent (awtComponent, id, when, mods,
+                                       keyCode, keyChar);
+
+    // Also post a KEY_TYPED event if keyEvent is a key press that
+    // doesn't represent an action or modifier key.
+     if (keyEvent.getID () == KeyEvent.KEY_PRESSED
+         && (!keyEvent.isActionKey ()
+         && keyCode != KeyEvent.VK_SHIFT
+         && keyCode != KeyEvent.VK_CONTROL
+         && keyCode != KeyEvent.VK_ALT))
+     {
+        synchronized (q())
+        {
+           q().postEvent (keyEvent);
+           q().postEvent (new KeyEvent (awtComponent, KeyEvent.KEY_TYPED, when, mods,
+           KeyEvent.VK_UNDEFINED, keyChar));
+        }
+     }
+     else
+        q().postEvent (keyEvent);
+  }
+
   /*
   protected void postMouseEvent(int id, long when, int mods, int x, int y, 
 				int clickCount, boolean popupTrigger) 
@@ -749,7 +814,7 @@ public class DFBWindowPeer
 
 
 
-  /* --- ContainerPeer --- */
+  // --- ContainerPeer ---
   
   boolean isValidating;
 
@@ -844,7 +909,32 @@ public class DFBWindowPeer
   }
 
   
+  // --- FramePeer ---
 
+  public void setIconImage(Image image) {
+     throw new UnsupportedOperationException();
+  }
+  
+  public void setMenuBar(MenuBar mb) {
+     throw new UnsupportedOperationException();
+  }
+  
+  public void setResizable(boolean resizable) {
+  }
+  
+  public void setTitle(String title) {
+     throw new UnsupportedOperationException();
+  }
+  
+  public int getState() {
+     return 0;
+  }
+  
+  public void setState(int state) {
+  }
+  
+  public void setMaximizedBounds(Rectangle r) {
+  }
 
 
 
@@ -895,6 +985,17 @@ interface DFBEventConstants {
    final static int DIMM_ALTGR     = 1<<4;    /* AltGr key is pressed */
    final static int DIMM_META      = 1<<5;     /* Meta key is pressed */
    
+   //for use with event[12]
+   final static int DIBM_LEFT           = 0x00000001;  /* left mouse button */
+   final static int DIBM_RIGHT          = 0x00000002;  /* right mouse button */
+   final static int DIBM_MIDDLE         = 0x00000004;  /* middle mouse button */
+   
+   //for use with event[11]
+   final static int DIBI_LEFT           = 0x00000000;  /* left mouse button */
+   final static int DIBI_RIGHT          = 0x00000001;  /* right mouse button */
+   final static int DIBI_MIDDLE         = 0x00000002;  /* middle mouse button */
+   final static int DIBI_FIRST          = DIBI_LEFT;   /* other buttons:  DIBI_FIRST + zero based index */
+   final static int DIBI_LAST           = 0x0000001F;   /* 32 buttons maximum */
 }
 
 //this class translates the relevant native DirectFB events
@@ -908,55 +1009,8 @@ class EventThread extends Thread implements DFBEventConstants {
    int[] eventData=new int[15];
    long midnight;
 
-
-   EventThread(MHPPlane p, long nativeEventBuffer) {
-      plane=p;
-      nativeData=nativeEventBuffer;
-      nativeEvent=allocateEvent();
-      
-      Date today=new Date();
-      today.setHours(0);
-      today.setMinutes(0);
-      today.setSeconds(0);
-      midnight=today.getTime();
-      
-      running=true;
-      start();
-   }
    private native long allocateEvent();
-   
-   public void finalize() {
-      deleteEvent(nativeEvent);
-   }
    private native void deleteEvent(long nativeEvent);
-   
-   public void run() {
-      AWTEvent e;
-      try {
-         while (running) {
-            e=getNextEvent();
-            if (e != null) {
-               ((MHPToolkit) Toolkit.getDefaultToolkit()).postEvent(e);
-            }
-         }
-         running=false;
-      } catch (Exception ex) {
-         ex.printStackTrace();
-      } catch (Throwable x) {
-         vdr.mhp.ApplicationManager.reportError(x);
-      }
-   }
-   
-   AWTEvent getNextEvent() {
-      //System.out.println("Waiting for DFBEvent");
-      waitForEvent(nativeData);
-      //System.out.println("Waited for DFBEvent");
-      if (getEvent(nativeData, nativeEvent)) {
-         fillEventInformation(nativeEvent, eventData);
-         return createAWTEvent();
-      }
-      return null;
-   }
    private native void waitForEvent(long nativeData);
       //returns true if event is window event (should always be, I think)
    private native boolean getEvent(long nativeData, long nativeEvent);
@@ -979,29 +1033,174 @@ class EventThread extends Thread implements DFBEventConstants {
    data[14]=e->timestamp.tv_usec; timestamp, microseconds of day
    */
 
-   //creates an AWT event from DirectFB eventData
-   AWTEvent createAWTEvent() {
-      //System.out.println("createAWTEvent: "+eventData[0]);
-      switch (eventData[0]) {
-         case DWET_POSITION:
-            return new ComponentEvent(plane, ComponentEvent.COMPONENT_MOVED);
-         case DWET_SIZE:
-            return new ComponentEvent(plane, ComponentEvent.COMPONENT_RESIZED);
-         case DWET_KEYDOWN:
-            //kaffe's key codes are unicode compatible, so DFB key_symbol == Java keyCode == Java keyChar
-            return new KeyEvent(findKeyTarget(), KeyEvent.KEY_PRESSED, getMillis(eventData[13], eventData[14]), 
-                                getModifierMask(eventData[10]), eventData[9], (char)eventData[9]);
-         case DWET_KEYUP:
-            return new KeyEvent(findKeyTarget(), KeyEvent.KEY_RELEASED, getMillis(eventData[13], eventData[14]), 
-                                getModifierMask(eventData[10]), eventData[9], (char)eventData[9]);
-         case DWET_BUTTONDOWN:
-         case DWET_BUTTONUP:
-         case DWET_MOTION:
-         default:
-            return null;
+   EventThread(MHPPlane p, long nativeEventBuffer) {
+      plane=p;
+      nativeData=nativeEventBuffer;
+      nativeEvent=allocateEvent();
+      
+      Date today=new Date();
+      today.setHours(0);
+      today.setMinutes(0);
+      today.setSeconds(0);
+      midnight=today.getTime();
+      
+      running=true;
+      start();
+   }
+   
+   public void finalize() {
+      deleteEvent(nativeEvent);
+   }
+   
+   public void run() {      AWTEvent e;
+      try {
+         while (running) {
+            handleNextEvent();
+         }
+         running=false;
+      } catch (Exception ex) {
+         ex.printStackTrace();
+      } catch (Throwable x) {
+         vdr.mhp.ApplicationManager.reportError(x);
       }
    }
    
+   AWTEvent handleNextEvent() {
+      //System.out.println("Waiting for DFBEvent");
+      waitForEvent(nativeData);
+      //System.out.println("Waited for DFBEvent");
+      if (getEvent(nativeData, nativeEvent)) {
+         fillEventInformation(nativeEvent, eventData);
+         createAWTEvent();
+      }
+      ((MHPToolkit)Toolkit.getDefaultToolkit()).wakeNativeWait();
+      return null;
+   }
+
+   //creates an AWT event from DirectFB eventData
+   void createAWTEvent() {
+      //System.out.println("createAWTEvent: "+eventData[0]);
+      switch (eventData[0]) {
+         case DWET_POSITION:
+         case DWET_SIZE:
+            // This stuff should work, but the three-liner below is probably easier
+            /*
+            //need to call package-private method of java.awt.Window here which handles these changes
+            AccessController.doPrivileged(new PrivilegedAction() {
+               public Object run() {
+                  java.lang.reflect.Method method = java.awt.Window.class.getDeclaredMethod("setBoundsCallback", new Class[] { int.class, int.class, int.class, int.class });
+                  // protected method invocaton
+                  method.setAccessible(true);
+                  // both access native information
+                  Point p = getLocationOnScreen();
+                  Dimension size = getSize();
+                  try {
+                     Object[] args = new Object[] { new Integer(p.x), new Integer(p.y), new Integer(size.width), new Integer(size.height)};
+                     method.invoke(awtComponent, args);
+                  } finally {
+                     method.setAccessible(false);
+                  }
+               }
+            });
+            */
+            Point p = getLocationOnScreen();
+            Dimension size = getSize();
+            awtComponent.setBoundsCallback(p.x, p.y, size.width, size.height);
+            break;
+         case DWET_KEYDOWN:
+            //kaffe's key codes are unicode compatible, so DFB key_symbol == Java keyCode == Java keyChar
+            postKeyEvent(KeyEvent.KEY_PRESSED, getMillis(), getModifierMask(), eventData[9], (char)eventData[9]);
+            break;
+         case DWET_KEYUP:
+            postKeyEvent(KeyEvent.KEY_RELEASED, getMillis(), getModifierMask(), eventData[9], (char)eventData[9]);
+            break;
+         case DWET_GOTFOCUS:
+            // do not post a FocusEvent here! This WindowEvent is the right choice
+            q().postEvent(new WindowEvent(awtComponent, WindowEvent.WINDOW_GAINED_FOCUS));
+            break;
+         case DWET_LOSTFOCUS:
+            q().postEvent(new WindowEvent(awtComponent, WindowEvent.WINDOW_LOST_FOCUS));
+            break;
+         case DWET_CLOSE:
+            q().postEvent(new WindowEvent(awtComponent, WindowEvent.WINDOW_CLOSING));
+            break;
+         case DWET_DESTROYED:
+            q().postEvent(new WindowEvent(awtComponent, WindowEvent.WINDOW_CLOSED));
+            break;
+         case DWET_BUTTONDOWN:
+         case DWET_BUTTONUP:
+         case DWET_MOTION:
+         case DWET_ENTER:
+         case DWET_LEAVE:
+         case DWET_WHEEL:
+            createMouseEvent();
+            break;
+         default:
+            break;
+      }
+   }
+   
+   int button_number = -1;
+   int click_count = 1;
+   boolean hasBeenDragged = false;
+   long button_click_time = 0;
+   final int MULTI_CLICK_TIME = 250;
+   
+   void createMouseEvent() {
+      long millis = getMillis();
+      if ( (millis < (button_click_time + MULTI_CLICK_TIME))
+             && (eventData[11] == button_number))
+         click_count++;
+      else
+         click_count = 1;
+      
+      button_click_time = millis;
+      button_number = eventData[11];
+      
+      // use button, not buttons, "The button mask returned by InputEvent.getModifiers() reflects only the button that changed state, not the current state of all buttons."
+      /* Modifier key events need special treatment.  In Sun's peer
+      implementation, when a modifier key is pressed, the KEY_PRESSED
+      event has that modifier in its modifiers list.  The corresponding
+      KEY_RELEASED event's modifier list does not contain the modifier.
+      For example, pressing and releasing the shift key will produce a
+      key press event with modifiers=Shift, and a key release event with
+      no modifiers.  */
+      
+      switch(eventData[0]) {
+         case DWET_BUTTONDOWN:
+            q().postEvent(new MouseEvent(awtComponent, MouseEvent.MOUSE_PRESSED, millis, getModifierMask() | getModifierMaskForButton(), eventData[1], eventData[2], click_count, ((eventData[11] == DIBI_RIGHT) ? true : false)));
+            hasBeenDragged=false;
+            break;
+            
+         case DWET_BUTTONUP:
+            q().postEvent(new MouseEvent(awtComponent, MouseEvent.MOUSE_RELEASED, millis, getModifierMask() | getModifierMaskForButton(), eventData[1], eventData[2], click_count, false));
+            if (!hasBeenDragged)
+               q().postEvent(new MouseEvent(awtComponent, MouseEvent.MOUSE_RELEASED, millis, getModifierMask() | getModifierMaskForButton(), eventData[1], eventData[2], click_count, false));
+            break;
+            
+         case DWET_MOTION:
+            if ((getModifierMaskForButtonMask() & (InputEvent.BUTTON1_MASK | InputEvent.BUTTON2_MASK | InputEvent.BUTTON3_MASK)) != 0) {
+               q().postEvent(new MouseEvent(awtComponent, MouseEvent.MOUSE_DRAGGED, millis, getModifierMask() | getModifierMaskForButton(), eventData[1], eventData[2], 0, false));
+               hasBeenDragged=true;
+            } else {
+               q().postEvent(new MouseEvent(awtComponent, MouseEvent.MOUSE_MOVED, millis, getModifierMask(), eventData[1], eventData[2], 0, false));
+            }
+            break;
+         case DWET_ENTER:
+            q().postEvent(new MouseEvent(awtComponent, MouseEvent.MOUSE_ENTERED, millis, getModifierMask()| getModifierMaskForButton(), eventData[1], eventData[2], 0, false));
+            break;
+         case DWET_LEAVE:
+            q().postEvent(new MouseEvent(awtComponent, MouseEvent.MOUSE_EXITED, millis, getModifierMask()| getModifierMaskForButton(), eventData[1], eventData[2], 0, false));
+            break;
+         case DWET_WHEEL:
+            q().postEvent(new MouseEvent(awtComponent, MouseEvent.MOUSE_WHEEL, millis, getModifierMask()| getModifierMaskForButton(), eventData[1], eventData[2], 0, false));
+            break;
+         default:
+            break;
+      }
+   }
+   
+   /*
    Component findKeyTarget() {
       KeyboardFocusManager manager;
       manager = KeyboardFocusManager.getCurrentKeyboardFocusManager ();
@@ -1013,25 +1212,61 @@ class EventThread extends Thread implements DFBEventConstants {
          return plane;
       }
    }
+   */
    
    //converts time-since-midnight to time-since-Epoch
-   long getMillis(int secs, int usecs) {
+   long getMillis() {
+      int secs=eventData[13];
+      int usecs=eventData[14];
       long ret=midnight+secs*1000 + (usecs/1000);
       if (System.currentTimeMillis() < ret) //new day
          midnight+=24*60*60*1000;
       return ret;
    }
    
-   int getModifierMask(int DFBmask) {
-      int mask=0;
+   //TODO?
+   /* Modifier key events need special treatment.  In Sun's peer
+   implementation, when a modifier key is pressed, the KEY_PRESSED
+   event has that modifier in its modifiers list.  The corresponding
+   KEY_RELEASED event's modifier list does not contain the modifier.
+   For example, pressing and releasing the shift key will produce a
+   key press event with modifiers=Shift, and a key release event with
+   no modifiers.  */
+   int getModifierMask() {
+      int DFBmask=eventData[10];
+      int mask = 0;
       if ((DFBmask & DIMM_SHIFT)!=0)
-         mask |= KeyEvent.SHIFT_MASK;
+         mask |= InputEvent.SHIFT_MASK | InputEvent.SHIFT_DOWN_MASK;
       if ((DFBmask & DIMM_CONTROL)!=0)
-         mask |= KeyEvent.CTRL_MASK;
+         mask |= InputEvent.CTRL_MASK | InputEvent.CTRL_MASK;
       if ((DFBmask & DIMM_ALT)!=0)
-         mask |= KeyEvent.ALT_MASK;
+         mask |= InputEvent.ALT_MASK | InputEvent.ALT_DOWN_MASK;
       if ((DFBmask & DIMM_META)!=0)
-         mask |= KeyEvent.META_MASK;
+         mask |= InputEvent.META_MASK | InputEvent.META_MASK;
+      return mask;
+   }
+   
+   int getModifierMaskForButtonMask() {
+      int DFBbuttons = eventData[12];
+      int mask=0;
+      if ((DFBbuttons & DIBM_LEFT)!=0)
+         mask |= InputEvent.BUTTON1_MASK;
+      if ((DFBbuttons & DIBM_RIGHT)!=0)
+         mask |= InputEvent.BUTTON3_MASK;
+      if ((DFBbuttons & DIBM_MIDDLE)!=0)
+         mask |= InputEvent.BUTTON2_MASK;
+      return mask;
+   }
+   
+   int getModifierMaskForButton() {
+      int DFBbuttons = eventData[11];
+      int mask=0;
+      if ((DFBbuttons & DIBI_LEFT)!=0)
+         mask |= InputEvent.BUTTON1_MASK;
+      if ((DFBbuttons & DIBI_RIGHT)!=0)
+         mask |= InputEvent.BUTTON3_MASK;
+      if ((DFBbuttons & DIBI_MIDDLE)!=0)
+         mask |= InputEvent.BUTTON2_MASK;
       return mask;
    }
    

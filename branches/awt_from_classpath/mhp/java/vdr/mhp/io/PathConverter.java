@@ -61,6 +61,7 @@ public static URI convert(URI path) {
 
 static String getAppBasePrefix() {
    MHPApplication app=ApplicationManager.getManager().getApplicationFromStack();
+   // if app==null, this is not called from Xlet code at all. All right!
    if (app==null)
       return "";
    else

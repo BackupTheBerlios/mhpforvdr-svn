@@ -132,7 +132,7 @@ void Java_vdr_mhp_awt_MHPFontPeer_getFontMetrics(JNIEnv* env, jobject obj, jlong
    native_metrics[FONT_METRICS_MAX_ADVANCE] = font->GetMaxAdvance();
          //= PANGO_PIXELS (pango_font_metrics_get_approximate_char_width (pango_metrics));
 	 
-   env->ReleaseDoubleArrayElements (java_metrics, native_metrics, JNI_COMMIT);
+   env->ReleaseDoubleArrayElements (java_metrics, native_metrics, 0);
 }
 
 void Java_vdr_mhp_awt_MHPFontPeer_getTextMetrics(JNIEnv* env, jobject obj, jlong nativeData, jstring str, jdoubleArray java_metrics) {
@@ -172,7 +172,7 @@ void Java_vdr_mhp_awt_MHPFontPeer_getTextMetrics(JNIEnv* env, jobject obj, jlong
    native_metrics[TEXT_METRICS_Y_ADVANCE] = (double) (logicalRectangle.y + logicalRectangle.h);
         // = PANGO_PIXELS( ((double) (log.y + log.height)) );
 	 
-   env->ReleaseDoubleArrayElements (java_metrics, native_metrics, JNI_COMMIT);
+   env->ReleaseDoubleArrayElements (java_metrics, native_metrics, 0);
 }
 
 static int utf8GetCharWidth(const char *utf) {
@@ -263,8 +263,8 @@ jobject Java_vdr_mhp_awt_MHPFontPeer_getGlyphVector(JNIEnv* env, jobject obj, jl
       //increment for loop!
       j += byteLen;
    }
-   env->ReleaseDoubleArrayElements (java_extents, native_extents, JNI_COMMIT);
-   env->ReleaseIntArrayElements (java_codes, native_codes, JNI_COMMIT);
+   env->ReleaseDoubleArrayElements (java_extents, native_extents, 0);
+   env->ReleaseIntArrayElements (java_codes, native_codes, 0);
 
 
    env->ReleaseStringUTFChars (chars, str);

@@ -31,12 +31,62 @@ private long nativeFlipData=0; //pointer to a FlipData
 int clipX=0, clipY=0, clipWidth=0, clipHeight=0; //these describe the user clip in AWT coordinates
 int offsetX=0, offsetY=0; //for origin translation
 
+// --- Native methods ---
+// Creation and memory management
+private native void addRef(long nativeData);
+private native void removeRef(long nativeData);
+private native long createFlipData(long nativeData);
+private native void deleteFlipData(long nativeFlipData);
+ // returns new native Surface
+private native static long createSubSurface(long nativeParentSurface, int x, int y, int width, int height);
+private native static long createSubFlipData(long nativeFlipData, int x, int y);
+
+// Drawing routines
+private native void copyArea(long nativeData, long nativeFlipData, int x, int y, int width, int height, int dx, int dy);
+private native void draw3DRect(long nativeData, long nativeFlipData, int x, int y, int width, int height,
+                               boolean raised, int color, int brighterColor, int darkerColor);
+private native void drawArc(long nativeData, long nativeFlipData, int x, int y, int width, int height, int startAngle, int arcAngle);
+private native void drawImage(long nativeData, long nativeFlipData, long imgNativeData, int sx, int sy,
+                              int x, int y, int width, int height, int origColor, int bgColor, int extraAlpha);
+private native void drawImageScaled(long nativeData, long nativeFlipData, long imgNativeData, int dx0, int dy0, int dx1, int dy1, int sx0,
+                                    int sy0, int sx1, int sy1, int origColor, int bgColor, int extraAlpha);
+private native void drawImageTiled(long nativeData, long nativeFlipData, long imgNativeData, int sx, int sy,
+                                   int x, int y, int width, int height, int origColor, int bgColor, int extraAlpha);
+private native void tileBlitImageAlpha(long nativeData, long nativeFlipData, long imgNativeData, int x, int y, int porterDuff);
+private native void drawOval(long nativeData, long nativeFlipData, int x, int y, int width, int height);
+private native void drawPolygon(long nativeData, long nativeFlipData, int xPoints[], int yPoints[], int nPoints);
+private native void drawPolyline(long nativeData, long nativeFlipData, int xPoints[], int yPoints[], int nPoints);
+private native void drawRect(long nativeData, long nativeFlipData, int x, int y, int width, int height);
+private native void drawRoundRect(long nativeData, long nativeFlipData, int x, int y, int width, int height, int arcWidth, int arcHeight);
+private native void drawString(long nativeData, long nativeFlipData, long nativeFontData, String str, int x, int y);
+private native void fill3DRect(long nativeData, long nativeFlipData, int x, int y, int width, int height,
+                               boolean raised, int color, int brighterColor, int darkerColor);
+private native void fillArc(long nativeData, long nativeFlipData, int x, int y, int width, int height, int startAngle, int arcAngle);
+private native void fillOval(long nativeData, long nativeFlipData, int x, int y, int width, int height);
+private native void fillPolygon(long nativeData, long nativeFlipData, int xPoints[], int yPoints[], int nPoints);
+private native void fillRect(long nativeData, long nativeFlipData, int x, int y, int width, int height);
+private native void fillRoundRect(long nativeData, long nativeFlipData, int x, int y, int width, int height, int arcWidth, int arcHeight);
+
+// Double buffering
+private native void enterBuffered(long nativeFlipData);
+private native void leaveBuffered(long nativeFlipData);
+
+// Properties access
+private native int getHeight(long nativeData);
+private native int getWidth(long nativeData);
+private native void setClip(long nativeData, int x, int y, int width, int height);
+private native void setColor(long nativeData, int r, int g, int b, int a);
+private native void setFont(long nativeData, long nativeDataFont);
+private native void setPorterDuff(long nativeData, int rule);
+
+
+
+
 protected MHPNativeGraphics() {
    //There are exactly two static functions where a Graphics object is created:
    //createClippedGraphics and createImageGraphics.
    //All initialization is done there.
 }
-
 
 
 void initializeNativeData(long nativeData, boolean addRef) {
@@ -57,13 +107,6 @@ void checkNativeData() {
    if (nativeData == 0)
       throw new NullPointerException("native graphics data is 0");
 }
-
-private native void addRef(long nativeData);
-private native void removeRef(long nativeData);
-private native long createFlipData(long nativeData);
-private native void deleteFlipData(long nativeFlipData);
-/*private native void addRefFlip(long nativeFlipData);
-private native void removeRefFlip(long nativeFlipData);*/
 
 public Graphics create () {
    return create(0-offsetX, 0-offsetY, getWidth(), getHeight());
@@ -137,10 +180,6 @@ void copyState(MHPNativeGraphics from) {
    //set color after setting DVBComposite, uses extraAlpha from DVBComposite
    setColor(from.getColor());
 }
-
-//returns new native Surface
-private native static long createSubSurface(long nativeParentSurface, int x, int y, int width, int height);
-private native static long createSubFlipData(long nativeFlipData, int x, int y);
 
 //create Graphics object for a Component
 public static Graphics createClippedGraphics(Component comp) {
@@ -248,16 +287,12 @@ public void copyArea ( int x, int y, int width, int height, int dx, int dy ) {
    copyArea(nativeData, nativeFlipData, x, y, width, height, dx, dy);
 }
 
-private native void copyArea(long nativeData, long nativeFlipData, int x, int y, int width, int height, int dx, int dy);
-
 public void draw3DRect ( int x, int y, int width, int height, boolean raised ) {
    x+=offsetX;
    y+=offsetY;
    checkNativeData();
    draw3DRect(nativeData, nativeFlipData, x, y, width, height, raised, color.getNativeValue(), color.brighter().getNativeValue(), color.darker().getNativeValue());
 }
-
-private native void draw3DRect(long nativeData, long nativeFlipData, int x, int y, int width, int height, boolean raised, int color, int brighterColor, int darkerColor);
 
 public void drawArc ( int x, int y, int width, int height,
             int startAngle, int arcAngle ) {
@@ -266,8 +301,6 @@ public void drawArc ( int x, int y, int width, int height,
    checkNativeData();
    drawArc(nativeData, nativeFlipData, x, y, width, height, startAngle, arcAngle);
 }
-
-private native void drawArc(long nativeData, long nativeFlipData, int x, int y, int width, int height, int startAngle, int arcAngle);
 
 public void drawBytes ( byte data[], int offset, int length, int x, int y ) {
    String s=new String(data, offset, length);
@@ -372,9 +405,6 @@ void drawImg( Image img, int x, int y, int sx, int sy, int width, int height, Co
       x, y, width, height, color.getNativeValue(), ( bgColor == null ) ? -1 : bgColor.getNativeValue(), extraAlpha);
 }
 
-private native void drawImage(long nativeData, long nativeFlipData, long imgNativeData, int sx, int sy,
-         int x, int y, int width, int height, int origColor, int bgColor, int extraAlpha);
-
 void drawImgScaled( Image img, int dx0, int dy0, int dx1, int dy1, int sx0,
         int sy0, int sx1, int sy1, Color background, int extraAlpha) {
    //if ( img.nativeData != 0 ) {
@@ -394,9 +424,6 @@ void drawImgScaled( Image img, int dx0, int dy0, int dx1, int dy1, int sx0,
    //}
 }
 
-private native void drawImageScaled(long nativeData, long nativeFlipData, long imgNativeData, int dx0, int dy0, int dx1, int dy1, int sx0,
-        int sy0, int sx1, int sy1, int origColor, int bgColor, int extraAlpha);
-
 //provides TileBlitting, TODO: provide public function for this (API does not request this)
 void drawImgTiled( Image img, int x, int y, int sx, int sy, int width, int height, Color background, int extraAlpha) {
    if ( ( img.flags & Image.BLOCK_FRAMELOADER ) != 0 ) {
@@ -411,9 +438,6 @@ void drawImgTiled( Image img, int x, int y, int sx, int sy, int width, int heigh
       x, y, width, height, color.getNativeValue(), ( bgColor == null ) ? -1 : bgColor.getNativeValue(), extraAlpha);
 }
 
-private native void drawImageTiled(long nativeData, long nativeFlipData, long imgNativeData, int sx, int sy,
-         int x, int y, int width, int height, int origColor, int bgColor, int extraAlpha);
-
 
 //tiles the image alpha over the whole destination surface. Not official API.
 public void tileBlitImageAlpha(Image img, int x, int y) {
@@ -425,9 +449,7 @@ public void tileBlitImageAlpha(Image img, int x, int y) {
    checkNativeData();
    tileBlitImageAlpha( nativeData, nativeFlipData, img.nativeData, x, y, alphaComposite.getRule());
 }
-        
-private native void tileBlitImageAlpha(long nativeData, long nativeFlipData, long imgNativeData, int x, int y, int porterDuff);
-        
+
 public void drawLine ( int x1, int y1, int x2, int y2 ) {
    x1=x1+offsetX;
    y1=y1+offsetY;
@@ -437,7 +459,6 @@ public void drawLine ( int x1, int y1, int x2, int y2 ) {
    drawLine(nativeData, nativeFlipData, x1, y1, x2, y2);
 }
 
-private native void drawLine(long nativeData, long nativeFlipData, int x1, int y1, int x2, int y2);
 
 
 public void drawOval ( int x, int y, int width, int height ) {
@@ -446,8 +467,6 @@ public void drawOval ( int x, int y, int width, int height ) {
    checkNativeData();
    drawOval(nativeData, nativeFlipData, x, y, width, height);
 }
-
-private native void drawOval(long nativeData, long nativeFlipData, int x, int y, int width, int height);
 
 
 public void drawPolygon(Polygon p) {
@@ -469,8 +488,6 @@ public void drawPolygon ( int xPoints[], int yPoints[], int nPoints ) {
    }
 }
 
-private native void drawPolygon(long nativeData, long nativeFlipData, int xPoints[], int yPoints[], int nPoints);
-
 
 public void drawPolyline ( int xPoints[], int yPoints[], int nPoints ) {
    for (int i=0;i<nPoints;i++) {
@@ -487,8 +504,6 @@ public void drawPolyline ( int xPoints[], int yPoints[], int nPoints ) {
    }
 }
 
-private native void drawPolyline(long nativeData, long nativeFlipData, int xPoints[], int yPoints[], int nPoints);
-
 
 public void drawRect ( int x, int y, int width, int height ) {
    x+=offsetX;
@@ -496,8 +511,6 @@ public void drawRect ( int x, int y, int width, int height ) {
    checkNativeData();
    drawRect(nativeData, nativeFlipData, x, y, width, height);
 }
-
-private native void drawRect(long nativeData, long nativeFlipData, int x, int y, int width, int height);
 
 
 public void drawRoundRect ( int x, int y, int width, int height,
@@ -508,8 +521,6 @@ public void drawRoundRect ( int x, int y, int width, int height,
    drawRoundRect(nativeData, nativeFlipData, x, y, width, height, arcWidth, arcHeight);
 }
 
-private native void drawRoundRect(long nativeData, long nativeFlipData, int x, int y, int width, int height, int arcWidth, int arcHeight);
-
 
 public void drawString ( String str, int x, int y ) {
    x+=offsetX;
@@ -518,7 +529,6 @@ public void drawString ( String str, int x, int y ) {
    drawString(nativeData, nativeFlipData, font.nativeData, str, x, y);
 }
 
-private native void drawString(long nativeData, long nativeFlipData, long nativeFontData, String str, int x, int y);
 
 public void fill3DRect ( int x, int y, int width, int height, boolean raised )  {
    x+=offsetX;
@@ -526,8 +536,6 @@ public void fill3DRect ( int x, int y, int width, int height, boolean raised )  
    checkNativeData();
    fill3DRect(nativeData, nativeFlipData, x, y, width, height, raised, color.getNativeValue(), color.brighter().getNativeValue(), color.darker().getNativeValue());
 }
-
-private native void fill3DRect(long nativeData, long nativeFlipData, int x, int y, int width, int height, boolean raised, int color, int brighterColor, int darkerColor);
 
 
 public void fillArc ( int x, int y, int width, int height,
@@ -539,9 +547,6 @@ public void fillArc ( int x, int y, int width, int height,
    fillArc(nativeData, nativeFlipData, x, y, width, height, startAngle, arcAngle);
 }
 
-private native void fillArc(long nativeData, long nativeFlipData, int x, int y, int width, int height,
-            int startAngle, int arcAngle);
-
 
 public void fillOval ( int x, int y, int width, int height ) {
    x+=offsetX;
@@ -549,8 +554,6 @@ public void fillOval ( int x, int y, int width, int height ) {
    checkNativeData();
    fillOval(nativeData, nativeFlipData, x, y, width, height);
 }
-
-private native void fillOval(long nativeData, long nativeFlipData, int x, int y, int width, int height);
 
 
 public void fillPolygon ( Polygon p ) {
@@ -572,8 +575,6 @@ public void fillPolygon ( int xPoints[], int yPoints[], int nPoints ) {
    }
 }
 
-private native void fillPolygon(long nativeData, long nativeFlipData, int xPoints[], int yPoints[], int nPoints);
-
 
 public void fillRect ( int x, int y, int width, int height ) {
    x+=offsetX;
@@ -581,8 +582,6 @@ public void fillRect ( int x, int y, int width, int height ) {
    checkNativeData();
    fillRect(nativeData, nativeFlipData, x, y, width, height);
 }
-
-private native void fillRect(long nativeData, long nativeFlipData, int x, int y, int width, int height);
 
 
 public void fillRoundRect ( int x, int y, int width, int height,
@@ -593,21 +592,17 @@ public void fillRoundRect ( int x, int y, int width, int height,
    fillRoundRect(nativeData, nativeFlipData, x, y, width, height, arcWidth, arcHeight);
 }
 
-private native void fillRoundRect(long nativeData, long nativeFlipData, int x, int y, int width, int height,
-                            int arcWidth, int arcHeight);
 
 
 public void enterBuffered() {
    checkNativeData();
    enterBuffered(nativeFlipData);
 }
-private native void enterBuffered(long nativeFlipData);
 
 public void leaveBuffered() {
    checkNativeData();
    leaveBuffered(nativeFlipData);
 }
-private native void leaveBuffered(long nativeFlipData);
 
 public Shape getClip () {
    return getClipBounds();
@@ -650,9 +645,6 @@ int getWidth() {
 int getHeight() {
    return getHeight(nativeData);
 }
-private native int getHeight(long nativeData);
-private native int getWidth(long nativeData);
-
 
 
     /**
@@ -704,7 +696,6 @@ public void setClip ( int x, int y, int width, int height ) {
    setClip(nativeData, x, y, width, height);
 }
 
-private native void setClip(long nativeData, int x, int y, int width, int height);
 
 public void setColor ( Color clr ) {
    //a nuisance but necessary, all returned colors shall be DVBColors
@@ -720,7 +711,6 @@ public void setColor ( Color clr ) {
    setColor(nativeData, color.getRed(), color.getGreen(), color.getBlue(), alphaComposite.multiplyAlpha(color.getAlpha()));
 }
 
-private native void setColor(long nativeData, int r, int g, int b, int a);
 
 public void setFont ( Font newFnt ) {
    if (newFnt != null && newFnt.nativeData != 0) {
@@ -730,7 +720,6 @@ public void setFont ( Font newFnt ) {
    }
 }
 
-private native void setFont(long nativeData, long nativeDataFont);
 
 public void setPaintMode() {
    try {
@@ -796,8 +785,6 @@ public void setDVBComposite( DVBAlphaComposite comp )
    //re-set Color so that extra alpha is used
    setColor(getColor());
 }
-
-private native void setPorterDuff(long nativeData, int rule);
 
 
 

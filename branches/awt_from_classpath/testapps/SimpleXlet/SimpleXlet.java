@@ -153,14 +153,16 @@ public class SimpleXlet implements Xlet {
                 System.out.println("Toolkit is null!");
              imageSpektrum=tk.getImage("farbspektrum.jpg");
              URL url=null;
-             try {
+             /*try {
                 url=new URL("http://www.mhp.org/graphics/mhp-sitewide/logo.gif");
              } catch (java.net.MalformedURLException e) {
                 e.printStackTrace();
              }
              imageInternet=tk.getImage(url);
+             */imageInternet=imageSpektrum;
           }
           public void paint(java.awt.Graphics g) {
+             System.out.println("Drawing!");
              g.drawImage(imageSpektrum, 0, 0, this);
              g.drawImage(imageInternet, 400, 300, this);
              Image scaled=imageSpektrum.getScaledInstance(400, 400, 0);
@@ -171,6 +173,11 @@ public class SimpleXlet implements Xlet {
                 e.printStackTrace();
              }
              g.drawImage(scaled, 50, 50, this);
+          }
+          public boolean isVisible() {
+             boolean b = super.isVisible();
+             new Exception("ImageComponent: returning isVisible "+b).printStackTrace();
+             return b;
           }
           public boolean imageUpdate(Image img, int infoflags, int x, int y, int width, int height) {
              return false;

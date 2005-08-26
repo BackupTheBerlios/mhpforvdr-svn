@@ -112,7 +112,7 @@ public class MHPFontPeer extends ClasspathFontPeer
       dispose();
    }
    
-   public void dispose() {
+   public synchronized void dispose() {
       if (nativeData == 0) {
          removeRef(nativeData);
          nativeData = 0;

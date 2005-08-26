@@ -239,10 +239,24 @@ void Java_vdr_mhp_awt_DFBWindowPeer_getPosition(JNIEnv* env, jobject obj, jlong 
    } catch (DFBException *e) {
       printf("DirectFB: Error %s, %s\n", e->GetAction(), e->GetResult());
       delete e;
-      return;
    }
    
-   env->ReleaseIntArrayElements(java_points, native_points, JNI_COMMIT);
+   env->ReleaseIntArrayElements(java_points, native_points, 0);
+}
+
+void Java_vdr_mhp_awt_DFBWindowPeer_getSize(JNIEnv* env, jobject obj, jlong nativeData, jintArray java_size) {
+   int *native_size;
+   
+   native_size = env->GetIntArrayElements(java_size, NULL);
+   
+   try {
+      return ((IDirectFBWindow *)nativeData)->GetSize(&native_size[0], &native_size[1]);
+   } catch (DFBException *e) {
+      printf("DirectFB: Error %s, %s\n", e->GetAction(), e->GetResult());
+      delete e;
+   }
+   
+   env->ReleaseIntArrayElements(java_size, native_size, 0);
 }
 
 void Java_vdr_mhp_awt_DFBWindowPeer_setSize(JNIEnv* env, jobject obj, jlong nativeData, jint width, jint height) {

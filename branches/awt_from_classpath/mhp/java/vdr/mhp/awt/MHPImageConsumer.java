@@ -80,8 +80,16 @@ public class MHPImageConsumer implements ImageConsumer
 
   public synchronized void imageComplete (int status)
   {
+    switch (status) {
+       case STATICIMAGEDONE:
+          target.setImage(width, height, pixelCache, properties);
+       case SINGLEFRAMEDONE:
+          throw new UnsupportedOperationException("Frame-based images currently not supported");
+       case IMAGEERROR:
+       case IMAGEABORTED:
+          break;
+    }
     source.removeConsumer(this);
-    target.setImage(width, height, pixelCache, properties);
   }
 
   public synchronized void setColorModel (ColorModel model)

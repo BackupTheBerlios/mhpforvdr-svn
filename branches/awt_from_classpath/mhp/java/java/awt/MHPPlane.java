@@ -13,9 +13,12 @@ import java.awt.MHPScreen;
    The only heavy-weight class is HScene, so it is on TV what
    Window/Frame are on the computer screen.
    An MHPPlane is a native DirectFB window.
+   To fit in AWT's hierarchy and to satisfy several assumptions (in
+   Classpath's implementation and the spec), MHPPlane is a Frame,
+   which is defined to be top-level, rather than only a Window.
 */
 
-public class MHPPlane extends Window {
+public class MHPPlane extends Frame {
 
 //the stacking classes are used as follows for a 1.one layer, 2. two layer, 3. three layer configuration
 static final int STACKING_LOWER  = 0; //used for 1. background plane 2. background plane 3. unused
@@ -25,8 +28,6 @@ static final int STACKING_UPPER  = 2; //used for 1. graphics planes 2. unused 3.
 long nativeLayer=0; //pointer to an IDirectFBDisplayLayer
 boolean withEventThread=true;
 MHPApplication application;
-
-private transient boolean shown;
 
 MHPPlane(int x, int y, int width, int height, MHPApplication application, boolean withEventThread, int stacking, long layer) {
    //set bounds
@@ -90,6 +91,12 @@ public void addNotify () {
    }
    super.addNotify();
 }
+
+public void setBoundsCallback (int x, int y, int w, int h) {
+   // public here because peer needs it
+   super.setBoundsCallback(x, y, w, h);
+}
+
 
 /*
 public void requestFocus () {

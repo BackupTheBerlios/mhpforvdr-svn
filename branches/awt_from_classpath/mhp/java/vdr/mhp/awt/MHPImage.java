@@ -216,7 +216,7 @@ native static long getSubImage( long nativeData, int x, int y, int w, int h);
   {
     this(width, height);
     //offScreen = false;
-    if (src.nativeData == 0)
+    if (!src.isLoaded)
        throw new IllegalArgumentException();
     stretchBlit(this.nativeData, src.nativeData);
   }
@@ -247,9 +247,9 @@ native static long getSubImage( long nativeData, int x, int y, int w, int h);
     this.width = width;
     this.height = height;
     props = (properties != null) ? properties : new Hashtable();
+    nativeData = createScreenImage(width, height);
     isLoaded = true;
     deliver();
-    nativeData = createScreenImage(width, height);
     setPixels(pixels);
   }
 
@@ -261,9 +261,9 @@ native static long getSubImage( long nativeData, int x, int y, int w, int h);
     this.width = provider.getWidth();
     this.height = provider.getHeight();
     props = (properties != null) ? properties : new Hashtable();
+    nativeData = createScreenImage(width, height);
     isLoaded = true;
     deliver();
-    nativeData = createScreenImage(width, height);
     provider.renderTo(this);
   }
   
@@ -362,7 +362,12 @@ native static long getSubImage( long nativeData, int x, int y, int w, int h);
 
   public void finalize()
   {
+    dispose();
+  }
+  
+  synchronized void dispose() {
     if (isLoaded) {
+      isLoaded = false;
       if (nativeData != 0)
          freeImage(nativeData);
       nativeData = 0;

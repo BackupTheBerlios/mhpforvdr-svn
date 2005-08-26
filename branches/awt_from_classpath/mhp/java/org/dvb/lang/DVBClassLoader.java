@@ -268,11 +268,23 @@ protected final Class defineClass(String name, byte[] b, int off, int len, CodeS
 }
 */
 
-//Usually, this class would only need to override findClass.
-//However, we must replace a few classes in java.io with stub implementations
-//that check for relative file paths, resolve them to the base directory
-//of the MHP application, and otherwise just use the classpath implementation.
-//This interception in class loading is done here.
+// Usually, this class would only need to override findClass.
+// However, we must replace a few classes in java.io with stub implementations
+// that check for relative file paths, resolve them to the base directory
+// of the MHP application, and otherwise just use the classpath implementation.
+// This interception in class loading is done here.
+
+// Problem: This only works if the Xlet code itself contains the reference to one of these classes.
+// If it loads another class, passes a file path, and this class (loaded by bootstrap loader),
+// creates a File object, the unchanged File class will be used.
+// So the constructor of the first class which passes the filename needs to be added to this list here.
+// Second possible problem: I think if a class is loaded twice, its static fields will be loaded twice
+// as well. This might cause any sort of problem, so at least heavyweight classes which contain
+// important static fields cannot be modified.
+// Is there any other, more elegant solution to this relative-pathname-dilemma?
+
+// In any case, every class which is part of this implementation and takes a pathname shall itself
+// convert this path with vdr.mhp.io.PathConverter.
 
 
 public Class loadClass(String name) throws ClassNotFoundException

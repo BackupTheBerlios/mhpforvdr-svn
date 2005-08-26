@@ -103,7 +103,7 @@ Java_vdr_mhp_awt_MHPImage_getRGB(  JNIEnv* env, jobject obj, jlong nativeData, j
 }
 
 void
-Java_vdr_mhp_awt_MHPImage_getRGBRegion(  JNIEnv* env, jobject obj, jlong nativeData, jint startX, jint startY, jint w, jint h, jintArray rgbArray, jint offset, jint scansize) {
+Java_vdr_mhp_awt_MHPImage_getRGBRegion(JNIEnv* env, jobject obj, jlong nativeData, jint startX, jint startY, jint w, jint h, jintArray rgbArray, jint offset, jint scansize) {
      u_int32_t             *dst;
      IDirectFBSurface      *surface = ((IDirectFBSurface *)nativeData);
      int                    pitch;
@@ -134,7 +134,7 @@ Java_vdr_mhp_awt_MHPImage_getRGBRegion(  JNIEnv* env, jobject obj, jlong nativeD
 }
 
 void
-Java_vdr_mhp_awt_MHPImage_setRGB(  JNIEnv* env, jobject obj, jlong nativeData, jint x, jint y, jint rgb) {
+Java_vdr_mhp_awt_MHPImage_setRGB(JNIEnv* env, jobject obj, jlong nativeData, jint x, jint y, jint rgb) {
      u_int32_t             *dst;
      IDirectFBSurface      *surface = ((IDirectFBSurface *)nativeData);
      int                    pitch;
@@ -179,7 +179,7 @@ Java_vdr_mhp_awt_MHPImage_setRGBRegion(JNIEnv* env, jobject obj, jlong nativeDat
           delete e;
           return;
      }
-     env->ReleaseIntArrayElements(rgbArray, userArray, JNI_COMMIT);    
+     env->ReleaseIntArrayElements(rgbArray, userArray, 0);
 }
 
 jlong 
@@ -297,7 +297,7 @@ jlong Java_vdr_mhp_awt_DFBImageProvider_createImageProviderFromFile(JNIEnv* env,
       provider=MhpOutput::System::self()->Interface()->CreateImageProvider(fn);
    } catch (DFBException *e) {
       fprintf( stderr, "Unable to create the "
-               "Media Provider for `%s': %s", fn, e->GetResult() );
+               "Media Provider for `%s': %s\n", fn, e->GetResult() );
       printf("DirectFB: Error %s, %s\n", e->GetAction(), e->GetResult());
       env->ReleaseByteArrayElements(filename, (jbyte *)fn, JNI_ABORT);
       char *msg;
@@ -327,7 +327,7 @@ jlong Java_vdr_mhp_awt_DFBImageProvider_createImageProviderFromDataBuffer(JNIEnv
    try {
       provider=buffer->CreateImageProvider();
    } catch (DFBException *e) {
-      fprintf( stderr, "Unable to create image provider from data buffer: %s", e->GetResult() );
+      fprintf( stderr, "Unable to create image provider from data buffer: %s\n", e->GetResult() );
       printf("DirectFB: Error %s, %s\n", e->GetAction(), e->GetResult());
       JNI::Exception::Throw(JNI::JavaLangIllegalArgumentException, "Failed to create ImageProvider from DataBuffer");
       delete e;
@@ -352,7 +352,7 @@ void Java_vdr_mhp_awt_DFBImageProvider_renderTo(JNIEnv* env, jobject obj, jlong 
    }
 }
 
-void Java_vdr_mhp_awt_DFBImageProvider_removeRef(jlong nativeData) {
+void Java_vdr_mhp_awt_DFBImageProvider_removeRef(JNIEnv* env, jobject obj, jlong nativeData) {
    IDirectFBImageProvider *provider = (IDirectFBImageProvider *)nativeData;
    provider->Release();
 }
@@ -362,10 +362,28 @@ void Java_vdr_mhp_awt_DFBImageProvider_removeRef(jlong nativeData) {
 
 // ------------ DFBDataBuffer ------------
 
+class DFBDataBufferNativeData {
+public:
+   DFBDataBufferNativeData() : buffer(0), data(0) 
+   {
+   }
+   ~DFBDataBufferNativeData() 
+   {
+      if (buffer)
+         buffer->Release();
+      delete[] data;
+   }
+   void createBuffer(int len)
+   {
+      data=new jbyte[len];
+   }
+   IDirectFBDataBuffer *buffer;
+   jbyte *data;
+};
 
 jlong Java_vdr_mhp_awt_DFBDataBuffer_createBufferFromFile(JNIEnv* env, jobject obj, jbyteArray filename) //throws IOException;
 {
-   IDirectFBDataBuffer *buffer;
+   DFBDataBufferNativeData *data=new DFBDataBufferNativeData();
    DFBDataBufferDescription bufDesc;
    const char* fn;
 
@@ -374,9 +392,9 @@ jlong Java_vdr_mhp_awt_DFBDataBuffer_createBufferFromFile(JNIEnv* env, jobject o
    bufDesc.file=fn;
 
    try {
-      buffer=MhpOutput::System::self()->Interface()->CreateDataBuffer(bufDesc);
+      data->buffer=MhpOutput::System::self()->Interface()->CreateDataBuffer(bufDesc);
    } catch (DFBException *e) {
-      fprintf( stderr, "Unable to create the Data buffer: %s", e->GetResult() );
+      fprintf( stderr, "Unable to create the Data buffer: %s\n", e->GetResult() );
       printf("DirectFB: Error %s, %s\n", e->GetAction(), e->GetResult());
       env->ReleaseByteArrayElements(filename, (jbyte *)fn, JNI_ABORT);
       JNI::Exception::Throw(JNI::JavaIoIOException, "Unable to create data buffer for filename");
@@ -386,54 +404,44 @@ jlong Java_vdr_mhp_awt_DFBDataBuffer_createBufferFromFile(JNIEnv* env, jobject o
    
    env->ReleaseByteArrayElements(filename, (jbyte *)fn, JNI_ABORT);
    
-   return (jlong)buffer;
+   return (jlong)data;
 }
 
-jlong Java_vdr_mhp_awt_DFBDataBuffer_createBufferFromData(JNIEnv* env, jobject obj, jbyteArray jbuffer, jint off, jint len) //throws IOException;
+jlong Java_vdr_mhp_awt_DFBDataBuffer_createBufferFromData(JNIEnv* env, jobject obj, jbyteArray java_buffer, jint off, jint len)
 {
+   DFBDataBufferNativeData *data;
    int       n;
-   jboolean  isCopy;
-   jbyte     *jcomplete, *joffset;
 
-   n = env->GetArrayLength(jbuffer);                             // length
+   n = env->GetArrayLength(java_buffer);                             // length
    if ( off+len > n )
       len = n - off;
    
-   if (len <= 0 || off < 0) {
-      JNI::Exception::Throw(JNI::JavaLangIllegalArgumentException, "Invalid length/offset parameter");
+   data=new DFBDataBufferNativeData();
+   data->createBuffer(len);
+   
+   env->GetByteArrayRegion(java_buffer, off, len, data->data);
+   // GetByteArrayRegion throws an exception if indexes are not valid
+   if (env->ExceptionOccurred() != NULL) {
+      delete data;
       return 0;
    }
    
-   jcomplete = env->GetByteArrayElements(jbuffer, &isCopy);      // complete copy
-   joffset = jcomplete + off;                                    // copy after +offset
-
-   if (jcomplete == NULL) {
-         env->ReleaseByteArrayElements(jbuffer, jcomplete, JNI_ABORT);
-         JNI::Exception::Throw(JNI::JavaLangIllegalArgumentException, "Invalid byte array");
-         return 0;
-   }
-
-   
-   IDirectFBDataBuffer *buffer;
    DFBDataBufferDescription bufDesc;
    bufDesc.flags=DBDESC_MEMORY;
-   bufDesc.memory.data=joffset;
+   bufDesc.memory.data=data->data;
    bufDesc.memory.length=len;
 
    try {
-      buffer=MhpOutput::System::self()->Interface()->CreateDataBuffer(bufDesc);
+      data->buffer=MhpOutput::System::self()->Interface()->CreateDataBuffer(bufDesc);
    } catch (DFBException *e) {
-      fprintf( stderr, "Unable to create the Data buffer: %s", e->GetResult() );
+      fprintf( stderr, "Unable to create the Data buffer: %s\n", e->GetResult() );
       printf("DirectFB: Error %s, %s\n", e->GetAction(), e->GetResult());
-      env->ReleaseByteArrayElements(jbuffer, jcomplete, JNI_ABORT);
       JNI::Exception::Throw(JNI::JavaIoIOException, "Unable to create data buffer");
       delete e;
       return 0;
    }
    
-   env->ReleaseByteArrayElements(jbuffer, jcomplete, JNI_ABORT);
-   
-   return (jlong)buffer;
+   return (jlong)data;
 }
 
 jlong Java_vdr_mhp_awt_DFBDataBuffer_createBufferForStreaming(JNIEnv* env, jobject obj) //throws IOException;
@@ -445,7 +453,7 @@ jlong Java_vdr_mhp_awt_DFBDataBuffer_createBufferForStreaming(JNIEnv* env, jobje
    try {
       buffer=MhpOutput::System::self()->Interface()->CreateDataBuffer(bufDesc);
    } catch (DFBException *e) {
-      fprintf( stderr, "Unable to create the Data buffer: %s", e->GetResult() );
+      fprintf( stderr, "Unable to create the Data buffer: %s\n", e->GetResult() );
       printf("DirectFB: Error %s, %s\n", e->GetAction(), e->GetResult());
       Exception exp;
       exp.Throw("java/io/IOException", "Unable to create streaming data buffer");
@@ -461,12 +469,16 @@ jlong Java_vdr_mhp_awt_DFBDataBuffer_createBufferForStreaming(JNIEnv* env, jobje
 
 void Java_vdr_mhp_awt_DFBDataBuffer_putData(JNIEnv* env, jobject obj, jlong nativeData, jbyteArray data, jint len) {
    jbyte *d = env->GetByteArrayElements(data, 0);
-   ((IDirectFBDataBuffer *)nativeData)->PutData(d, len);
+   ((DFBDataBufferNativeData *)nativeData)->buffer->PutData(d, len);
    env->ReleaseByteArrayElements(data, (jbyte *)d, JNI_ABORT);
 }
 
 void Java_vdr_mhp_awt_DFBDataBuffer_removeRef(JNIEnv* env, jobject obj, jlong nativeData) {
-   ((IDirectFBDataBuffer *)nativeData)->Release();
+   delete (DFBDataBufferNativeData *)nativeData;
+}
+
+jlong Java_vdr_mhp_awt_DFBDataBuffer_nativeBufferData(JNIEnv* env, jobject obj, jlong nativeData) {
+   return (jlong)((DFBDataBufferNativeData *)nativeData)->buffer;
 }
 
 } // extern "C"

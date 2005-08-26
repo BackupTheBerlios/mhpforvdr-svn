@@ -48,10 +48,15 @@ Control::Control()
 }
 
 Control::~Control() {
+   // Hide shall only be called from main thread, but we are in main thread because
+   // cControl objects are always deleted by VDR from main thread.
    Hide();
-   Stop();
+   // Do not call Stop() directly, there may be a race condition since Stop() may be called from any thread.
+   // ShutdownControl() calls Stop(), is thread safe and cleanly sets the status for RunningManager.
+   ((ControlRunningManager *)RunningManager::getManager())->ShutdownControl();
 }
 
+// Shall only be called from VDR's main thread
 void Control::Hide(void) {
    if (visible) {
       delete display;
@@ -119,6 +124,7 @@ eOSState Control::ProcessKey(eKeys Key) {
    return osContinue;
 }
 
+// Shall only be called from VDR's main thread
 void Control::CheckMessage() {
    switch (Messages::message) {
    case Messages::NoMessage:
@@ -145,7 +151,7 @@ void Control::CheckMessage() {
 
 }
 
-
+// Shall only be called from VDR's main thread
 void Control::ShowProgress(float progress, int currentSize, int totalSize) {
    if (!doShow)
       return;
@@ -175,6 +181,7 @@ void Control::SetApplicationName(const std::string &a) {
    appName=a;
 }
 
+// Shall only be called from VDR's main thread
 void Control::HideProgress() {
    Hide();
    appName=unknownName;
@@ -433,9 +440,11 @@ void ControlRunningManager::Stop() {
 
 void ControlRunningManager::ShutdownControl() {
    cMutexLock lock(&mutex);
-   control->Stop();
-   //do not delete control, ownership is passed to VDR
-   control=0;
+   if (control) {
+      control->Stop();
+      //do not delete control, ownership is passed to VDR
+      control=0;
+   }
 }
 
 //Inform manager that the given application has been started
@@ -629,6 +638,7 @@ void ControlLoadingManager::Stop(CarouselLoader *l) {
    }
 }
 
+// Shall only be called from VDR's main thread
 void ControlLoadingManager::ProgressInfo(ProgressIndicator *pi) {
    cMutexLock lock(&mutex);
    //There may be more than one loading app, loadingApp is the last started

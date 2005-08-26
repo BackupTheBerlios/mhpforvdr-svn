@@ -4,6 +4,7 @@ package vdr.mhp.awt;
 import java.io.IOException;
 import java.awt.image.ColorModel;
 import java.awt.image.DirectColorModel;
+import java.io.File;
 
 import vdr.mhp.io.PathConverter;
 
@@ -33,11 +34,11 @@ private native void renderTo(long nativeProviderData, long nativeImageData);
 private native void removeRef(long nativeData);
 
 public DFBImageProvider(String filename) throws IllegalArgumentException {
-   nativeData = createImageProviderFromFile( PathConverter.toNativeString(filename) );
+   nativeData = createImageProviderFromFile( PathConverter.toNativeString(PathConverter.convert(filename)) );
 }
 
 public DFBImageProvider(DFBDataBuffer data) throws IllegalArgumentException {
-   nativeData = createImageProviderFromDataBuffer( data.nativeData );
+   nativeData = createImageProviderFromDataBuffer( data.getNativeData() );
 }
 
 public int getWidth() {
@@ -90,7 +91,7 @@ private void setProperties(boolean valid, int width, int height) {
    this.height=height;
 }
 
-public void dispose() {
+public synchronized void dispose() {
    if (nativeData != 0) {
       removeRef(nativeData);
       nativeData = 0;
