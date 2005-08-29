@@ -40,7 +40,6 @@ MHPPlane(int x, int y, int width, int height, MHPApplication application, boolea
    this.application=application;
    this.withEventThread=withEventThread;
    System.out.println("Creating MHP plane at "+x+"x"+y+" with size "+width+"x"+height+", layer is null ? "+(layer==0));
-   addNotify();
    setStackingClass(stacking);
 }
 protected static int getGraphicsStacking() {

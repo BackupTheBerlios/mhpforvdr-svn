@@ -56,8 +56,8 @@ jlong Java_vdr_mhp_awt_DFBWindowPeer_createDFBWindow(JNIEnv* env, jobject obj, j
      desc.flags=(DFBWindowDescriptionFlags)0;
      
      if (!getenv( "MHP_NO_ALPHA" )) {
-          desc.caps=(DFBWindowCapabilities)0;
           DFB_ADD_WINDOW_DESC(desc.flags, DWDESC_CAPS);
+          desc.caps=DWCAPS_NONE;
           DFB_ADD_WINDOW_CAPS(desc.caps, DWCAPS_ALPHACHANNEL);
           DFB_ADD_WINDOW_CAPS(desc.caps, DWCAPS_DOUBLEBUFFER);
      }

@@ -93,7 +93,7 @@ public class DFBWindowPeer
    EventThread eventThread;
    boolean withEventThread = true;
    
-   boolean initiallyPainted = false;
+   boolean wasVisible = false;
    
   //VolatileImage backBuffer;
   //BufferCapabilities caps;
@@ -151,7 +151,7 @@ public class DFBWindowPeer
     */
   }
   
-  // called from MHPPlane's addNotify()
+  // Called only from MHPPlane's addNotify() immediately after constructing this object.
   public void create(int x, int y, int width, int height, long nativeLayer, boolean withEventThread) {
      // do the actual native creation
      nativeData=createDFBWindow(nativeLayer,x,y,width, height);
@@ -161,12 +161,9 @@ public class DFBWindowPeer
         if (nativeEventBuffer!=0)
            eventThread=new EventThread(awtComponent, nativeEventBuffer);
      }
-     // Need to trigger initial painting here and in setVisible().
-     // DirectFB does not send expose events or something else to trigger initial repaint
-     if (awtComponent.isVisible()) {
-        initiallyPainted = true;
-        triggerRepaint();
-     }
+     
+     // sync native state to state of AWT component - may have been changed before addNotify'ing!
+     setVisible(awtComponent.isVisible());
   }
 
   public synchronized void dispose() {
@@ -511,16 +508,18 @@ public class DFBWindowPeer
   
   public void setVisible (boolean b)
   {
-     // Need to check here if an initial painting is necessary. (Possibly triggered in create() as well)
-     // DirectFB does not send expose events or something else to trigger initial repaint
+     // Need to check here if an initial painting is necessary.
+     // DirectFB does not send expose events or something else to trigger initial repaint.
      if (b) {
        setOpacity(0xFF);
-       if (!initiallyPainted) {
-          initiallyPainted = true;
+       if (!wasVisible) {
+          wasVisible = true;
           triggerRepaint();
        }
-     } else
+     } else {
        setOpacity(0x00);
+       wasVisible = false;
+     }
   }
 
 
@@ -943,6 +942,8 @@ public class DFBWindowPeer
 
 
 interface DFBEventConstants {
+   // Taken from directfb.h
+   
    final static int DWET_POSITION       = 0x00000001;  /* window has been moved by
                                          window manager or the
                                          application itself */
@@ -1002,28 +1003,34 @@ interface DFBEventConstants {
 //to Java AWTEvents. These are posted to the Java eventQueue.
 class EventThread extends Thread implements DFBEventConstants {
 
-   long nativeData;
+   long nativeData; // an IDirectFBEventBuffer
    long nativeEvent; //one DFBEvent being recycled
    MHPPlane plane;
    private boolean running = false;
    int[] eventData=new int[15];
    long midnight;
 
+   // allocate a native event structure
    private native long allocateEvent();
+   // delete native event structure
    private native void deleteEvent(long nativeEvent);
+   // wait for events on native event buffer
    private native void waitForEvent(long nativeData);
-      //returns true if event is window event (should always be, I think)
+   // read the next native event in native event structure
+   // returns true if event is window event (should always be, I think)
    private native boolean getEvent(long nativeData, long nativeEvent);
+   // fills information from native event structure into Java array
    private native void fillEventInformation(long nativeEvent, int[] eventData);
-   /* the array is filled as follows:
+   /* 
+   The array is filled as follows:
    data[0]=e->type;               type of event, DFBEventConstants
    data[1]=e->x;                  x position of window or coordinate within window
    data[2]=e->y;                  y position of window or coordinate within window
    data[3]=e->cx;                 x cursor position
-   data[4]=e->cy;                 y ~
+   data[4]=e->cy;                 y cursor position
    data[5]=e->step;               wheel step
    data[6]=e->w;                  width of window
-   data[7]=e->h;                  height ~
+   data[7]=e->h;                  height of window
    data[8]=e->key_id;             basic modifier independant mapping
    data[9]=e->key_symbol;         advanced, unicode compatible, modifier independant mapping
    data[10]=e->modifiers;         pressed modifiers
@@ -1157,14 +1164,16 @@ class EventThread extends Thread implements DFBEventConstants {
       button_click_time = millis;
       button_number = eventData[11];
       
-      // use button, not buttons, "The button mask returned by InputEvent.getModifiers() reflects only the button that changed state, not the current state of all buttons."
-      /* Modifier key events need special treatment.  In Sun's peer
+      // use button, not buttons, Sun says "the button mask returned by InputEvent.getModifiers()
+      // reflects only the button that changed state, not the current state of all buttons."
+      // Classpath says:
+      /* "Modifier key events need special treatment.  In Sun's peer
       implementation, when a modifier key is pressed, the KEY_PRESSED
       event has that modifier in its modifiers list.  The corresponding
       KEY_RELEASED event's modifier list does not contain the modifier.
       For example, pressing and releasing the shift key will produce a
       key press event with modifiers=Shift, and a key release event with
-      no modifiers.  */
+      no modifiers."  */
       
       switch(eventData[0]) {
          case DWET_BUTTONDOWN:

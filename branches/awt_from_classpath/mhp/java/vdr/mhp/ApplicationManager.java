@@ -705,6 +705,8 @@ class ApplicationTask {
          if (acquiring)
             stopAcquiring();
          boolean force = (arg==null) ? true : ((Boolean)arg).booleanValue();
+         //Only case where watchdog is activated
+         taskThread.watchdog.setBiting(force);
          //may only fail if not forced
          success=app.doStop(force);
          if (!success)
@@ -779,11 +781,13 @@ class ApplicationTaskThread extends Thread {
    java.util.LinkedList list = new java.util.LinkedList();
    java.util.LinkedList delayedList = new java.util.LinkedList();
    ApplicationTask currentTask =  null;
+   WatchdogThread watchdog = null;
    
    Thread thread;
    
    ApplicationTaskThread(ThreadGroup group) {
       super(group, "ApplicationTaskThread");
+      watchdog=new WatchdogThread();
    }
    
    void requestStateChange(MHPApplication app, int procedure) {
@@ -825,6 +829,7 @@ class ApplicationTaskThread extends Thread {
                running=true;
                try {
                   thread = new Thread(this);
+                  watchdog.setThread(thread);
                   thread.start();
                } catch (IllegalThreadStateException e) {
                   //If this thread has already been started and is dead now,
@@ -852,6 +857,7 @@ class ApplicationTaskThread extends Thread {
    //guaranteed to be called only after MHPApplications.stopAll
    synchronized void completeAndStop() {
       completeAndStop=true;
+      //do not set watchdog to stop here, it shall guard the stopping process!
    }
    
    void waitForShutdown() {
@@ -863,6 +869,16 @@ class ApplicationTaskThread extends Thread {
             return;
          }
          thread=null;
+         if (watchdog != null) {
+            watchdog.setThread(null);
+            watchdog.completeAndStop();
+            try {
+               watchdog.join(2000);
+            } catch (InterruptedException e) {
+               e.printStackTrace();
+               return;
+            }
+         }
       }
    }
    
@@ -913,6 +929,8 @@ class ApplicationTaskThread extends Thread {
                   currentTask=(ApplicationTask)list.removeFirst();
             }
             
+            watchdog.setBiting(false);
+            
             if (currentTask != null) {
                //here the actual work is done
                try {
@@ -921,6 +939,8 @@ class ApplicationTaskThread extends Thread {
                   e.printStackTrace();
                }
             }
+            
+            watchdog.reset();
             
          }
       //these catch clauses are the last resort for internal errors.
@@ -931,7 +951,58 @@ class ApplicationTaskThread extends Thread {
       } catch (Throwable x) {
          reportError(x);
       }
+      watchdog.setThread(null);
       running=false;
+   }
+}
+
+class WatchdogThread extends Thread {
+   final static int DEFAULT_TIMEOUT = 30 * 1000;
+   long timeout = 0;
+   long time;
+   private boolean running;
+   Thread thread = null;
+   public void run() {
+      time = System.currentTimeMillis();
+      while (running) {
+         synchronized (this) {
+            try {
+               wait(1000);
+            } catch (InterruptedException e) {
+               continue;
+            }
+            if (timeout != 0 && System.currentTimeMillis()-time > timeout)
+               attack();
+         }
+      }
+   }
+   
+   public synchronized void reset() {
+      time = System.currentTimeMillis();
+      notify();
+   }
+   
+   public synchronized void setBiting(boolean bite) {
+      if (bite)
+         timeout=DEFAULT_TIMEOUT;
+      else
+         timeout=0;
+   }
+   
+   public synchronized void setThread(Thread thread) {
+      this.thread=thread;
+   }
+   
+   public synchronized void completeAndStop() {
+      running = false;
+      notify();
+   }
+   
+   void attack() {
+      // The Spec says Thread.stop() is deprecated, use interrupt() in such case.
+      // As well, it is said that if interrupt has no effect, stop() has not either.
+      reportError(new RuntimeException("Watchdog timer for TaskThread expired, interrupting thread!"));
+      thread.interrupt();
    }
 }
 

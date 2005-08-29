@@ -174,7 +174,7 @@ bool MpegPesSystem::Initialize(const char *arg) {
    
    try {
       layer->EnableCursor(false);
-      //layer->SetBackgroundColor(0,0,0,255); //or better white?
+      layer->SetBackgroundColor(0,0,0,255); //or better white?
    } catch (DFBException *e) {
         esyslog("MhpOutput: DirectFB: Error %s, %s.", e->GetAction(), e->GetResult());
         delete e;

@@ -74,7 +74,7 @@ protected:
          if (regionValid) {
             //printf("Flipping surface %p, region %dx%d - %dx%d\n", surface, region.x1, region.y1, region.x2, region.y2);
             try {
-               surface->Flip(&region, (DFBSurfaceFlipFlags)0);
+               surface->Flip(&region, DSFLIP_NONE);
             } catch (DFBException *e) {
                printf("DirectFB: Error %s, %s\n", e->GetAction(), e->GetResult());
                delete e;
