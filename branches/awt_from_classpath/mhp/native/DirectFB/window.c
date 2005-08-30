@@ -3,8 +3,9 @@
 #include <libmhpoutput/output.h>
 #include <vdr/config.h>
 #include <vdr/device.h>
-#include "image.h"
+#include "awtconstants.h"
 
+static int translateDFBInputDeviceKeyIdentifierToAWTVirtualKeyConstant(DFBInputDeviceKeyIdentifier id);
 
 extern "C" {
 
@@ -30,6 +31,57 @@ jboolean Java_java_awt_MHPScreen_hasBackgroundLayer(JNIEnv* env, jclass clazz) {
    return MhpOutput::System::self()->HasBackgroundLayer();
 }
 
+/*** MHPBackgroundLayer ***/
+
+enum MHPBackgroundLayerMode {
+   MODE_DONTCARE = 0,
+   MODE_COLOR = 1,
+   MODE_IMAGESTRETCH = 2,
+   MODE_IMAGETILE = 3,
+};
+
+void Java_java_awt_MHPBackgroundLayer_setLayerBackgroundMode(JNIEnv* env, jobject obj, long nativeLayer, int mode) {
+   IDirectFBDisplayLayer *layer=(IDirectFBDisplayLayer *)nativeLayer;
+   try {
+      switch ((MHPBackgroundLayerMode)mode) {
+         case MODE_DONTCARE:
+            layer->SetBackgroundMode(DLBM_DONTCARE);
+            break;
+         case MODE_IMAGESTRETCH:
+            layer->SetBackgroundMode(DLBM_IMAGE);
+            break;
+         case MODE_IMAGETILE:
+            layer->SetBackgroundMode(DLBM_TILE);
+            break;
+         default:
+         case MODE_COLOR:
+            layer->SetBackgroundMode(DLBM_COLOR);
+            break;
+      }
+   } catch (DFBException *e) {
+      printf("DirectFB: Error %s, %s\n", e->GetAction(), e->GetResult());
+      delete e;
+   }
+}
+
+void Java_java_awt_MHPBackgroundLayer_setLayerBackgroundColor(JNIEnv* env, jobject obj, long nativeLayer, int r, int g, int b, int a) {
+   try {
+      ((IDirectFBDisplayLayer *)nativeLayer)->SetBackgroundColor(r, g, b, a);
+   } catch (DFBException *e) {
+      printf("DirectFB: Error %s, %s\n", e->GetAction(), e->GetResult());
+      delete e;
+   }
+}
+
+void Java_java_awt_MHPBackgroundLayer_setLayerBackgroundImage(JNIEnv* env, jobject obj, long nativeLayer, long nativeSurface) {
+   try {
+      ((IDirectFBDisplayLayer *)nativeLayer)->SetBackgroundImage((IDirectFBSurface *)nativeSurface);
+   } catch (DFBException *e) {
+      printf("DirectFB: Error %s, %s\n", e->GetAction(), e->GetResult());
+      delete e;
+   }
+}
+
 /*** DFBWindowPeer ***/
 
 
@@ -41,7 +93,7 @@ jlong Java_vdr_mhp_awt_DFBWindowPeer_createDFBWindow(JNIEnv* env, jobject obj, j
      if (!layer)
         layer=MhpOutput::System::self()->GetMainLayer();
 
-     printf("createDFBWindow %d, %d - %dx%d on layer %p ID %d\n", x, y, width, height, layer, layer->GetID());
+     //printf("createDFBWindow %d, %d - %dx%d on layer %p ID %d\n", x, y, width, height, layer, layer->GetID());
 
      /*if (getenv( "MHP_NO_ALPHA" ))
           bgAlpha = 255;
@@ -89,7 +141,7 @@ jlong Java_vdr_mhp_awt_DFBWindowPeer_createDFBWindow(JNIEnv* env, jobject obj, j
          return 0;
      }
       int ww,hh;window->GetSize(&ww, &hh);
-     printf("Created window %p, size %dx%d\n", window, ww, hh);
+     //printf("Created window %p, size %dx%d\n", window, ww, hh);
      
      return (jlong )window;
 }
@@ -149,7 +201,7 @@ void Java_vdr_mhp_awt_DFBWindowPeer_setStackingClass(JNIEnv* env, jobject obj, j
 
 
 void Java_vdr_mhp_awt_DFBWindowPeer_setOpacity(JNIEnv* env, jobject obj, jlong nativeData, jint opacity) {
-   printf("MHPPlane_setOpacity %d\n", opacity);
+   //printf("MHPPlane_setOpacity %d\n", opacity);
    try {
       ((IDirectFBWindow *)nativeData)->SetOpacity(opacity);
    } catch (DFBException *e) {
@@ -339,7 +391,7 @@ void Java_vdr_mhp_awt_DFBWindowPeer_00024EventThread_waitForEvent(JNIEnv* env, j
 jboolean Java_vdr_mhp_awt_DFBWindowPeer_00024EventThread_getEvent(JNIEnv* env, jobject obj, jlong nativeData, jlong nativeEvent) {
    try {
       DFBEvent *ev=(DFBEvent *)nativeEvent;
-      if (((IDirectFBEventBuffer *)nativeData)->GetEvent(ev)==DFB_OK) {
+      if ( ((IDirectFBEventBuffer *) nativeData)->GetEvent(ev) ) {
          if (ev->clazz == DFEC_WINDOW)
             return true;
       }
@@ -352,7 +404,7 @@ jboolean Java_vdr_mhp_awt_DFBWindowPeer_00024EventThread_getEvent(JNIEnv* env, j
 
 //simple copying from native structure to Java array
 void Java_vdr_mhp_awt_DFBWindowPeer_00024EventThread_fillEventInformation(JNIEnv* env, jobject obj, jlong nativeEvent, jintArray eventData) {
-   int data[15];
+   jint data[16];
    DFBWindowEvent *e=(DFBWindowEvent *)nativeEvent;
    data[0]=e->type;
    data[1]=e->x;
@@ -369,7 +421,8 @@ void Java_vdr_mhp_awt_DFBWindowPeer_00024EventThread_fillEventInformation(JNIEnv
    data[12]=e->buttons;
    data[13]=e->timestamp.tv_sec;
    data[14]=e->timestamp.tv_usec;
-   env->SetIntArrayRegion(eventData, 0, 1, data);
+   data[15]=translateDFBInputDeviceKeyIdentifierToAWTVirtualKeyConstant(e->key_id);
+   env->SetIntArrayRegion(eventData, 0, 16, data);
 }
 
 jlong Java_vdr_mhp_awt_DFBWindowPeer_$EventThread_allocateEvent(JNIEnv* env, jobject obj) {
@@ -459,3 +512,103 @@ void Java_java_awt_MHPBackgroundPlane_displayDripfeed(JNIEnv* env, jobject obj, 
 
 } // extern "C"
 
+int translateDFBInputDeviceKeyIdentifierToAWTVirtualKeyConstant(DFBInputDeviceKeyIdentifier id) {
+   if (DIKI_A <= id && id <= DIKI_Z)
+      return VK_A + (id - DIKI_A);
+   if (DIKI_0 <= id && id <= DIKI_9)
+      return VK_0 + (id - DIKI_0);
+   if (DIKI_F1 <= id && id <= DIKI_F12)
+      return VK_F1 + (id - DIKI_F1);
+   
+   switch (id) {
+      case DIKI_SHIFT_L:
+      case DIKI_SHIFT_R:
+         return VK_SHIFT;
+      case DIKI_CONTROL_L:
+      case DIKI_CONTROL_R:
+         return VK_CONTROL;
+      case DIKI_ALT_L:
+      case DIKI_ALT_R:
+         return VK_ALT;
+      case DIKI_ALTGR:
+         return VK_ALT_GRAPH;
+      case DIKI_META_L:
+      case DIKI_META_R:
+         return VK_META;
+      case DIKI_CAPS_LOCK: return VK_CAPS_LOCK;
+      case DIKI_NUM_LOCK: return VK_NUM_LOCK;
+      case DIKI_SCROLL_LOCK: return VK_SCROLL_LOCK;
+
+      case DIKI_ESCAPE: return VK_ESCAPE;
+      case DIKI_LEFT: return VK_LEFT;
+      case DIKI_RIGHT: return VK_RIGHT;
+      case DIKI_UP: return VK_UP;
+      case DIKI_DOWN: return VK_DOWN;
+      case DIKI_TAB: return VK_TAB;
+      case DIKI_ENTER: return VK_ENTER;
+      case DIKI_SPACE: return VK_SPACE;
+      case DIKI_BACKSPACE: return VK_BACK_SPACE;
+      case DIKI_INSERT: return VK_INSERT;
+      case DIKI_DELETE: return VK_DELETE;
+      case DIKI_HOME: return VK_HOME;
+      case DIKI_END: return VK_END;
+      case DIKI_PAGE_UP: return VK_PAGE_UP;
+      case DIKI_PAGE_DOWN: return VK_PAGE_DOWN;
+      case DIKI_PRINT: return VK_PRINTSCREEN;
+      case DIKI_PAUSE: return VK_PAUSE;
+      
+      // DirectFB says: "The labels on these keys depend on the type of keyboard.
+      //  We've choosen the names from a US keyboard layout. The
+      //  comments refer to the ISO 9995 terminology."
+      // After the ISO labels are the produced characters on a German keyboard
+      // I do not quite know what to do with this, especially where German label differs
+      // completely from American layout.
+      case DIKI_QUOTE_LEFT: return VK_CIRCUMFLEX;           // TLDE: ^°¬
+      case DIKI_MINUS_SIGN: return VK_MINUS;                // AE11: ß?\
+      case DIKI_EQUALS_SIGN: return VK_EQUALS;              // AE12: ´`¸
+      case DIKI_BRACKET_LEFT: return VK_OPEN_BRACKET;       // AD11: üÜ
+      case DIKI_BRACKET_RIGHT: return VK_CLOSE_BRACKET;     //AD12: +*~
+      case DIKI_BACKSLASH: return VK_BACK_SLASH;            //BKSL: #'`
+      case DIKI_SEMICOLON: return VK_SEMICOLON;             //AC10: öÖ?
+      case DIKI_QUOTE_RIGHT: return VK_QUOTE;               //AC11: äÄ^
+      case DIKI_COMMA: return VK_COMMA;                     //AB08: ,;?
+      case DIKI_PERIOD: return VK_PERIOD;                   //AB09: .:·
+      case DIKI_SLASH: return VK_SLASH;                     //AB10: -_
+      case DIKI_LESS_SIGN: return VK_LESS;
+
+      case DIKI_KP_DIV: return VK_DIVIDE;
+      case DIKI_KP_MULT: return VK_MULTIPLY;
+      case DIKI_KP_MINUS: return VK_SUBTRACT;
+      case DIKI_KP_PLUS: return VK_ADD;
+      case DIKI_KP_ENTER: return VK_ENTER;
+      case DIKI_KP_SPACE: return VK_SPACE;
+      case DIKI_KP_TAB: return VK_TAB;
+      case DIKI_KP_F1: return VK_F1;
+      case DIKI_KP_F2: return VK_F2;
+      case DIKI_KP_F3: return VK_F3;
+      case DIKI_KP_F4: return VK_F4;
+      case DIKI_KP_EQUAL: return VK_EQUALS;
+      case DIKI_KP_SEPARATOR: return VK_SEPARATOR;
+
+      case DIKI_KP_DECIMAL: return VK_DECIMAL;
+      case DIKI_KP_0: return VK_NUMPAD0;
+      case DIKI_KP_1: return VK_NUMPAD1;
+      case DIKI_KP_2: return VK_NUMPAD2;
+      case DIKI_KP_3: return VK_NUMPAD3;
+      case DIKI_KP_4: return VK_NUMPAD4;
+      case DIKI_KP_5: return VK_NUMPAD5;
+      case DIKI_KP_6: return VK_NUMPAD6;
+      case DIKI_KP_7: return VK_NUMPAD7;
+      case DIKI_KP_8: return VK_NUMPAD8;
+      case DIKI_KP_9: return VK_NUMPAD9;
+      
+      case DIKI_SUPER_L:
+      case DIKI_SUPER_R:
+      case DIKI_HYPER_L:
+      case DIKI_HYPER_R:
+      case DIKI_UNKNOWN:
+      default:
+         break;
+   }
+   return VK_UNDEFINED;
+}

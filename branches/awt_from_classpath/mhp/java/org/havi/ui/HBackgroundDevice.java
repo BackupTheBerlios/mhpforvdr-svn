@@ -12,7 +12,9 @@ package org.havi.ui;
 
 import java.awt.Color;
 import java.awt.MHPScreen;
-import java.awt.MHPBackgroundPlane;
+import java.awt.Dimension;
+//import java.awt.MHPBackgroundPlane;
+import java.awt.MHPBackgroundLayer;
 
 /**
  *
@@ -29,13 +31,14 @@ import java.awt.MHPBackgroundPlane;
 public class HBackgroundDevice extends HScreenDevice {
   
 HBackgroundConfiguration config;
-MHPBackgroundPlane plane=MHPScreen.createBackgroundPlane(0, 0, MHPScreen.getResolution().width, MHPScreen.getResolution().height);
+//MHPBackgroundPlane plane=MHPScreen.createBackgroundPlane(0, 0, MHPScreen.getResolution().width, MHPScreen.getResolution().height);
+MHPBackgroundLayer layer = MHPBackgroundLayer.getBackgroundLayer();
 
 protected HBackgroundDevice() {
    config=new HStillImageBackgroundConfiguration
       (false, true, MHPScreen.getAspectRatio(), MHPScreen.getResolution(),
-        new HScreenRectangle(0, 0, 1, 1), this, plane.getColor(), true, true);
-   plane.setVisible(true);
+        new HScreenRectangle(0, 0, 1, 1), this, layer.getColor(), true, true);
+   //plane.setVisible(true);
 }
 
 public HBackgroundConfiguration getBestConfiguration(HBackgroundConfigTemplate hgct) {
@@ -49,9 +52,7 @@ public HBackgroundConfiguration getBestConfiguration(HBackgroundConfigTemplate[]
 }
 
 public HBackgroundConfiguration[] getConfigurations() {
-   HBackgroundConfiguration[] ret=new HBackgroundConfiguration[1];
-   ret[0]=config;
-   return ret;
+   return new HBackgroundConfiguration [] { config };
 }
 
 public HBackgroundConfiguration getCurrentConfiguration(){
@@ -84,34 +85,38 @@ public  String getIDstring() {
    /** Get the current background color
          @return current background color */
    java.awt.Color getColor() {
-      return plane.getColor();
+      return layer.getColor();
    }
    
    /** Set the background color. This may fail if the device does not support
          variable colors or the caller does not have permission to change it.
          @param newColor new background color */
-   void setColor(java.awt.Color color)
-               throws HPermissionDeniedException,
-                        HConfigurationException {
-      plane.setColor(color);
+   void setColor(java.awt.Color color) throws HPermissionDeniedException, HConfigurationException {
+      // Spec says it is illegal to specify a transparent color.
+      // The layer would support this, but it does not make sense anyway.
+      if (color.getAlpha() != 255)
+         color = new Color(color.getRed(), color.getGreen(), color.getBlue());
+      layer.setColor(color);
    }
    
    void displayImage(HBackgroundImage image) {
-      plane.displayImage(image.getImage());
+      layer.setImageStretched(image.getImage());
    }
    
    void displayImage(HBackgroundImage image, HScreenRectangle r) {
       java.awt.Dimension pixelResolution=MHPScreen.getResolution();
-      plane.displayImage(image.getImage(), (int) (r.x*((float)pixelResolution.width)),
+      layer.setImageStretched(image.getImage(), (int) (r.x*((float)pixelResolution.width)),
                                  (int) (r.y*((float)pixelResolution.height)),
                                  (int) (r.width*((float)pixelResolution.width)),
                                  (int) (r.height*((float)pixelResolution.height)) );
    }
   
    //for use by org.dvb.media.content.dripfeed.Player
+   /*
    public void displayDripfeed(byte[] data) {
       plane.displayDripfeed(data);
    }
+   */
 
 
 }

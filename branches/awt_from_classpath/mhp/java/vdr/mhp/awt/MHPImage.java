@@ -267,7 +267,7 @@ native static long getSubImage( long nativeData, int x, int y, int w, int h);
     provider.renderTo(this);
   }
   
-   long getNativeSurface() {
+   public long getNativeSurface() {
       return nativeData;
    }
   // java.awt.Image methods ////////////////////////////////////////////////

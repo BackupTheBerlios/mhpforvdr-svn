@@ -655,7 +655,7 @@ class ApplicationTask {
          return REMOVE;
       }
       
-      System.out.println("ApplicationTask: Executing task "+task);
+      //System.out.println("ApplicationTask: Executing task "+task);
       boolean success=true;
       //After having accessed the application code we may not make any assumption about
       //the contents of todo; we call StopApplication ourselves in some cases and alter todo!
@@ -957,7 +957,7 @@ class ApplicationTaskThread extends Thread {
 }
 
 class WatchdogThread extends Thread {
-   final static int DEFAULT_TIMEOUT = 30 * 1000;
+   final static int DEFAULT_TIMEOUT = 10 * 1000;
    long timeout = 0;
    long time;
    private boolean running;
@@ -998,7 +998,7 @@ class WatchdogThread extends Thread {
       notify();
    }
    
-   void attack() {
+   private void attack() {
       // The Spec says Thread.stop() is deprecated, use interrupt() in such case.
       // As well, it is said that if interrupt has no effect, stop() has not either.
       reportError(new RuntimeException("Watchdog timer for TaskThread expired, interrupting thread!"));

@@ -15,7 +15,6 @@
 #include <libjava/jniinterface.h>
 #include <dfb++/dfb++.h>
 #include <libmhpoutput/output.h>
-#include "image.h"
 
 extern "C" {
 

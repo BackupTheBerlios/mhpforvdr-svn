@@ -67,7 +67,7 @@ void Control::Hide(void) {
 }
 
 void Control::Stop() {
-   printf("Control::Stop()\n");
+   //printf("Control::Stop()\n");
    //set status to Stopped so that osEnd is returned when ProcessKey is called again
    //(asynchronous stop)
    status=Stopped;
@@ -107,7 +107,7 @@ eOSState Control::ProcessKey(eKeys Key) {
    case Running:
       switch (Key) {
       case kBack:
-         printf("Status Running, kBack\n");
+         //printf("Status Running, kBack\n");
          RunningManager::getManager()->Stop(app);
          ((ControlRunningManager *)RunningManager::getManager())->ShutdownControl();
          status=Waiting;
@@ -194,7 +194,7 @@ void Control::SetApplication(ApplicationInfo::cApplication::Ptr a) {
 //#include <dfb++/dfb++.h>
 //#include <libmhpoutput/output.h>
 void Control::StartMhp() {
-   printf("Control::StartMhp()\n");
+   //printf("Control::StartMhp()\n");
    if (status==Stopped)
       return;
    //Check that everything essential is working, as far as we can see it.
@@ -526,7 +526,7 @@ ControlLoadingManager::~ControlLoadingManager() {
 }*/
 
 void ControlLoadingManager::Load(ApplicationInfo::cApplication::Ptr a, bool foreground) {
-   printf("ControlLoadingManager::Load\n");
+   //printf("ControlLoadingManager::Load\n");
    cMutexLock lock(&mutex);
    AppMap::iterator it=apps.find(a);
    if (it == apps.end()) {
@@ -543,7 +543,7 @@ void ControlLoadingManager::Load(ApplicationInfo::cApplication::Ptr a, bool fore
 }
 
 void ControlLoadingManager::Stop(ApplicationInfo::cApplication::Ptr a) {
-   printf("ControlLoadingManager::Stop\n");
+   //printf("ControlLoadingManager::Stop\n");
    cMutexLock lock(&mutex);
    AppMap::iterator it=apps.find(a);
    if (it != apps.end()) {
@@ -554,7 +554,7 @@ void ControlLoadingManager::Stop(ApplicationInfo::cApplication::Ptr a) {
 }*/
 
 LoadingState ControlLoadingManager::getState(ApplicationInfo::cApplication::Ptr a) {
-   printf("ControlLoadingManager::getState\n");
+   //printf("ControlLoadingManager::getState\n");
    cMutexLock lock(&mutex);
    AppMap::iterator it=apps.find(a);
    if (it != apps.end()) {
@@ -948,7 +948,7 @@ void CarouselLoader::StartObjectCarousel(Dsmcc::ObjectCarousel *hibernated) {
    std::list<ApplicationInfo::cTransportStream::Component>::iterator it;
    for (it=service->GetComponents()->begin(); it != service->GetComponents()->end(); ++it) {
       receiver->AddStream( (*it).pid, (*it).componentTag );
-      printf("Adding assoc_tag %d\n", (*it).componentTag);
+      //printf("Adding assoc_tag %d\n", (*it).componentTag);
    }
    //create or add carousel
    if (hibernated)

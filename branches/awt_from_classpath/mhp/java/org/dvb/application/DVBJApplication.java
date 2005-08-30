@@ -9,7 +9,7 @@ public class DVBJApplication extends MHPApplication implements DVBJProxy, XletCo
 
 DVBJApplication(long nativeData) {
    super(nativeData);
-   (new Exception("Stacktrace only: Here a new application is created")).printStackTrace();
+   //(new Exception("Stacktrace only: Here a new application is created")).printStackTrace();
 }
 
 protected Xlet xlet= null;
@@ -26,7 +26,7 @@ static protected MHPApplication GetApplication(AppID id) {
       } else
          app=null;
    }
-   System.out.println("DVBJApplication: Requesting application app ID "+id.getAID()+", org ID "+id.getOID()+", returning "+app);
+   //System.out.println("DVBJApplication: Requesting application app ID "+id.getAID()+", org ID "+id.getOID()+", returning "+app);
    return app;
 }
 

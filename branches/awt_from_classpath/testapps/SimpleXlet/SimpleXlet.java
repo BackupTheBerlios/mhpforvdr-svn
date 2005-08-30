@@ -85,7 +85,10 @@ public class SimpleXlet implements Xlet {
         //testStackTrace();
         //testJavaIO();
         //testUI_Image();
-        testUI_text();
+        //testUI_basic();
+        //testUI_negative();
+        //testUI_arcs();
+        testUI_KeyEvent();
     }
     
     // helper method
@@ -104,21 +107,47 @@ public class SimpleXlet implements Xlet {
     
     // --- Here are the unit tests ---
     
+    void testUI_Font() {
+    }
     
-    void testUI_basic() {
-       class SimpleComponent extends HComponent {
-          public void paint(java.awt.Graphics g) {
-             g.setColor(Color.black);
-             g.drawLine(10, 10, 200, 10);
-             g.setColor(Color.yellow);
-             g.drawLine(200, 10, 200, 300);
-             g.setColor(Color.red);
-             g.drawLine(200, 300, 10, 300);
-             g.setColor(Color.blue);
-             g.drawLine(10, 300, 10, 10);
+    void testUI_text() {
+        /*
+       class PrintSomething implements Runnable {
+       public void run() {
+       System.out.println("Ich bin ein Thread");
+       java.awt.Image im=java.awt.Toolkit.getDefaultToolkit().getImage("/usr/local/vdr/apps/HaviExample/foreground.png");
+    }
+    }
+       (new Thread(
+       new PrintSomething()
+        )).start();
+        */
+       class TestTextComponent extends HContainer implements KeyListener {
+          private HStaticText label;
+          private Color[] colors = { Color.black, Color.red, Color.blue };
+          private int intColor;
+          TestTextComponent() {
+             System.out.println("Creating text");
+             label = new HStaticText("This text should be yellow", 100, 100, 200, 200, new Font("Tiresias", Font.BOLD, 22), Color.yellow, colors[0], new HDefaultTextLayoutManager());
+             add(label);
+          }
+          public void keyTyped(KeyEvent e) {
+          }
+
+          public void keyReleased(KeyEvent e) {
+          }
+
+          public void keyPressed(KeyEvent e) {
+             intColor++;
+             if (intColor == colors.length) {
+                intColor = 0;
+             }
+             label.setBackground(colors[intColor]);
+             label.repaint();
           }
        }
-       testComponent(new SimpleComponent());
+       TestTextComponent comp=new TestTextComponent();
+       testComponent(comp);
     }
     
     void testUI_KeyEvent() {
@@ -134,15 +163,74 @@ public class SimpleXlet implements Xlet {
           }
 
           public void keyReleased(KeyEvent e) {
+             System.out.println("KeyListener.keyReleased "+message+": "+e);
           }
 
           public void keyPressed(KeyEvent e) {
+             System.out.println("KeyListener.keyPressed "+message+": "+e);
           }
        }
        KeyListenerComponent comp=new KeyListenerComponent();
        HScene s=testComponent(comp);
        comp.addKeyListener(new Listener("from Component"));
+       comp.requestFocus();
        s.addKeyListener(new Listener("from HScene"));
+    }
+    
+    // 30.08.2005: test passed
+    void testUI_negative() {
+       class SimpleComponent extends HComponent {
+          public void paint(java.awt.Graphics g) {
+             for (int i=-100; i<=100; i+=20)
+                drawAt(g, i, i);
+          }
+          void drawAt(java.awt.Graphics g, int x, int y) {
+             int hor = 200;
+             int ver = 300;
+             g.setColor(Color.white);
+             g.drawLine(x, y, x+hor, y);
+             g.setColor(Color.yellow);
+             g.drawLine(x+hor, y, x+hor, y+ver);
+             g.setColor(Color.red);
+             g.drawArc(x, y-ver, 2*hor, 2*ver, -90, -90);
+          }
+       }
+       testComponent(new SimpleComponent());
+    }
+    
+    // 30.08.2005: test passed
+    void testUI_arcs() {
+       class SimpleComponent extends HComponent {
+          public void paint(java.awt.Graphics g) {
+             g.setColor(Color.green);
+             g.drawArc(0, 0, 100, 100, 90, -270);
+             g.setColor(Color.yellow);
+             g.drawArc(100, 0, 100, 100, -90, -90);
+             g.setColor(Color.red);
+             g.drawArc(0, 100, 200, 200, 180, -180);
+             g.setColor(Color.blue);
+             g.drawArc(200, -200, 2*100, 2*200, -90, -90);
+          }
+       }
+       testComponent(new SimpleComponent());
+    }
+    
+    
+    // 29.08.2005: test passed
+    void testUI_basic() {
+       class SimpleComponent extends HComponent {
+          public void paint(java.awt.Graphics g) {
+             g.setColor(Color.black);
+             g.drawLine(10, 10, 200, 10);
+             g.setColor(Color.yellow);
+             g.drawLine(200, 10, 200, 300);
+             g.setColor(Color.red);
+             g.drawLine(200, 300, 10, 300);
+             g.setColor(Color.blue);
+             g.drawLine(10, 300, 10, 10);
+          }
+       }
+       testComponent(new SimpleComponent());
     }
     
     //28.08.2005: test passed
@@ -182,49 +270,6 @@ public class SimpleXlet implements Xlet {
           }
        }
        testComponent(new ImageComponent());
-    }
-    
-    void testUI_Font() {
-    }
-    
-    void testUI_text() {
-        /*
-       class PrintSomething implements Runnable {
-       public void run() {
-       System.out.println("Ich bin ein Thread");
-       java.awt.Image im=java.awt.Toolkit.getDefaultToolkit().getImage("/usr/local/vdr/apps/HaviExample/foreground.png");
-    }
-    }
-       (new Thread(
-       new PrintSomething()
-        )).start();
-        */
-       class TestTextComponent extends HContainer implements KeyListener {
-          private HStaticText label;
-          private Color[] colors = { Color.black, Color.red, Color.blue };
-          private int intColor;
-          TestTextComponent() {
-             System.out.println("Creating text");
-             label = new HStaticText("This text should be yellow", 100, 100, 200, 200, new Font("Tiresias", Font.BOLD, 22), Color.yellow, colors[0], new HDefaultTextLayoutManager());
-             add(label);
-          }
-          public void keyTyped(KeyEvent e) {
-          }
-
-          public void keyReleased(KeyEvent e) {
-          }
-
-          public void keyPressed(KeyEvent e) {
-            intColor++;
-               if (intColor == colors.length) {
-               intColor = 0;
-            }
-               label.setBackground(colors[intColor]);
-               label.repaint();
-          }
-       }
-       TestTextComponent comp=new TestTextComponent();
-       testComponent(comp);
     }
     
     //1.7.2005: test passed

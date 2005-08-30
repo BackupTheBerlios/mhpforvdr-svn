@@ -901,10 +901,8 @@ public void setClip ( int x, int y, int width, int height ) {
       x=0;
    if (y<0)
       y=0;
-   if (width<0)
-      width=0;
-   if (height<0)
-      height=0;
+   if (width<0 || height<0)
+      return;
    checkNativeData();
    clipX=x;
    clipY=y;

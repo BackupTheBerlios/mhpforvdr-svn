@@ -5,6 +5,10 @@ package org.dvb.media.content.dripfeed;
 import javax.media.Time;
 import javax.media.Control;
 
+// TODO:
+// I do not know why this class uses the HBackgroundDevice. That's wrong.
+// All this media stuff is unimplemented, the class is only an example.
+
 /* A player implementation for MPEG-2 drip, org.dvb.media.DripFeedDataSource
    The strange package name is required in order to be found by javax.media.Manager
 */
@@ -170,7 +174,7 @@ PlayerThread thread=new PlayerThread(this);
 
 void PlayData(byte[] data) {
    //service kindly provided by HBackgroundDevice, actual work done in MHPBackgroundPlane
-   bg.displayDripfeed(data);
+   //bg.displayDripfeed(data);
 }
 
 

@@ -156,7 +156,6 @@ public class DFBWindowPeer
      // do the actual native creation
      nativeData=createDFBWindow(nativeLayer,x,y,width, height);
      if (withEventThread) {
-        //MHPScreen.checkEventDispatching(); //make sure dispatching thread started
         nativeEventBuffer=attachEventBuffer(nativeData);
         if (nativeEventBuffer!=0)
            eventThread=new EventThread(awtComponent, nativeEventBuffer);
@@ -608,6 +607,7 @@ public class DFBWindowPeer
      KeyEvent keyEvent = new KeyEvent (awtComponent, id, when, mods,
                                        keyCode, keyChar);
 
+     //System.out.println("DFBWindowPeer: posting KeyEvent "+keyEvent);
     // Also post a KEY_TYPED event if keyEvent is a key press that
     // doesn't represent an action or modifier key.
      if (keyEvent.getID () == KeyEvent.KEY_PRESSED
@@ -999,6 +999,44 @@ interface DFBEventConstants {
    final static int DIBI_LAST           = 0x0000001F;   /* 32 buttons maximum */
 }
 
+/*
+typedef struct {
+   DFBEventClass                   clazz;      // clazz of event
+
+   DFBWindowEventType              type;       // type of event 
+   DFBWindowID                     window_id;  // source of event 
+
+     // used by DWET_MOVE, DWET_MOTION, DWET_BUTTONDOWN, DWET_BUTTONUP, DWET_ENTER, DWET_LEAVE 
+   int                             x;          // x position of window or coordinate within window 
+   int                             y;          // y position of window or coordinate within window 
+
+     // used by DWET_MOTION, DWET_BUTTONDOWN, DWET_BUTTONUP, DWET_ENTER, DWET_LEAVE 
+   int                             cx;         // x cursor position 
+   int                             cy;         // y cursor position 
+
+   // used by DWET_WHEEL 
+   int                             step;       // wheel step 
+
+   // used by DWET_RESIZE 
+   int                             w;          // width of window 
+   int                             h;          // height of window 
+
+   // used by DWET_KEYDOWN, DWET_KEYUP 
+   int                             key_code;   // hardware keycode, no mapping, -1 if device doesn't differentiate between several keys 
+   DFBInputDeviceKeyIdentifier     key_id;     // basic mapping, modifier independent 
+   DFBInputDeviceKeySymbol         key_symbol; // advanced mapping, unicode compatible, modifier dependent 
+   DFBInputDeviceModifierMask      modifiers;  // pressed modifiers 
+   DFBInputDeviceLockState         locks;      // active locks 
+
+   // used by DWET_BUTTONDOWN, DWET_BUTTONUP 
+   DFBInputDeviceButtonIdentifier  button;     // button being pressed or released 
+   // used by DWET_MOTION, DWET_BUTTONDOWN, DWET_BUTTONUP 
+   DFBInputDeviceButtonMask        buttons;    // mask of currently pressed buttons 
+
+   struct timeval                  timestamp;  // always set 
+} DFBWindowEvent;
+*/
+
 //this class translates the relevant native DirectFB events
 //to Java AWTEvents. These are posted to the Java eventQueue.
 class EventThread extends Thread implements DFBEventConstants {
@@ -1007,7 +1045,7 @@ class EventThread extends Thread implements DFBEventConstants {
    long nativeEvent; //one DFBEvent being recycled
    MHPPlane plane;
    private boolean running = false;
-   int[] eventData=new int[15];
+   int[] eventData=new int[16];
    long midnight;
 
    // allocate a native event structure
@@ -1021,7 +1059,9 @@ class EventThread extends Thread implements DFBEventConstants {
    private native boolean getEvent(long nativeData, long nativeEvent);
    // fills information from native event structure into Java array
    private native void fillEventInformation(long nativeEvent, int[] eventData);
-   /* 
+   /*
+   The eventData array contains the data from a DFBWindowEvent.
+   See above for this structure and for which events which fields are valid.
    The array is filled as follows:
    data[0]=e->type;               type of event, DFBEventConstants
    data[1]=e->x;                  x position of window or coordinate within window
@@ -1038,6 +1078,7 @@ class EventThread extends Thread implements DFBEventConstants {
    data[12]=e->buttons;           mask of currently pressed buttons
    data[13]=e->timestamp.tv_sec;  timestamp, seconds of day
    data[14]=e->timestamp.tv_usec; timestamp, microseconds of day
+   data[15]=AWT virtual key id    translation of key_id, which is a DFBInputDeviceKeyIdentifier, to KeyEvent's VK_ constants
    */
 
    EventThread(MHPPlane p, long nativeEventBuffer) {
@@ -1090,6 +1131,7 @@ class EventThread extends Thread implements DFBEventConstants {
       switch (eventData[0]) {
          case DWET_POSITION:
          case DWET_SIZE:
+         case DWET_POSITION_SIZE:
             // This stuff should work, but the three-liner below is probably easier
             /*
             //need to call package-private method of java.awt.Window here which handles these changes
@@ -1114,26 +1156,36 @@ class EventThread extends Thread implements DFBEventConstants {
             Dimension size = getSize();
             awtComponent.setBoundsCallback(p.x, p.y, size.width, size.height);
             break;
+
          case DWET_KEYDOWN:
-            //kaffe's key codes are unicode compatible, so DFB key_symbol == Java keyCode == Java keyChar
-            postKeyEvent(KeyEvent.KEY_PRESSED, getMillis(), getModifierMask(), eventData[9], (char)eventData[9]);
+            postKeyEvent(KeyEvent.KEY_PRESSED, getMillis(), getModifierMask(), eventData[16], (char)eventData[9]);
             break;
          case DWET_KEYUP:
-            postKeyEvent(KeyEvent.KEY_RELEASED, getMillis(), getModifierMask(), eventData[9], (char)eventData[9]);
+            postKeyEvent(KeyEvent.KEY_RELEASED, getMillis(), getModifierMask(), eventData[16], (char)eventData[9]);
             break;
+
+         // See http://java.sun.com/j2se/1.4.2/docs/api/java/awt/doc-files/FocusSpec.html
          case DWET_GOTFOCUS:
-            // do not post a FocusEvent here! This WindowEvent is the right choice
+            // do not post a FocusEvent here!
+            //System.out.println("DFBWindowPeer.EventThread: Posting WindowEvent.WINDOW_GAINED_FOCUS");
+            q().postEvent(new WindowEvent(awtComponent, WindowEvent.WINDOW_ACTIVATED));
             q().postEvent(new WindowEvent(awtComponent, WindowEvent.WINDOW_GAINED_FOCUS));
             break;
          case DWET_LOSTFOCUS:
+            //System.out.println("DFBWindowPeer.EventThread: Posting WindowEvent.WINDOW_LOST_FOCUS");
             q().postEvent(new WindowEvent(awtComponent, WindowEvent.WINDOW_LOST_FOCUS));
+            q().postEvent(new WindowEvent(awtComponent, WindowEvent.WINDOW_DEACTIVATED));
             break;
+
          case DWET_CLOSE:
+            //System.out.println("DFBWindowPeer.EventThread: Posting WindowEvent.WINDOW_CLOSING");
             q().postEvent(new WindowEvent(awtComponent, WindowEvent.WINDOW_CLOSING));
             break;
          case DWET_DESTROYED:
+            //System.out.println("DFBWindowPeer.EventThread: Posting WindowEvent.WINDOW_CLOSED");
             q().postEvent(new WindowEvent(awtComponent, WindowEvent.WINDOW_CLOSED));
             break;
+
          case DWET_BUTTONDOWN:
          case DWET_BUTTONUP:
          case DWET_MOTION:
@@ -1154,6 +1206,7 @@ class EventThread extends Thread implements DFBEventConstants {
    final int MULTI_CLICK_TIME = 250;
    
    void createMouseEvent() {
+      System.out.println("DFBWindowPeer.EventThread: Posting MouseEvent");
       long millis = getMillis();
       if ( (millis < (button_click_time + MULTI_CLICK_TIME))
              && (eventData[11] == button_number))
@@ -1175,34 +1228,37 @@ class EventThread extends Thread implements DFBEventConstants {
       key press event with modifiers=Shift, and a key release event with
       no modifiers."  */
       
+      // Then, information from DirectFB is somewhat limited. Not all fields are valid for all events, see structure
+      // with comments above, but these comments are the only source of this information, no official specification.
+      
       switch(eventData[0]) {
          case DWET_BUTTONDOWN:
-            q().postEvent(new MouseEvent(awtComponent, MouseEvent.MOUSE_PRESSED, millis, getModifierMask() | getModifierMaskForButton(), eventData[1], eventData[2], click_count, ((eventData[11] == DIBI_RIGHT) ? true : false)));
+            q().postEvent(new MouseEvent(awtComponent, MouseEvent.MOUSE_PRESSED, millis, getModifierMaskForButton(), eventData[1], eventData[2], click_count, ((eventData[11] == DIBI_RIGHT) ? true : false)));
             hasBeenDragged=false;
             break;
             
          case DWET_BUTTONUP:
-            q().postEvent(new MouseEvent(awtComponent, MouseEvent.MOUSE_RELEASED, millis, getModifierMask() | getModifierMaskForButton(), eventData[1], eventData[2], click_count, false));
+            q().postEvent(new MouseEvent(awtComponent, MouseEvent.MOUSE_RELEASED, millis, getModifierMaskForButton(), eventData[1], eventData[2], click_count, false));
             if (!hasBeenDragged)
-               q().postEvent(new MouseEvent(awtComponent, MouseEvent.MOUSE_RELEASED, millis, getModifierMask() | getModifierMaskForButton(), eventData[1], eventData[2], click_count, false));
+               q().postEvent(new MouseEvent(awtComponent, MouseEvent.MOUSE_RELEASED, millis, getModifierMaskForButton(), eventData[1], eventData[2], click_count, false));
             break;
             
          case DWET_MOTION:
             if ((getModifierMaskForButtonMask() & (InputEvent.BUTTON1_MASK | InputEvent.BUTTON2_MASK | InputEvent.BUTTON3_MASK)) != 0) {
-               q().postEvent(new MouseEvent(awtComponent, MouseEvent.MOUSE_DRAGGED, millis, getModifierMask() | getModifierMaskForButton(), eventData[1], eventData[2], 0, false));
+               q().postEvent(new MouseEvent(awtComponent, MouseEvent.MOUSE_DRAGGED, millis, getModifierMaskForButtonMask(), eventData[1], eventData[2], 0, false));
                hasBeenDragged=true;
             } else {
-               q().postEvent(new MouseEvent(awtComponent, MouseEvent.MOUSE_MOVED, millis, getModifierMask(), eventData[1], eventData[2], 0, false));
+               q().postEvent(new MouseEvent(awtComponent, MouseEvent.MOUSE_MOVED, millis, getModifierMaskForButtonMask(), eventData[1], eventData[2], 0, false));
             }
             break;
          case DWET_ENTER:
-            q().postEvent(new MouseEvent(awtComponent, MouseEvent.MOUSE_ENTERED, millis, getModifierMask()| getModifierMaskForButton(), eventData[1], eventData[2], 0, false));
+            q().postEvent(new MouseEvent(awtComponent, MouseEvent.MOUSE_ENTERED, millis, 0, eventData[1], eventData[2], 0, false));
             break;
          case DWET_LEAVE:
-            q().postEvent(new MouseEvent(awtComponent, MouseEvent.MOUSE_EXITED, millis, getModifierMask()| getModifierMaskForButton(), eventData[1], eventData[2], 0, false));
+            q().postEvent(new MouseEvent(awtComponent, MouseEvent.MOUSE_EXITED, millis, 0, eventData[1], eventData[2], 0, false));
             break;
          case DWET_WHEEL:
-            q().postEvent(new MouseEvent(awtComponent, MouseEvent.MOUSE_WHEEL, millis, getModifierMask()| getModifierMaskForButton(), eventData[1], eventData[2], 0, false));
+            q().postEvent(new MouseEvent(awtComponent, MouseEvent.MOUSE_WHEEL, millis, 0, eventData[1], eventData[2], 0, false));
             break;
          default:
             break;

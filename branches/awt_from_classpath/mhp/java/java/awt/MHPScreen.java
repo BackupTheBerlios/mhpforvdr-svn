@@ -36,10 +36,10 @@ static {
    System.setProperty("awt.toolkit", "vdr.mhp.awt.MHPToolkit");
 }
 
-//called by ApplicationMananger
+// called by ApplicationMananger
 public static void InitializeDisplaySystem() {
-   //do not create an instance of MHPScreen here - this is done by HScreen
-   //(and not necessary since MHPScreen is all static).
+   // do not create an instance of MHPScreen here - this is done by HScreen
+   // (and not necessary since MHPScreen is all static).
    int ratio=aspectRatio();
    if (ratio==0)
       aspectRatio=FourToThree;
@@ -48,7 +48,7 @@ public static void InitializeDisplaySystem() {
    
    deviceResolution=new Dimension(getDeviceResolutionX(), getDeviceResolutionY());
    
-   //install link to the org.dvb.event package
+   // install link to the org.dvb.event package
    KeyboardFocusManager manager;
    manager = KeyboardFocusManager.getCurrentKeyboardFocusManager ();
    manager.addKeyEventDispatcher(
@@ -60,9 +60,11 @@ public static void InitializeDisplaySystem() {
       }
    );
          
+   // set default background configuration
+   MHPBackgroundLayer.setDefaultBackgroundConfiguration();
 }
 
-//called by ApplicationMananger
+// called by ApplicationMananger
 public static void CleanUpDisplaySystem() {
 }
 
@@ -110,6 +112,7 @@ public static float getPixelAspectRatio() {
    // 16/9 / (5/4) = 64/45
 }
 
+// currently unused
 public static MHPBackgroundPlane createBackgroundPlane(int x, int y, int width, int height) {
    return new MHPBackgroundPlane(x, y, width, height);
 }

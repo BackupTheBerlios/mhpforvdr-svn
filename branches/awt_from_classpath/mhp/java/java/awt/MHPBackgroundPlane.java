@@ -4,6 +4,10 @@ import org.dvb.application.MHPApplication;
 import java.awt.MHPScreen;
 import vdr.mhp.awt.DFBWindowPeer;
 
+// Deprecated.
+// This code works, but now there is no extra IDirectFBWindow created for the background,
+// but the capabilities of the IDirectFBLayer are used. Hence see MHPBackgroundLayer.
+
 public class MHPBackgroundPlane extends MHPPlane implements java.awt.image.ImageObserver {
 
 Color color=Color.black;
@@ -61,7 +65,7 @@ private native void displayDripfeed(long nativeSurface, byte[] data);
 
 
 public void paint(Graphics g) {
-   //System.out.println("MHPBackgroundPlane::paint: Drawing image "+image);
+   System.out.println("MHPBackgroundPlane::paint "+image+", "+color);
    if (image != null) {
       if (imageRectangle == null) {
          g.drawImage(image, 0, 0, color, this);

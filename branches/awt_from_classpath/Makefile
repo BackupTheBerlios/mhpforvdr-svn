@@ -198,8 +198,9 @@ plugin-clean:
    
 testapps-install:
 	@install -d $(BASEDIR)/apps
+	@echo Copying content of ./testapps to $(BASEDIR)/apps
 	@( cd testapps; \
-	  find -not -path "*.svn*" -and -not -type d -and -not -name "*.java" -exec cp -av --parents "{}" $(BASEDIR)/apps \; \
+	  find -not -path "*.svn*" -and -not -type d -and -not -name "*.java" -exec cp -a --parents "{}" $(BASEDIR)/apps \; \
 	)
 
 ##Do not delete testapps in distclean, include .class files in distribution

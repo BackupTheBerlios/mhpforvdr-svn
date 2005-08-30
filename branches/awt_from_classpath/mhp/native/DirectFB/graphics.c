@@ -1,6 +1,5 @@
 #include <libjava/jniinterface.h>
 #include <dfb++/dfb++.h>
-#include "image.h"
 #include <vdr/thread.h>
 
 
@@ -248,16 +247,10 @@ void Java_vdr_mhp_awt_MHPNativeGraphics_drawArc(JNIEnv* env, jobject obj, jlong 
 
    IDirectFBSurface *surface=((IDirectFBSurface *)nativeData);
    
-   if (width<=0 || height<=0 || width<0 || height<0)
+   if (width<=0 || height<=0)
       return;
-   if (x<0)
-      x=0;
-   if (y<0)
-      y=0;
    if (arcAngle==0) //negative values are okay
       return;
-   if (startAngle < 0)
-      startAngle = -startAngle;
    if (startAngle > 360)
       startAngle = startAngle%360;
    
@@ -591,10 +584,6 @@ void Java_vdr_mhp_awt_MHPNativeGraphics_drawRoundRect(JNIEnv* env, jobject obj, 
    
    if (width<=0 || height<=0 || arcWidth<0 || arcHeight<0)
       return;
-   if (x<0)
-      x=0;
-   if (y<0)
-      y=0;
    if (height<arcHeight || width<arcWidth)
       return Java_vdr_mhp_awt_MHPNativeGraphics_drawRect(env, obj, nativeData, nativeFlipData, x,y,width, height);
    
@@ -750,16 +739,10 @@ void Java_vdr_mhp_awt_MHPNativeGraphics_fillArc(JNIEnv* env, jobject obj, jlong 
    IDirectFBSurface *surface=((IDirectFBSurface *)nativeData);
    //printf("Java_vdr_mhp_awt_MHPNativeGraphics_fillRoundRect: %dx%d, %dx%d\n", x, y, width, height);
    
-   if (width<=0 || height<=0 || width<0 || height<0)
+   if (width<=0 || height<=0)
       return;
-   if (x<0)
-      x=0;
-   if (y<0)
-      y=0;
    if (arcAngle==0) //negative values are okay
       return;
-   if (startAngle < 0)
-      startAngle = -startAngle;
    if (startAngle > 360)
       startAngle = startAngle%360;
    
@@ -984,10 +967,6 @@ void Java_vdr_mhp_awt_MHPNativeGraphics_fillPolygon(JNIEnv* env, jobject obj, jl
 void Java_vdr_mhp_awt_MHPNativeGraphics_fillRect(JNIEnv* env, jobject obj, jlong nativeData, jlong nativeFlipData, jint x, jint y, jint width, jint height) {
    IDirectFBSurface *surface=((IDirectFBSurface *)nativeData);
    //printf("Java_vdr_mhp_awt_MHPNativeGraphics_fillRect: %dx%d, %dx%d\n", x, y, width, height);
-   if (x<0)
-      x=0;
-   if (y<0)
-      y=0;
    try {
       surface->SetDrawingFlags(DSDRAW_BLEND);
       surface->FillRectangle(x, y, width+1, height+1);
@@ -1008,10 +987,6 @@ void Java_vdr_mhp_awt_MHPNativeGraphics_fillRoundRect(JNIEnv* env, jobject obj, 
    
    if (width<=0 || height<=0 || arcWidth<0 || arcHeight<0)
       return;
-   if (x<0)
-      x=0;
-   if (y<0)
-      y=0;
    if (height<arcHeight || width<arcWidth)
       return Java_vdr_mhp_awt_MHPNativeGraphics_fillRect(env, obj, nativeData, nativeFlipData, x,y,width, height);
    
