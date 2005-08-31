@@ -461,6 +461,7 @@ void Java_java_awt_MHPScreen_waitIdle(JNIEnv* env, jclass clazz) {
    MhpOutput::System::self()->Interface()->WaitIdle();
 }
 
+/*
 void Java_java_awt_MHPBackgroundPlane_displayDripfeed(JNIEnv* env, jobject obj, jlong nativeSurface, jbyteArray d) {
    jsize count=env->GetArrayLength(d);
    jbyte *data=env->GetByteArrayElements(d, 0);
@@ -508,6 +509,7 @@ void Java_java_awt_MHPBackgroundPlane_displayDripfeed(JNIEnv* env, jobject obj, 
    env->ReleaseByteArrayElements(d, data, JNI_ABORT);
    ((IDirectFBSurface *)nativeSurface)->Release();
 }
+*/
 
 
 } // extern "C"

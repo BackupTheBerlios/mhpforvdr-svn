@@ -1,12 +1,10 @@
 /*
    (c) Copyright 2000-2002  convergence integrated media GmbH.
-   (c) Copyright 2002       convergence GmbH.
-   
    All rights reserved.
 
-   Written by Denis Oliver Kropp <dok@directfb.org>,
-              Andreas Hundt <andi@fischlustig.de> and
-              Sven Neumann <sven@convergence.de>.
+   Written by Denis Oliver Kropp <dok@convergence.de>,
+              Andreas Hundt <andi@convergence.de> and
+              Sven Neumann <sven@convergence.de>
 
    This library is free software; you can redistribute it and/or
    modify it under the terms of the GNU Lesser General Public
@@ -24,12 +22,15 @@
    Boston, MA 02111-1307, USA.
 */
 
-#ifndef __SHM__SHM_H__
-#define __SHM__SHM_H__
+#ifndef DFBPP_INTERNAL_H
+#define DFBPP_INTERNAL_H
 
-//#include <core/fusion/lock.h>
-
-//extern FusionSkirmish dfb_shm_lock;
+#define DFBCHECK(x...)                                                \
+     do {                                                             \
+          DFBResult ret = (x);                                        \
+                                                                      \
+          if (ret)                                                    \
+               throw new DFBException (__PRETTY_FUNCTION__, ret);     \
+     } while (0);
 
 #endif
-

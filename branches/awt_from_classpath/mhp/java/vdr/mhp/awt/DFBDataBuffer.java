@@ -19,7 +19,6 @@ private long nativeData;
 private native long createBufferFromFile(byte[] filename) throws IOException;
 private native long createBufferFromData(byte[] data, int offset, int len) throws ArrayIndexOutOfBoundsException;
 
-//currently streaming buffers are broken in DFB++ and maybe DirectFB as well.
 private native long createBufferForStreaming() throws IOException;
 private native void putData(long nativeData, byte[] data, int len);
 private native void removeRef(long nativeData);
@@ -35,15 +34,13 @@ public DFBDataBuffer(byte[] data, int offset, int len) throws IOException {
 }
 
 public DFBDataBuffer(InputStream stream) throws IOException {
-   // Old code using DirectFB's streaming buffer
-   // Access to DirectFB's streaming buffer via DFB++ is broken. See native code.
-   /*
    nativeData = createBufferForStreaming();
    byte bytes[] = new byte[4096];
    int len = 0;
-   while ((len = is.read (bytes)) != -1)
+   while ((len = stream.read (bytes)) != -1)
       putData(nativeData, bytes, len);
-   */
+   
+   /*
    //This is a hack. Remove it as soon as the above code works.
    Vector v = new Vector();
    class Frame {
@@ -72,6 +69,7 @@ public DFBDataBuffer(InputStream stream) throws IOException {
       pos += f.length;
    }
    nativeData = createBufferFromData(data, 0, size);
+   */
 }
 
 long getNativeData() {

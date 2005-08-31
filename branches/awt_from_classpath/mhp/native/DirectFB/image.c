@@ -391,9 +391,8 @@ jlong Java_vdr_mhp_awt_DFBDataBuffer_createBufferFromFile(JNIEnv* env, jobject o
    bufDesc.file=fn;
 
    try {
-      data->buffer=MhpOutput::System::self()->Interface()->CreateDataBuffer(bufDesc);
+      data->buffer=MhpOutput::System::self()->Interface()->CreateDataBuffer(&bufDesc);
    } catch (DFBException *e) {
-      fprintf( stderr, "Unable to create the Data buffer: %s\n", e->GetResult() );
       printf("DirectFB: Error %s, %s\n", e->GetAction(), e->GetResult());
       env->ReleaseByteArrayElements(filename, (jbyte *)fn, JNI_ABORT);
       JNI::Exception::Throw(JNI::JavaIoIOException, "Unable to create data buffer for filename");
@@ -431,9 +430,8 @@ jlong Java_vdr_mhp_awt_DFBDataBuffer_createBufferFromData(JNIEnv* env, jobject o
    bufDesc.memory.length=len;
 
    try {
-      data->buffer=MhpOutput::System::self()->Interface()->CreateDataBuffer(bufDesc);
+      data->buffer=MhpOutput::System::self()->Interface()->CreateDataBuffer(&bufDesc);
    } catch (DFBException *e) {
-      fprintf( stderr, "Unable to create the Data buffer: %s\n", e->GetResult() );
       printf("DirectFB: Error %s, %s\n", e->GetAction(), e->GetResult());
       JNI::Exception::Throw(JNI::JavaIoIOException, "Unable to create data buffer");
       delete e;
@@ -445,25 +443,19 @@ jlong Java_vdr_mhp_awt_DFBDataBuffer_createBufferFromData(JNIEnv* env, jobject o
 
 jlong Java_vdr_mhp_awt_DFBDataBuffer_createBufferForStreaming(JNIEnv* env, jobject obj) //throws IOException;
 {
-   //TODO: DFB++/DirectFB is broken in this aspect. Fix this, then reenable this code.
-/*
-   IDirectFBDataBuffer *buffer;
+   DFBDataBufferNativeData *data;
+   data=new DFBDataBufferNativeData();
    
    try {
-      buffer=MhpOutput::System::self()->Interface()->CreateDataBuffer(bufDesc);
+      data->buffer=MhpOutput::System::self()->Interface()->CreateDataBuffer(NULL);
    } catch (DFBException *e) {
-      fprintf( stderr, "Unable to create the Data buffer: %s\n", e->GetResult() );
       printf("DirectFB: Error %s, %s\n", e->GetAction(), e->GetResult());
-      Exception exp;
-      exp.Throw("java/io/IOException", "Unable to create streaming data buffer");
+      JNI::Exception::Throw(JNI::JavaIoIOException, "Unable to create data buffer");
       delete e;
       return 0;
    }
    
-   env->ReleaseByteArrayElements(fileName, (jbyte *)fn, JNI_ABORT);
-   
-   return buffer;
-   */
+   return (jlong)data;
 }
 
 void Java_vdr_mhp_awt_DFBDataBuffer_putData(JNIEnv* env, jobject obj, jlong nativeData, jbyteArray data, jint len) {

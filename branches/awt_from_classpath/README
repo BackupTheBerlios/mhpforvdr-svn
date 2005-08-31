@@ -45,7 +45,7 @@ Installation:
          If you don't have GTK installed, you can savely disable
          compilation of the GTK peer of Classpath, it is not needed.
          
-   - DirectFB (www.directfb.org), version 0.9.20, 0.9.21 or 0.9.22.
+   - DirectFB (www.directfb.org), version 0.9.21 or 0.9.22.
       Please note that DirectFB is primarily used for its graphics capabilities.
       You do _not_ need a working framebuffer or supported graphics card.
       Do
@@ -66,16 +66,10 @@ Installation:
          - libjpeg >= 6.2
          - freetype2 >= 2.0.2 
          
-   - DFB++, with the same version number as your DirectFB installation
-   
-     This needs
+     DFB++ is now included in the package, but still needs
        * pkg-config (http://www.freedesktop.org/software/pkgconfig/, but
          this is a standard package, it will be available from your distributor)
         
-     If you installed DirectFB (as recommended) in /usr/local, and DFB++' configure
-     complains, do
-     PKG_CONFIG_PATH=/usr/local/lib/pkgconfig/ ./configure
-      
    - ffmpeg, both 0.4.8 and 0.4.9-pre1 are tested
      ./configure --enable-shared
 
