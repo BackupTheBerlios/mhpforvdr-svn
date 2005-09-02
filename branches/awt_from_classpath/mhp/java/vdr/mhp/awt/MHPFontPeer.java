@@ -50,12 +50,14 @@ import java.awt.FontMetrics;
 import java.awt.font.FontRenderContext;
 import java.awt.font.GlyphVector;
 import java.awt.font.LineMetrics;
+import java.awt.geom.AffineTransform;
 import java.awt.geom.Rectangle2D;
 import java.text.CharacterIterator;
 import java.text.StringCharacterIterator;
 import java.util.Locale;
 import java.util.Map;
 import java.util.ResourceBundle;
+import java.util.StringTokenizer;
 
 public class MHPFontPeer extends ClasspathFontPeer
 {
@@ -87,15 +89,26 @@ public class MHPFontPeer extends ClasspathFontPeer
       
    }
    */
+   static {
+      initStaticState();
+      fontDir = getFontDir();
+      // buildFontFilePath is very private. Do not use a logical font name such as SansSerif for this.
+      // familyNameToAvailableFont is the place to know which fonts are available natively, so leave this
+      // to the (not available) Tiresias here, will be mapped to available default font.
+      defaultFontFile = buildFontFilePath("Tiresias", Font.PLAIN);
+   }
 
-   //private native void initState ();
-   private native long setFont (String family, int style, int size);
+   private static native void initStaticState();
+   private static native String getFontDir();
+   private native long setFont (String filename, int style, int size);
    private native void removeRef (long nativeData);
 
    private native void getFontMetrics(long nativeData, double [] metrics);
    private native void getTextMetrics(long nativeData, String str, double [] metrics);
 
    long nativeData;
+   private static String fontDir;
+   private static String defaultFontFile;
    
    //called from MHPFontMetrics
    void getFontMetrics(double [] metrics) {
@@ -152,6 +165,141 @@ public class MHPFontPeer extends ClasspathFontPeer
    {
       return new String(chars, begin, limit - begin);
    }
+   
+  /*
+   * The 3 names of this font. all fonts have 3 names, some of which
+   * may be equal:
+   *
+   * logical -- name the font was constructed from
+   * family  -- a designer or brand name (Helvetica)
+   * face -- specific instance of a design (Helvetica Regular)
+   *
+   * Confusingly, a Logical Font is a concept unrelated to
+   * a Font's Logical Name. 
+   *
+   * A Logical Font is one of 6 built-in, abstract font types
+   * which must be supported by any java environment: SansSerif,
+   * Serif, Monospaced, Dialog, and DialogInput. 
+   *
+   * A Font's Logical Name is the name the font was constructed
+   * from. This might be the name of a Logical Font, or it might
+   * be the name of a Font Face.
+   protected String logicalName;
+   protected String familyName;
+   protected String faceName;
+  */
+   /* MHP:
+      The embedded font "Tiresias" shall have:
+         - the logical name "SansSerif" (for example returned by java.awt.Toolkit.getFontList)
+         - the family name "Tiresias" (for example returned by java.awt.Font.getFamily)
+         - the font face name "Tiresias PLAIN"
+   */
+
+   // Knows which fonts are packaged. (Vera Bitstream)
+   private static String familyNameToAvailableFont(String familyName) {
+      String lname = familyName.toLowerCase();
+      if (lname.equals("tiresias"))
+          return "vera";
+      else if (lname.equals("courier"))
+         return "veramo";
+      else if (lname.equals("times"))
+         return "veras";
+      else
+         return lname;
+   }
+   
+   private static String styleToFileSuffix(int style) {
+      switch (style) {
+         default:
+         case Font.PLAIN:
+            return "";
+         case Font.BOLD:
+            return "bd";
+         case Font.ITALIC:
+            return "it";
+         case Font.BOLD | Font.ITALIC:
+            return "bi";
+      }
+   }
+   
+   private static String buildFontFilePath(String familyName, int style) {
+      return fontDir + "/" + familyNameToAvailableFont(familyName) + styleToFileSuffix(style) + ".ttf";
+   }
+   
+   private void setNativeFont() {
+      // faceName and familyName as well as style and size have been set,
+      // possibly with the help of below functions.
+      nativeData = setFont(buildFontFilePath(familyName, style), style, (int)size);
+      if (nativeData == 0) {
+         // Even one of the vera fonts does not come with italic style, try PLAIN first.
+         nativeData = setFont(buildFontFilePath(familyName, Font.PLAIN), Font.PLAIN, (int)size);
+         if (nativeData == 0) {
+            nativeData = setFont(defaultFontFile, Font.PLAIN, (int)size);
+            if (nativeData == 0)
+               throw new InternalError("Cannot find default font, no fonts available");
+            else
+               System.out.println("Font "+logicalName+", "+familyName+", style "+style+", "+buildFontFilePath(familyName, style)+" not available, nor in style PLAIN, resorting to default font.");
+         } else
+            System.out.println("Font "+logicalName+", "+familyName+", style "+style+" not available, resorting to style PLAIN.");
+      }
+   }
+
+   // this is static, hides implementation from ClasspathFontPeer
+   protected static String logicalFontNameToFaceName (String name)
+   {
+      String uname = name.toUpperCase ();
+      if (uname.equals("SANSSERIF"))
+         return "Tiresias Plain";
+      else if (uname.equals ("SERIF"))
+         return "Times Plain";
+      else if (uname.equals ("MONOSPACED"))
+         return "Courier Plain";
+      else if (uname.equals ("DIALOG"))
+         return "Tiresias Plain";
+      else if (uname.equals ("DIALOGINPUT"))
+         return "Tiresias Plain";
+      else
+         return "Tiresias Plain";
+   }
+
+   // this is static, hides implementation from ClasspathFontPeer
+   protected static String faceNameToFamilyName (String faceName)
+   {
+      String name = null;
+
+      StringTokenizer st = new StringTokenizer(faceName, "- ");
+      while (st.hasMoreTokens())
+      {
+         String token = st.nextToken();
+         if (name == null)
+         {
+            name = token;
+            break;
+         }
+      }
+      return name;
+   }
+
+   // overridden from ClasspathFontPeer
+   protected void setStandardAttributes (String name, String family, int style, 
+                                         float size, AffineTransform trans)
+   {
+      this.logicalName = name;
+
+      if (isLogicalFontName (name))
+         this.faceName = logicalFontNameToFaceName (name);
+      else
+         this.faceName = name;
+
+      if (family != null)
+         this.familyName = family;
+      else
+         this.familyName = faceNameToFamilyName (faceName);
+    
+      this.style = style;
+      this.size = size;
+      this.transform = trans;
+   }
 
    /* Public API */
 
@@ -162,17 +310,18 @@ public class MHPFontPeer extends ClasspathFontPeer
    }
 
    public MHPFontPeer (String name, int style, int size)
-   {  
+   {
       super(name, style, size);    
       //initState ();
-      setFont (this.familyName.toLowerCase(), this.style, (int)this.size);
+      setNativeFont();
    }
 
    public MHPFontPeer (String name, Map attributes)
    {
+      // superclass cares for translating attributes -> style, size
       super(name, attributes);
       //initState ();
-      setFont (this.familyName.toLowerCase(), this.style, (int)this.size);
+      setNativeFont();
    }
   
    public String getSubFamilyName(Font font, Locale locale)

@@ -166,8 +166,12 @@ public class DFBWindowPeer
   }
 
   public synchronized void dispose() {
-     if (nativeData == 0) {
+     if (nativeData != 0) {
+        System.out.println("DFBWindowPeer.dispose()");
         destroy(nativeData);
+        // bring event thread to a clean end, handling all pending events
+        if (withEventThread)
+           eventThread.endEventHandling();
         removeRefs(nativeData, nativeEventBuffer);
         nativeData = 0;
      }
@@ -1045,6 +1049,7 @@ class EventThread extends Thread implements DFBEventConstants {
    long nativeEvent; //one DFBEvent being recycled
    MHPPlane plane;
    private boolean running = false;
+   private boolean comeToAnEnd = false;
    int[] eventData=new int[16];
    long midnight;
 
@@ -1054,6 +1059,10 @@ class EventThread extends Thread implements DFBEventConstants {
    private native void deleteEvent(long nativeEvent);
    // wait for events on native event buffer
    private native void waitForEvent(long nativeData);
+   // wake up any threads waiting in waitForEvent
+   private native void wakeUp(long nativeData);
+   // returns true if another event is available, but does not wait
+   private native boolean hasEvent(long nativeData);
    // read the next native event in native event structure
    // returns true if event is window event (should always be, I think)
    private native boolean getEvent(long nativeData, long nativeEvent);
@@ -1100,7 +1109,7 @@ class EventThread extends Thread implements DFBEventConstants {
       deleteEvent(nativeEvent);
    }
    
-   public void run() {      AWTEvent e;
+   public void run() {
       try {
          while (running) {
             handleNextEvent();
@@ -1115,7 +1124,14 @@ class EventThread extends Thread implements DFBEventConstants {
    
    AWTEvent handleNextEvent() {
       //System.out.println("Waiting for DFBEvent");
-      waitForEvent(nativeData);
+      if (comeToAnEnd) {
+         // handle pending events, but do not wait
+         if (!hasEvent(nativeData)) {
+            running = false;
+            return null;
+         }
+      } else
+         waitForEvent(nativeData);
       //System.out.println("Waited for DFBEvent");
       if (getEvent(nativeData, nativeEvent)) {
          fillEventInformation(nativeEvent, eventData);
@@ -1124,15 +1140,30 @@ class EventThread extends Thread implements DFBEventConstants {
       ((MHPToolkit)Toolkit.getDefaultToolkit()).wakeNativeWait();
       return null;
    }
+   
+   void endEventHandling() {
+      comeToAnEnd = true;
+      wakeUp(nativeData);
+      try {
+         join(1000);
+      } catch (InterruptedException e) {
+      }
+   }
 
    //creates an AWT event from DirectFB eventData
    void createAWTEvent() {
       //System.out.println("createAWTEvent: "+eventData[0]);
       switch (eventData[0]) {
          case DWET_POSITION:
+            awtComponent.setBoundsCallback(eventData[1], eventData[2], awtComponent.getWidth(), awtComponent.getHeight());
+            break;
          case DWET_SIZE:
+            awtComponent.setBoundsCallback(awtComponent.getX(), awtComponent.getY(), eventData[6], eventData[7]);
+            break;
          case DWET_POSITION_SIZE:
-            // This stuff should work, but the three-liner below is probably easier
+            awtComponent.setBoundsCallback(eventData[1], eventData[2], eventData[6], eventData[7]);
+            break;
+            // This stuff should work, but the one-liner above is probably easier :-)
             /*
             //need to call package-private method of java.awt.Window here which handles these changes
             AccessController.doPrivileged(new PrivilegedAction() {
@@ -1141,8 +1172,8 @@ class EventThread extends Thread implements DFBEventConstants {
                   // protected method invocaton
                   method.setAccessible(true);
                   // both access native information
-                  Point p = getLocationOnScreen();
-                  Dimension size = getSize();
+                  Point p = ;
+                  Dimension size = ;
                   try {
                      Object[] args = new Object[] { new Integer(p.x), new Integer(p.y), new Integer(size.width), new Integer(size.height)};
                      method.invoke(awtComponent, args);
@@ -1152,16 +1183,12 @@ class EventThread extends Thread implements DFBEventConstants {
                }
             });
             */
-            Point p = getLocationOnScreen();
-            Dimension size = getSize();
-            awtComponent.setBoundsCallback(p.x, p.y, size.width, size.height);
-            break;
 
          case DWET_KEYDOWN:
-            postKeyEvent(KeyEvent.KEY_PRESSED, getMillis(), getModifierMask(), eventData[16], (char)eventData[9]);
+            postKeyEvent(KeyEvent.KEY_PRESSED, getMillis(), getModifierMask(), eventData[15], (char)eventData[9]);
             break;
          case DWET_KEYUP:
-            postKeyEvent(KeyEvent.KEY_RELEASED, getMillis(), getModifierMask(), eventData[16], (char)eventData[9]);
+            postKeyEvent(KeyEvent.KEY_RELEASED, getMillis(), getModifierMask(), eventData[15], (char)eventData[9]);
             break;
 
          // See http://java.sun.com/j2se/1.4.2/docs/api/java/awt/doc-files/FocusSpec.html
@@ -1206,7 +1233,7 @@ class EventThread extends Thread implements DFBEventConstants {
    final int MULTI_CLICK_TIME = 250;
    
    void createMouseEvent() {
-      System.out.println("DFBWindowPeer.EventThread: Posting MouseEvent");
+      //System.out.println("DFBWindowPeer.EventThread: Posting MouseEvent");
       long millis = getMillis();
       if ( (millis < (button_click_time + MULTI_CLICK_TIME))
              && (eventData[11] == button_number))

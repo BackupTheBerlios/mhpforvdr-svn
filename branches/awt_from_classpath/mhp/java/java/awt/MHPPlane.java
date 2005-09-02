@@ -96,10 +96,6 @@ public void setBoundsCallback (int x, int y, int w, int h) {
    super.setBoundsCallback(x, y, w, h);
 }
 
-public void requestFocus () {
-   new Exception("MHPPlane.requestFocus()").printStackTrace();
-   super.requestFocus();
-}
 /*
 public void requestFocus () {
    //System.out.println("MHPPlane.requestFocus: is visible, don't call show? "+isVisible());

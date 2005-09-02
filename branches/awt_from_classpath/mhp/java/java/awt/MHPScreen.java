@@ -48,9 +48,10 @@ public static void InitializeDisplaySystem() {
    
    deviceResolution=new Dimension(getDeviceResolutionX(), getDeviceResolutionY());
    
-   // install link to the org.dvb.event package
    KeyboardFocusManager manager;
    manager = KeyboardFocusManager.getCurrentKeyboardFocusManager ();
+   
+   // install link to the org.dvb.event package
    manager.addKeyEventDispatcher(
       new KeyEventDispatcher() {
          public boolean dispatchKeyEvent(KeyEvent e) {
@@ -59,6 +60,35 @@ public static void InitializeDisplaySystem() {
          }
       }
    );
+   
+   // set appropriate FocusTraversalPolicy
+   manager.setDefaultFocusTraversalPolicy(
+      new ContainerOrderFocusTraversalPolicy() {
+      // This policy differs from DefaultFocusTraversalPolicy in the one point
+      // that lightweight components will get the focus as well -
+      // which is important since in MHP all components are lightweight.
+         protected boolean accept (Component comp) {
+            if (comp.visible
+               && comp.isDisplayable ()
+               && comp.enabled)
+            {
+               if (comp.isFocusTraversableOverridden != 0
+                  && (comp.isFocusTraversable () || comp.isFocusable()))
+                  return true;
+         
+               if (!(comp instanceof Canvas
+                     || comp instanceof Panel
+                     || comp instanceof Label
+                     || comp instanceof ScrollPane
+                     || comp instanceof Scrollbar
+                     || comp instanceof Window))
+                  return true;
+            }
+            return false;
+         }
+      }
+   );
+
          
    // set default background configuration
    MHPBackgroundLayer.setDefaultBackgroundConfiguration();

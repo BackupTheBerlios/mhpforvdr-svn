@@ -18,8 +18,8 @@ private long nativeData;
 
 private native long createBufferFromFile(byte[] filename) throws IOException;
 private native long createBufferFromData(byte[] data, int offset, int len) throws ArrayIndexOutOfBoundsException;
-
 private native long createBufferForStreaming() throws IOException;
+private native long createBufferFromStreamingBuffer(long nativeStreamingBuffer) throws IOException;
 private native void putData(long nativeData, byte[] data, int len);
 private native void removeRef(long nativeData);
 
@@ -34,11 +34,13 @@ public DFBDataBuffer(byte[] data, int offset, int len) throws IOException {
 }
 
 public DFBDataBuffer(InputStream stream) throws IOException {
-   nativeData = createBufferForStreaming();
+   long nativeStreamingBuffer = createBufferForStreaming();
    byte bytes[] = new byte[4096];
    int len = 0;
    while ((len = stream.read (bytes)) != -1)
-      putData(nativeData, bytes, len);
+      putData(nativeStreamingBuffer, bytes, len);
+   nativeData = createBufferFromStreamingBuffer(nativeStreamingBuffer);
+   removeRef(nativeStreamingBuffer);
    
    /*
    //This is a hack. Remove it as soon as the above code works.

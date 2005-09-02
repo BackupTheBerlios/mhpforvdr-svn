@@ -1,7 +1,9 @@
 
 import java.awt.Color;
 import java.awt.Font;
+import java.awt.FontMetrics;
 import java.awt.Component;
+import java.awt.Graphics;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import java.awt.Image;
@@ -64,8 +66,10 @@ public class SimpleXlet implements Xlet {
     public void destroyXlet(boolean flag) throws XletStateChangeException {
        System.out.println("destroyXlet");
        if (scene != null) {
-          scene.setVisible(false);
-          scene.removeAll();
+          //scene.setVisible(false);
+          //scene.removeAll();
+          System.out.println("Calling scene.dispose");
+          scene.dispose();
           scene = null;
        }
        context.notifyDestroyed();
@@ -88,26 +92,61 @@ public class SimpleXlet implements Xlet {
         //testUI_basic();
         //testUI_negative();
         //testUI_arcs();
-        testUI_KeyEvent();
+        //testUI_KeyEvent();
+        //testUI_Font();
+        testUI_basic();
     }
     
     // helper method
     HScene testComponent(Component comp) {
-        HSceneFactory hsceneFactory = HSceneFactory.getInstance();
-        System.out.println("Creating scene");
-        scene = hsceneFactory.getFullScreenScene(HScreen.getDefaultHScreen().getDefaultHGraphicsDevice());
-        
-        comp.setBounds(scene.getBounds());
-        comp.setVisible(true);
-        scene.add(comp);
-        scene.setVisible(true);
-        return scene;
+         if (scene == null) {
+            HSceneFactory hsceneFactory = HSceneFactory.getInstance();
+            System.out.println("Creating scene");
+            scene = hsceneFactory.getFullScreenScene(HScreen.getDefaultHScreen().getDefaultHGraphicsDevice());
+            
+            comp.setBounds(scene.getBounds());
+            comp.setVisible(true);
+            scene.add(comp);
+            scene.setVisible(true);
+         } else {
+            comp.setBounds(scene.getBounds());
+            comp.setVisible(true);
+            scene.add(comp);
+         }
+         return scene;
     }
     
     
     // --- Here are the unit tests ---
     
     void testUI_Font() {
+       class FontComponent extends HComponent {
+          FontComponent() {
+             //setBackground(Color.white);
+             System.out.println("FontComponent constructor");
+          }
+          public void paint(Graphics g) {
+             System.out.println("FontComponent paint");
+             g.setColor(Color.blue);
+             Font medium = new Font("SansSerif", Font.BOLD, 36);
+             Font large = new Font(null, Font.PLAIN, 100);
+             Font unknown = new Font("abcde", Font.BOLD, 14);
+             String s = "Drawn with default font";
+             g.drawString(s, 10, 20);
+             g.setFont(medium);
+             g.drawString("Drawn with medium font", 10, 56);
+             g.setFont(large);
+             g.drawString("Large", 200, 200);
+             g.setFont(unknown);
+             g.drawString("Unknown font", 10, 70);
+             FontMetrics m = Toolkit.getDefaultToolkit().getFontMetrics(medium);
+             int width=m.stringWidth(s);
+             System.out.println("FontMetrics: Ascent "+m.getAscent()+", descent "+m.getDescent()+", height "+m.getHeight()+", maxDescent "+m.getMaxDescent()+", width of \'A\' "+m.charWidth('A')+", text width "+width);
+             g.setColor(Color.green);
+             g.drawRect(10, 20-m.getAscent(), width, m.getAscent()+m.getDescent());
+          }
+       }
+       testComponent(new FontComponent());
     }
     
     void testUI_text() {
@@ -150,6 +189,7 @@ public class SimpleXlet implements Xlet {
        testComponent(comp);
     }
     
+    // 31.08.2005 test passed
     void testUI_KeyEvent() {
        class KeyListenerComponent extends HComponent {
        }
@@ -173,18 +213,17 @@ public class SimpleXlet implements Xlet {
        KeyListenerComponent comp=new KeyListenerComponent();
        HScene s=testComponent(comp);
        comp.addKeyListener(new Listener("from Component"));
-       comp.requestFocus();
        s.addKeyListener(new Listener("from HScene"));
     }
     
     // 30.08.2005: test passed
     void testUI_negative() {
        class SimpleComponent extends HComponent {
-          public void paint(java.awt.Graphics g) {
+          public void paint(Graphics g) {
              for (int i=-100; i<=100; i+=20)
                 drawAt(g, i, i);
           }
-          void drawAt(java.awt.Graphics g, int x, int y) {
+          void drawAt(Graphics g, int x, int y) {
              int hor = 200;
              int ver = 300;
              g.setColor(Color.white);
@@ -194,14 +233,14 @@ public class SimpleXlet implements Xlet {
              g.setColor(Color.red);
              g.drawArc(x, y-ver, 2*hor, 2*ver, -90, -90);
           }
-       }
+      }
        testComponent(new SimpleComponent());
     }
     
     // 30.08.2005: test passed
     void testUI_arcs() {
        class SimpleComponent extends HComponent {
-          public void paint(java.awt.Graphics g) {
+          public void paint(Graphics g) {
              g.setColor(Color.green);
              g.drawArc(0, 0, 100, 100, 90, -270);
              g.setColor(Color.yellow);
@@ -219,7 +258,7 @@ public class SimpleXlet implements Xlet {
     // 29.08.2005: test passed
     void testUI_basic() {
        class SimpleComponent extends HComponent {
-          public void paint(java.awt.Graphics g) {
+          public void paint(Graphics g) {
              g.setColor(Color.black);
              g.drawLine(10, 10, 200, 10);
              g.setColor(Color.yellow);
@@ -228,6 +267,8 @@ public class SimpleXlet implements Xlet {
              g.drawLine(200, 300, 10, 300);
              g.setColor(Color.blue);
              g.drawLine(10, 300, 10, 10);
+             g.setColor(new Color(0xF0, 0xF0, 0xF0));
+             g.fillRect(210, 310, 50, 50);
           }
        }
        testComponent(new SimpleComponent());
@@ -243,16 +284,17 @@ public class SimpleXlet implements Xlet {
                 System.out.println("Toolkit is null!");
              imageSpektrum=tk.getImage("farbspektrum.jpg");
              URL url=null;
-             /*
+             // You cannot simply access the internet in MHP, but here it is done
+             // to test image loading rather than Internet access.
              try {
                 url=new URL("http://www.mhp.org/graphics/mhp-sitewide/logo.gif");
              } catch (java.net.MalformedURLException e) {
                 e.printStackTrace();
              }
              imageInternet=tk.getImage(url);
-             */imageInternet=imageSpektrum;
+             //imageInternet=imageSpektrum;
           }
-          public void paint(java.awt.Graphics g) {
+          public void paint(Graphics g) {
              //System.out.println("Drawing!");
              g.drawImage(imageSpektrum, 0, 0, this);
              g.drawImage(imageInternet, 400, 300, this);
@@ -326,7 +368,7 @@ public class SimpleXlet implements Xlet {
     void testXMI() {
     
         class XMIComponent extends org.havi.ui.HComponent {
-           public void paint(java.awt.Graphics g) {
+           public void paint(Graphics g) {
                System.out.println("Printing XMIComponent");
                g.setColor(Color.black);
                g.fillRoundRect(10, 10, 90, 90, 15, 18);

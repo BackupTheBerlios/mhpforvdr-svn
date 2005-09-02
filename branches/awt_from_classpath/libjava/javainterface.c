@@ -179,7 +179,8 @@ bool JavaInterface::StartJava() {
       
       methods->shutdown.SetMethod("vdr/mhp/ApplicationManager", "Shutdown", JNI::Int, formatNoArguments) &&
       methods->stopApplications.SetMethod("vdr/mhp/ApplicationManager", "StopApplications", JNI::Int, formatNoArguments) &&
-      JNI::Exception::Initialize() 
+      JNI::Exception::Initialize() &&
+      JNI::String::Initialize()
          )
       ) {
       esyslog("Failed to initialize Java system: Cannot find method ID");
@@ -312,27 +313,36 @@ const char *BaseObject::getSignature(Types returnType, int args, va_list ap) {
    format+='(';
    
    Types t;
-   for (int i=0;i<args;i++) {
+   for (int i=0;i<args;) {
       t=(Types)va_arg(ap, int);
       if (t != Void) {
          format+=(char)t;
-         if (t == JNI::Object || t == Array) {
+         if (t == JNI::Object) {
             const char *c=va_arg(ap, const char *);
             format+=c;
-         }
-         if (t == JNI::Object)
             format+=';';
+         } else if (t == Array)
+            continue; // simply add next argument, but without counting it
       }
+      i++;
    }
+   
    format+=')';
    
    format+=(char)returnType;
-   if (returnType == JNI::Object || returnType == Array) {
+   if (returnType == JNI::Object) {
       const char *c=va_arg(ap, const char *);
       format+=c;
-   }
-   if (returnType == JNI::Object)
       format+=';';
+   } else if (returnType == Array) {
+      t=(Types)va_arg(ap, int);
+      format+=(char)t;
+      if (t == JNI::Object) {
+         const char *c=va_arg(ap, const char *);
+         format+=c;
+         format+=';';
+      }
+   }
    
    return format.getCharArray();
    /*
@@ -768,6 +778,80 @@ bool Exception::Throw(PredefinedException e, const char *errMsg) {
       default:
          return false;
    }
+}
+
+String::String(const char *cstring) 
+   : javastring(0), cstring(cstring), utf8(0), ownsCString(false)
+{
+}
+
+String::String(jstring javastring)
+   : javastring(javastring), cstring(0), utf8(0), ownsCString(false)
+{
+}
+
+String::~String() {
+   if (utf8)
+      JNIEnvProvider::GetEnv()->ReleaseStringUTFChars(javastring, utf8);
+   if (cstring && ownsCString)
+      delete cstring;
+}
+
+jstring String::toJavaString() {
+   if (javastring)
+      return javastring;
+   int len=strlen(cstring);
+   jbyteArray bytes=JNIEnvProvider::GetEnv()->NewByteArray(len);
+   JNIEnvProvider::GetEnv()->SetByteArrayRegion(bytes, 0, len, (jbyte *)cstring);
+   if (!checkException())
+      return 0;
+   // Use java.lang.String(byte[]) to create a String from characters in local encoding
+   javaLangStringByteArray.NewObject(javastring, bytes);
+   checkException();
+   return javastring;
+}
+
+const char *String::toUTF8() {
+   if (utf8)
+      return utf8;
+   if (!javastring)
+      toJavaString();
+   utf8 = JNIEnvProvider::GetEnv()->GetStringUTFChars(javastring, NULL);
+   return utf8;
+}
+
+const char *String::toCString() {
+   if (cstring)
+      return cstring;
+   jbyteArray bytes;
+   JNI::ReturnType returnedArray;
+   // Use java.lang.String.getBytes() to obtain a character array in local encoding
+   if (javaLangStringGetBytes.CallMethod(javastring, returnedArray)) {
+      bytes=(jbyteArray)returnedArray.TypeObject;
+      int len=JNIEnvProvider::GetEnv()->GetArrayLength(bytes);
+      char *str=new char[len+1];
+      JNIEnvProvider::GetEnv()->GetByteArrayRegion(bytes, 0, len, (jbyte *)str);
+      if (!checkException()) {
+         delete str;
+         return 0;
+      }
+      // do not forget null termination
+      str[len]='\0';
+      ownsCString=true;
+      cstring=str;
+   }
+   checkException();
+   return cstring;
+}
+
+Constructor String::javaLangStringByteArray;
+InstanceMethod String::javaLangStringGetBytes;
+
+bool String::Initialize() {
+   bool success = true;
+   success = success && javaLangStringByteArray.SetConstructorWithArguments("java/lang/String", 1, JNI::Array, JNI::Byte);
+   success = success && javaLangStringGetBytes.SetMethodWithArguments("java/lang/String", "getBytes", JNI::Array, 0, JNI::Byte);
+   return success;
 }
 
 

@@ -169,8 +169,8 @@ public HScene getDefaultHScene(HScreen screen) {
       The specs require that an java.lang.IllegalStateException be thrown
       on further references to the HScene. // TODO: not enforced.
       @param scene HScene to remove */
-  public void dispose(HScene scene) {
-    HScreen.getDefaultHScreen().getDefaultHGraphicsDevice().removeHScene(scene);
-  }
+public void dispose(HScene scene) {
+   scene.dispose();
+}
 
 }

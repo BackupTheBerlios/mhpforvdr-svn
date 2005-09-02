@@ -40,7 +40,7 @@ enum MHPBackgroundLayerMode {
    MODE_IMAGETILE = 3,
 };
 
-void Java_java_awt_MHPBackgroundLayer_setLayerBackgroundMode(JNIEnv* env, jobject obj, long nativeLayer, int mode) {
+void Java_java_awt_MHPBackgroundLayer_setLayerBackgroundMode(JNIEnv* env, jobject obj, jlong nativeLayer, int mode) {
    IDirectFBDisplayLayer *layer=(IDirectFBDisplayLayer *)nativeLayer;
    try {
       switch ((MHPBackgroundLayerMode)mode) {
@@ -64,7 +64,7 @@ void Java_java_awt_MHPBackgroundLayer_setLayerBackgroundMode(JNIEnv* env, jobjec
    }
 }
 
-void Java_java_awt_MHPBackgroundLayer_setLayerBackgroundColor(JNIEnv* env, jobject obj, long nativeLayer, int r, int g, int b, int a) {
+void Java_java_awt_MHPBackgroundLayer_setLayerBackgroundColor(JNIEnv* env, jobject obj, jlong nativeLayer, jint r, jint g, jint b, jint a) {
    try {
       ((IDirectFBDisplayLayer *)nativeLayer)->SetBackgroundColor(r, g, b, a);
    } catch (DFBException *e) {
@@ -73,7 +73,7 @@ void Java_java_awt_MHPBackgroundLayer_setLayerBackgroundColor(JNIEnv* env, jobje
    }
 }
 
-void Java_java_awt_MHPBackgroundLayer_setLayerBackgroundImage(JNIEnv* env, jobject obj, long nativeLayer, long nativeSurface) {
+void Java_java_awt_MHPBackgroundLayer_setLayerBackgroundImage(JNIEnv* env, jobject obj, jlong nativeLayer, jlong nativeSurface) {
    try {
       ((IDirectFBDisplayLayer *)nativeLayer)->SetBackgroundImage((IDirectFBSurface *)nativeSurface);
    } catch (DFBException *e) {
@@ -223,7 +223,7 @@ jint Java_vdr_mhp_awt_DFBWindowPeer_getOpacity(JNIEnv* env, jobject obj, jlong n
 
 void Java_vdr_mhp_awt_DFBWindowPeer_raise(JNIEnv* env, jobject obj, jlong nativeData) {
    try {
-      return ((IDirectFBWindow *)nativeData)->Raise();
+      ((IDirectFBWindow *)nativeData)->Raise();
    } catch (DFBException *e) {
       printf("DirectFB: Error %s, %s\n", e->GetAction(), e->GetResult());
       delete e;
@@ -233,7 +233,7 @@ void Java_vdr_mhp_awt_DFBWindowPeer_raise(JNIEnv* env, jobject obj, jlong native
 
 void Java_vdr_mhp_awt_DFBWindowPeer_lower(JNIEnv* env, jobject obj, jlong nativeData) {
    try {
-      return ((IDirectFBWindow *)nativeData)->Lower();
+      ((IDirectFBWindow *)nativeData)->Lower();
    } catch (DFBException *e) {
       printf("DirectFB: Error %s, %s\n", e->GetAction(), e->GetResult());
       delete e;
@@ -243,7 +243,7 @@ void Java_vdr_mhp_awt_DFBWindowPeer_lower(JNIEnv* env, jobject obj, jlong native
 
 void Java_vdr_mhp_awt_DFBWindowPeer_raiseToTop(JNIEnv* env, jobject obj, jlong nativeData) {
    try {
-      return ((IDirectFBWindow *)nativeData)->RaiseToTop();
+      ((IDirectFBWindow *)nativeData)->RaiseToTop();
    } catch (DFBException *e) {
       printf("DirectFB: Error %s, %s\n", e->GetAction(), e->GetResult());
       delete e;
@@ -253,7 +253,7 @@ void Java_vdr_mhp_awt_DFBWindowPeer_raiseToTop(JNIEnv* env, jobject obj, jlong n
 
 void Java_vdr_mhp_awt_DFBWindowPeer_lowerToBottom(JNIEnv* env, jobject obj, jlong nativeData) {
    try {
-      return ((IDirectFBWindow *)nativeData)->LowerToBottom();
+      ((IDirectFBWindow *)nativeData)->LowerToBottom();
    } catch (DFBException *e) {
       printf("DirectFB: Error %s, %s\n", e->GetAction(), e->GetResult());
       delete e;
@@ -263,7 +263,7 @@ void Java_vdr_mhp_awt_DFBWindowPeer_lowerToBottom(JNIEnv* env, jobject obj, jlon
 
 void Java_vdr_mhp_awt_DFBWindowPeer_putAtop(JNIEnv* env, jobject obj, jlong nativeData, jlong otherNativeData) {
    try {
-      return ((IDirectFBWindow *)nativeData)->PutAtop((IDirectFBWindow *)otherNativeData);
+      ((IDirectFBWindow *)nativeData)->PutAtop((IDirectFBWindow *)otherNativeData);
    } catch (DFBException *e) {
       printf("DirectFB: Error %s, %s\n", e->GetAction(), e->GetResult());
       delete e;
@@ -273,7 +273,7 @@ void Java_vdr_mhp_awt_DFBWindowPeer_putAtop(JNIEnv* env, jobject obj, jlong nati
 
 void Java_vdr_mhp_awt_DFBWindowPeer_putBelow(JNIEnv* env, jobject obj, jlong nativeData, jlong otherNativeData) {
    try {
-      return ((IDirectFBWindow *)nativeData)->PutBelow((IDirectFBWindow *)otherNativeData);
+      ((IDirectFBWindow *)nativeData)->PutBelow((IDirectFBWindow *)otherNativeData);
    } catch (DFBException *e) {
       printf("DirectFB: Error %s, %s\n", e->GetAction(), e->GetResult());
       delete e;
@@ -287,7 +287,7 @@ void Java_vdr_mhp_awt_DFBWindowPeer_getPosition(JNIEnv* env, jobject obj, jlong 
    native_points = env->GetIntArrayElements(java_points, NULL);
    
    try {
-      return ((IDirectFBWindow *)nativeData)->GetPosition(&native_points[0], &native_points[1]);
+      ((IDirectFBWindow *)nativeData)->GetPosition(&native_points[0], &native_points[1]);
    } catch (DFBException *e) {
       printf("DirectFB: Error %s, %s\n", e->GetAction(), e->GetResult());
       delete e;
@@ -302,7 +302,7 @@ void Java_vdr_mhp_awt_DFBWindowPeer_getSize(JNIEnv* env, jobject obj, jlong nati
    native_size = env->GetIntArrayElements(java_size, NULL);
    
    try {
-      return ((IDirectFBWindow *)nativeData)->GetSize(&native_size[0], &native_size[1]);
+      ((IDirectFBWindow *)nativeData)->GetSize(&native_size[0], &native_size[1]);
    } catch (DFBException *e) {
       printf("DirectFB: Error %s, %s\n", e->GetAction(), e->GetResult());
       delete e;
@@ -313,7 +313,7 @@ void Java_vdr_mhp_awt_DFBWindowPeer_getSize(JNIEnv* env, jobject obj, jlong nati
 
 void Java_vdr_mhp_awt_DFBWindowPeer_setSize(JNIEnv* env, jobject obj, jlong nativeData, jint width, jint height) {
    try {
-      return ((IDirectFBWindow *)nativeData)->Resize(width, height);
+      ((IDirectFBWindow *)nativeData)->Resize(width, height);
    } catch (DFBException *e) {
       printf("DirectFB: Error %s, %s\n", e->GetAction(), e->GetResult());
       delete e;
@@ -323,7 +323,7 @@ void Java_vdr_mhp_awt_DFBWindowPeer_setSize(JNIEnv* env, jobject obj, jlong nati
 
 void Java_vdr_mhp_awt_DFBWindowPeer_moveTo(JNIEnv* env, jobject obj, jlong nativeData, jint x, jint y) {
    try {
-      return ((IDirectFBWindow *)nativeData)->MoveTo(x, y);
+      ((IDirectFBWindow *)nativeData)->MoveTo(x, y);
    } catch (DFBException *e) {
       printf("DirectFB: Error %s, %s\n", e->GetAction(), e->GetResult());
       delete e;
@@ -388,6 +388,19 @@ void Java_vdr_mhp_awt_DFBWindowPeer_00024EventThread_waitForEvent(JNIEnv* env, j
    }
 }
 
+void Java_vdr_mhp_awt_DFBWindowPeer_00024EventThread_wakeUp(JNIEnv* env, jobject obj, jlong nativeData) {
+   try {
+      ((IDirectFBEventBuffer *)nativeData)->WakeUp();
+   } catch (DFBException *e) {
+      printf("DirectFB: Error %s, %s\n", e->GetAction(), e->GetResult());
+      delete e;
+   }
+}
+
+jboolean Java_vdr_mhp_awt_DFBWindowPeer_00024EventThread_hasEvent(JNIEnv* env, jobject obj, jlong nativeData) {
+   return ((IDirectFBEventBuffer *)nativeData)->HasEvent();
+}
+
 jboolean Java_vdr_mhp_awt_DFBWindowPeer_00024EventThread_getEvent(JNIEnv* env, jobject obj, jlong nativeData, jlong nativeEvent) {
    try {
       DFBEvent *ev=(DFBEvent *)nativeEvent;
@@ -439,6 +452,12 @@ jboolean Java_vdr_mhp_awt_DFBWindowPeer_$EventThread_getEvent(JNIEnv* env, jobje
 }
 void Java_vdr_mhp_awt_DFBWindowPeer_$EventThread_fillEventInformation(JNIEnv* env, jobject obj, jlong nativeEvent, jintArray eventData) {
    return Java_vdr_mhp_awt_DFBWindowPeer_00024EventThread_fillEventInformation(env, obj, nativeEvent, eventData);
+}
+void Java_vdr_mhp_awt_DFBWindowPeer_$EventThread_wakeUp(JNIEnv* env, jobject obj, jlong nativeData) {
+   return Java_vdr_mhp_awt_DFBWindowPeer_00024EventThread_wakeUp(env, obj, nativeData);
+}
+jboolean Java_vdr_mhp_awt_DFBWindowPeer_$EventThread_hasEvent(JNIEnv* env, jobject obj, jlong nativeData) {
+   return Java_vdr_mhp_awt_DFBWindowPeer_00024EventThread_hasEvent(env, obj, nativeData);
 }
 /*** MHPScreen ***/
 

@@ -17,12 +17,14 @@ enum java_awt_font_baseline {
    java_awt_font_HANGING_BASELINE = 2
 };
 
+/*
 static char *styles[4] = {
      "",   //plain
      "bd", //bold
      "i",  //italic
      "bi"  //bold italic
 };
+*/
 
 #define FONT_METRICS_ASCENT      0
 #define FONT_METRICS_MAX_ASCENT  1
@@ -54,7 +56,7 @@ static char *styles[4] = {
 #define GLYPH_POS_X(i)      (NUM_GLYPH_METRICS * (i) + 8)
 #define GLYPH_POS_Y(i)      (NUM_GLYPH_METRICS * (i) + 9)
 
-static char *defaultFont= MHPFONTDIR "/vera.ttf";
+//static char *defaultFont= MHPFONTDIR "/vera.ttf";
 static JNI::Constructor mhpGlyphVectorConstructor;
 
 void Java_vdr_mhp_awt_MHPFontPeer_initStaticState(JNIEnv* env, jclass clazz) {
@@ -63,37 +65,71 @@ void Java_vdr_mhp_awt_MHPFontPeer_initStaticState(JNIEnv* env, jclass clazz) {
    mhpGlyphVectorConstructor.SetExceptionHandling(JNI::DoNotClearExceptions);
 }
 
-jlong Java_vdr_mhp_awt_MHPFontPeer_setFont(JNIEnv* env, jobject obj, jstring spec, jint style, jint size) {
+jstring Java_vdr_mhp_awt_MHPFontPeer_getFontDir(JNIEnv* env, jclass clazz) {
+   JNI::String dir(MHPFONTDIR);
+   return dir.toJavaString();
+}
+
+jlong Java_vdr_mhp_awt_MHPFontPeer_setFont(JNIEnv* env, jobject obj, jstring java_path, jint style, jint size) {
    DFBFontDescription desc;
+   JNI::String path(java_path);
    
-   const char *fontname=(const char *)env->GetStringUTFChars(spec, NULL);
-   int len=strlen(MHPFONTDIR)+strlen(fontname)+3+4;
-   char filename[len];
-   sprintf(filename, "%s/%s%s%s", MHPFONTDIR, fontname, styles[style & 0x3], ".ttf");
-   env->ReleaseStringUTFChars(spec, fontname);
+   desc.flags = (DFBFontDescriptionFlags) (DFDESC_HEIGHT);
+   //desc.width = size * 3 / 4;
+   desc.height = size;
    
-   desc.flags = (DFBFontDescriptionFlags) (DFDESC_WIDTH | DFDESC_HEIGHT);
-   desc.width = size * 3 / 4;
-   desc.height = size;   
-   
-   IDirectFBFont *font;
+   IDirectFBFont *font = 0;
+   printf("MHPFontPeer.setFont(): Loading font %s\n", path.toCString());
    try {
-      font=MhpOutput::System::self()->Interface()->CreateFont(filename, desc);
+      font=MhpOutput::System::self()->Interface()->CreateFont(path.toCString(), desc);
+   } catch (DFBException *e) {
+      delete e;
+      printf("DirectFB: Error %s, %s\n", e->GetAction(), e->GetResult());
+   }
+   return (jlong)font;
+}
+
+/*
+jlong Java_vdr_mhp_awt_MHPFontPeer_setFont(JNIEnv* env, jobject obj, jstring java_path, jint style, jint size) {
+   DFBFontDescription desc;
+   const char *filename, *alternateFilename;
+   
+   const char *filename=(const char *)env->GetStringUTFChars(java_filename, NULL);
+   const char *alternateFilename=(const char *)env->GetStringUTFChars(java_alternateFilename, NULL);
+   
+   char path[strlen(MHPFONTDIR)+ (strlen(filename) ?> strlen(alternateFilename))];
+   sprintf(path, "%s/%s%s%s", MHPFONTDIR, filename);
+   
+   desc.flags = (DFBFontDescriptionFlags) (DFDESC_HEIGHT);
+   //desc.width = size * 3 / 4;
+   desc.height = size;
+   
+   IDirectFBFont *font = 0;
+   try {
+      font=MhpOutput::System::self()->Interface()->CreateFont(path, desc);
    } catch (DFBException *e) {
       delete e;
       try {
-         font=MhpOutput::System::self()->Interface()->CreateFont(defaultFont, desc);
+         sprintf(path, "%s/%s%s%s", MHPFONTDIR, alternateFilename);
+         font=MhpOutput::System::self()->Interface()->CreateFont(path, desc);
       } catch (DFBException *e) {
-         printf("DirectFB: Error %s, %s\n", e->GetAction(), e->GetResult());
-         esyslog("MHP Graphics subsystem short of panicking: No fonts found! Font path is %s", MHPFONTDIR);
-         //Throw an InternalError instead?
-         JNI::Exception::Throw(JNI::JavaLangIllegalArgumentException, "Request font and default font not found");
          delete e;
-         return 0;
+         try {
+            font=MhpOutput::System::self()->Interface()->CreateFont(defaultFont, desc);
+         } catch (DFBException *e) {
+            printf("DirectFB: Error %s, %s\n", e->GetAction(), e->GetResult());
+            esyslog("MHP Graphics subsystem short of panicking: No fonts found! Font path is %s", MHPFONTDIR);
+            //Throw an InternalError instead?
+            JNI::Exception::Throw(JNI::JavaLangIllegalArgumentException, "Request font and default font not found");
+            delete e;
+         }
       }
    }
+   env->ReleaseStringUTFChars(java_filename, filename);
+   env->ReleaseStringUTFChars(java_alternateFilename, alternateFilename);
    return (jlong )font;
 }
+*/
 
 void Java_vdr_mhp_awt_MHPFontPeer_removeRef(JNIEnv* env, jobject obj, jlong nativeData) {
    ((IDirectFBFont *)nativeData)->Release();

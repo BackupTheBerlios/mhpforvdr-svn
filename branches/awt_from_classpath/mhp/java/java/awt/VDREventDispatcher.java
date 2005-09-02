@@ -184,21 +184,22 @@ public static void dispatchKey(int eKey) {
                                              keyChar
                                              )
                                );
+   if (keyChar != CHAR_UNDEFINED)
+      Toolkit.getDefaultToolkit().getSystemEventQueue().postEvent(
+                                    new HRcEvent(comp,
+                                                HRcEvent.KEY_TYPED,
+                                                millis,
+                                                0, //no modifier pressed
+                                                VK_UNDEFINED,
+                                                keyChar
+                                                )
+                                 );
    Toolkit.getDefaultToolkit().getSystemEventQueue().postEvent(
                                  new HRcEvent(comp,
                                              HRcEvent.KEY_RELEASED,
                                              millis,
                                              0, //no modifier pressed
                                              key,
-                                             keyChar
-                                             )
-                               );
-   Toolkit.getDefaultToolkit().getSystemEventQueue().postEvent(
-                                 new HRcEvent(comp,
-                                             HRcEvent.KEY_TYPED,
-                                             millis,
-                                             0, //no modifier pressed
-                                             VK_UNDEFINED,
                                              keyChar
                                              )
                                );

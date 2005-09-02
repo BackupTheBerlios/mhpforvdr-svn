@@ -380,7 +380,7 @@ public:
    jbyte *data;
 };
 
-jlong Java_vdr_mhp_awt_DFBDataBuffer_createBufferFromFile(JNIEnv* env, jobject obj, jbyteArray filename) //throws IOException;
+jlong Java_vdr_mhp_awt_DFBDataBuffer_createBufferFromFile(JNIEnv* env, jobject obj, jbyteArray filename) //throws IOException
 {
    DFBDataBufferNativeData *data=new DFBDataBufferNativeData();
    DFBDataBufferDescription bufDesc;
@@ -441,7 +441,7 @@ jlong Java_vdr_mhp_awt_DFBDataBuffer_createBufferFromData(JNIEnv* env, jobject o
    return (jlong)data;
 }
 
-jlong Java_vdr_mhp_awt_DFBDataBuffer_createBufferForStreaming(JNIEnv* env, jobject obj) //throws IOException;
+jlong Java_vdr_mhp_awt_DFBDataBuffer_createBufferForStreaming(JNIEnv* env, jobject obj) //throws IOException
 {
    DFBDataBufferNativeData *data;
    data=new DFBDataBufferNativeData();
@@ -462,6 +462,42 @@ void Java_vdr_mhp_awt_DFBDataBuffer_putData(JNIEnv* env, jobject obj, jlong nati
    jbyte *d = env->GetByteArrayElements(data, 0);
    ((DFBDataBufferNativeData *)nativeData)->buffer->PutData(d, len);
    env->ReleaseByteArrayElements(data, (jbyte *)d, JNI_ABORT);
+}
+
+jlong Java_vdr_mhp_awt_DFBDataBuffer_createBufferFromStreamingBuffer(JNIEnv* env, jobject obj, jlong nativeStreamingBuffer) //throws IOException
+{
+   DFBDataBufferNativeData *data;
+   DFBDataBufferNativeData *streaming=(DFBDataBufferNativeData *)nativeStreamingBuffer;
+   
+   int len=streaming->buffer->GetLength();
+   
+   data=new DFBDataBufferNativeData();
+   data->createBuffer(len);
+   
+   try {
+      streaming->buffer->GetData(len, data->data);
+   } catch (DFBException *e) {
+      printf("DirectFB: Error %s, %s\n", e->GetAction(), e->GetResult());
+      JNI::Exception::Throw(JNI::JavaIoIOException, "Unable to read from streaming buffer");
+      delete e;
+      return 0;
+   }
+      
+   DFBDataBufferDescription bufDesc;
+   bufDesc.flags=DBDESC_MEMORY;
+   bufDesc.memory.data=data->data;
+   bufDesc.memory.length=len;
+
+   try {
+      data->buffer=MhpOutput::System::self()->Interface()->CreateDataBuffer(&bufDesc);
+   } catch (DFBException *e) {
+      printf("DirectFB: Error %s, %s\n", e->GetAction(), e->GetResult());
+      JNI::Exception::Throw(JNI::JavaIoIOException, "Unable to create data buffer");
+      delete e;
+      return 0;
+   }
+   
+   return (jlong)data;
 }
 
 void Java_vdr_mhp_awt_DFBDataBuffer_removeRef(JNIEnv* env, jobject obj, jlong nativeData) {

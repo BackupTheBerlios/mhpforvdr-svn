@@ -109,12 +109,12 @@ public:
       // numArgs is the number of arguments of the Java function.
       // The arguments of the method are then appended.
       // 'Class' requires the class name, 'Array' the type as a second specifier.
-      // This second specifier shall be a string given as the following argument
-      // and _not_ be counted by numArgs.
-      // If returnType is either 'Class' or 'Array', then the very last argument
-      // is the necessary second specifier. This argument shall _not_ be counted
+      // 'Array' requires a the class name as a third specifier if it is an array of objects.
+      // These class name specifiers shall be a string given as the following argument.
+      // The additional specifiers shall _not_ be counted by numArgs.
+      // If returnType is either 'Class' or 'Array', then the additionally required specifiers
+      // shall be given as the very last arguments. These arguments shall _not_ be counted
       // by numArgs.
-      // Arrays of class objects are not elegantly supported, the second specifier must be "Lorg/my/Example;"
       //
       // Examples:     public int doIt(int arg1, bool arg2);
       //               const char *sig = getSignature(JNI::Int, 2, JNI::Int, JNI::Boolean);
@@ -128,9 +128,9 @@ public:
       //                            "java/util/Data", JNI::Array, JNI::Int, "java/lang/String"););
       //               myStaticMethod.CallMethod(myReturnType, JNI::Object);
       //
-      //               //I told you arrays of objects are not elegantly supported
       //               public String[] doSomethingWithArray(Object[] args)
-      //               const char *sig = getSignature(JNI::Array, 1, JNI::Array, "Ljava/lang/object;", "Ljava/lang/String;")
+      //               const char *sig = getSignature(JNI::Array, 1, JNI::Array, JNI::Object, "java/lang/object",
+      //                                              JNI::Object, "java/lang/String")
       //               myThirdMethod.SetMethod("org/my/Example", "doSomethingWithArray", sig);
       //               delete[] sig;
    static const char *getSignature(Types returnType, int numArgs, ...);
@@ -265,6 +265,34 @@ protected:
    static Exception javaLangRuntimeException;
    static Exception javaIoIOException;
    GlobalClassRef classRef;
+};
+
+// A wrapper for certain String operations
+class String : public BaseObject {
+public:
+   // From a C-style string in native encoding
+   String(const char *cstring);
+   // From a java.lang.String object
+   String(jstring javastring);
+   ~String();
+   // Convert to a java.lang.String object. Object returned is a local reference.
+   jstring toJavaString();
+   // Convert to UTF8 characters.
+   // Returned value is valid as long as this JNI::String object exists.
+   const char *toUTF8();
+   // Convert to C-Style characters in local encoding.
+   // Returned value is valid as long as this JNI::String object exists.
+   const char *toCString();
+   
+   //internal initialization
+   static bool Initialize();
+protected:
+   jstring javastring;
+   const char *cstring;
+   const char *utf8;
+   bool ownsCString;
+   static Constructor javaLangStringByteArray;
+   static InstanceMethod javaLangStringGetBytes;
 };
 
 }//end of namespace JNI

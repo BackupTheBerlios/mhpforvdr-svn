@@ -73,9 +73,7 @@ public static final int IMAGE_TILE = 3;
   }
   
   public void dispose() {
-    HSceneFactory.getInstance().dispose(this);
-    // there is a slight clash in naming, dispose is redefined by Havi and is used internally
-    // by AWT. Call super class anyway, should be all right.
+    HScreen.getDefaultHScreen().getDefaultHGraphicsDevice().removeHScene(this);
     super.dispose();
   }
 

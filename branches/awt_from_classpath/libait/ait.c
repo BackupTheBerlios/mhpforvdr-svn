@@ -299,8 +299,8 @@ void cAIT::ProcessAIT(int aitPid) {
       if (!foundTransportProtocol)
          delete a;
       else {
+         printf("Read AIT of application %s type %d ccode %d aid %d oid %d\n", a->GetName(0) ? a->GetName(0)->name.c_str() : "noname", a->GetApplicationType(), a->GetControlCode(), a->GetAid(), a->GetOid());
          database->addApplication(a);
-         printf("Ready to add application %s type %d ccode %d aid %d oid %d\n", a->GetName(0) ? a->GetName(0)->name.c_str() : "noname", a->GetApplicationType(), a->GetControlCode(), a->GetAid(), a->GetOid());
       }
    } //end of application loop
    database->deleteTagged();
