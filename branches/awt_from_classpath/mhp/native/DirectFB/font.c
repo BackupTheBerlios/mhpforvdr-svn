@@ -31,7 +31,8 @@ static char *styles[4] = {
 #define FONT_METRICS_DESCENT     2
 #define FONT_METRICS_MAX_DESCENT 3
 #define FONT_METRICS_MAX_ADVANCE 4
-#define NUM_FONT_METRICS 5
+#define FONT_METRICS_HEIGHT  5
+#define NUM_FONT_METRICS 6
 
 #define TEXT_METRICS_X_BEARING 0
 #define TEXT_METRICS_Y_BEARING 1
@@ -167,6 +168,8 @@ void Java_vdr_mhp_awt_MHPFontPeer_getFontMetrics(JNIEnv* env, jobject obj, jlong
 
    native_metrics[FONT_METRICS_MAX_ADVANCE] = font->GetMaxAdvance();
          //= PANGO_PIXELS (pango_font_metrics_get_approximate_char_width (pango_metrics));
+   
+   native_metrics[FONT_METRICS_HEIGHT] = font->GetHeight();
 	 
    env->ReleaseDoubleArrayElements (java_metrics, native_metrics, 0);
 }
@@ -174,7 +177,6 @@ void Java_vdr_mhp_awt_MHPFontPeer_getFontMetrics(JNIEnv* env, jobject obj, jlong
 void Java_vdr_mhp_awt_MHPFontPeer_getTextMetrics(JNIEnv* env, jobject obj, jlong nativeData, jstring str, jdoubleArray java_metrics) {
    IDirectFBFont *font = (IDirectFBFont *)nativeData;
    jdouble *native_metrics;
-   const char *text;
    DFBRectangle logicalRectangle;
    
    if (!font) {
@@ -182,11 +184,11 @@ void Java_vdr_mhp_awt_MHPFontPeer_getTextMetrics(JNIEnv* env, jobject obj, jlong
       return;
    }
    
-   text=(const char *)env->GetStringUTFChars(str, NULL);
+   JNI::String text(str);
    
    //GTK's implementation uses Pango which has similar semantics,
    //such as a logical rectangle and an ink rectangle. I just do it as they did it.
-   font->GetStringExtents(text, env->GetStringUTFLength(str), &logicalRectangle, NULL);
+   font->GetStringExtents(text.toUTF8(), -1, &logicalRectangle, NULL);
    
    native_metrics = env->GetDoubleArrayElements (java_metrics, NULL);
 
@@ -247,13 +249,14 @@ jobject Java_vdr_mhp_awt_MHPFontPeer_getGlyphVector(JNIEnv* env, jobject obj, jl
       return 0;
    }
    
-   len = env->GetStringUTFLength (chars);
-   clen = env->GetStringLength (chars);
-   str = env->GetStringUTFChars (chars, NULL);
+   JNI::String c(chars);
+   len = c.getUTF8BytesLength();
+   clen = c.getCharactersLength();
+   str = c.toUTF8();
    
    if (len > 0 && str[len-1] == '\0')
       len--;
-  
+   
    int x = 0;
    //double scale = ((double) PANGO_SCALE);
 
@@ -302,8 +305,6 @@ jobject Java_vdr_mhp_awt_MHPFontPeer_getGlyphVector(JNIEnv* env, jobject obj, jl
    env->ReleaseDoubleArrayElements (java_extents, native_extents, 0);
    env->ReleaseIntArrayElements (java_codes, native_codes, 0);
 
-
-   env->ReleaseStringUTFChars (chars, str);
 
    jobject newObj;
    mhpGlyphVectorConstructor.NewObject(newObj, java_extents, java_codes, java_font, fontRenderContext);

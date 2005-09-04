@@ -59,6 +59,7 @@ public class MHPFontMetrics extends FontMetrics
   static final int FONT_METRICS_DESCENT = 2;
   static final int FONT_METRICS_MAX_DESCENT = 3;
   static final int FONT_METRICS_MAX_ADVANCE = 4;
+  static final int FONT_METRICS_HEIGHT = 5;
 
   static final int TEXT_METRICS_X_BEARING = 0;
   static final int TEXT_METRICS_Y_BEARING = 1;
@@ -77,10 +78,10 @@ public class MHPFontMetrics extends FontMetrics
     
     peer = (MHPFontPeer) this.font.getPeer();
 
-    font_metrics = new int[5];
-    double [] hires = new double[5];
+    font_metrics = new int[6];
+    double [] hires = new double[6];
     peer.getFontMetrics (hires);
-    for (int i = 0; i < 5; ++i)
+    for (int i = 0; i < 6; ++i)
       font_metrics[i] = (int) hires[i];
   }
   
@@ -102,13 +103,15 @@ public class MHPFontMetrics extends FontMetrics
   }
 
   /* 
+     CP:
      Sun's Motif implementation always returns 0 or 1 here (???), but
      going by the X11 man pages, it seems as though we should return
      font.ascent + font.descent.
   */
+  // I am sure returning only 1 or 0 is simply not right
   public int getLeading ()
   {
-    return 1;
+     return getHeight() - getAscent() - getDescent();
   }
 
   public int getAscent ()
@@ -134,5 +137,10 @@ public class MHPFontMetrics extends FontMetrics
   public int getMaxAdvance ()
   {
     return font_metrics[FONT_METRICS_MAX_ADVANCE];
+  }
+  
+  public int getHeight()
+  {
+     return font_metrics[FONT_METRICS_HEIGHT];
   }
 }

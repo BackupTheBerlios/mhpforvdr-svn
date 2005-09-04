@@ -682,28 +682,24 @@ void Java_vdr_mhp_awt_MHPNativeGraphics_drawRoundRect(JNIEnv* env, jobject obj, 
 }
 
 void Java_vdr_mhp_awt_MHPNativeGraphics_drawString(JNIEnv* env, jobject obj, jlong nativeData, jlong nativeFlipData, jstring s, jint x, jint y) {
-   const char *str=(const char *)env->GetStringUTFChars(s, NULL);
+   JNI::String str(s);
    IDirectFBSurface *surface=((IDirectFBSurface *)nativeData);
    IDirectFBFont *font;
    try {
       font=surface->GetFont();
-      
       surface->SetDrawingFlags(DSDRAW_BLEND);
       
-      int length=env->GetStringUTFLength(s);
-      int width=font->GetStringWidth(str, length);
-      int descender=font->GetDescender();
-      int ascender=font->GetAscender();
-        
-      surface->DrawString(str, length, x, y, DSTF_LEFT); 
+      DFBRectangle ink;
+      font->GetStringExtents(str.toUTF8(), -1, NULL, &ink);
+      
+      surface->DrawString(str.toUTF8(), -1, x, y, DSTF_LEFT); 
       //printf("Graphics: DrawString with length %d, area is %dx%d-%dx%d because a %d, d %d, w %d\n", length, x, y-ascender, x+width, y-descender, ascender, descender, width);
       //descender is a negative value, so y-descender > y > y-ascender
-      ((FlipData *)nativeFlipData)->addUpdate(x, y-ascender, x+width, y-descender);
+      ((FlipData *)nativeFlipData)->addUpdate(x+ink.x, y+ink.y, x+ink.w, y+ink.h);
    } catch (DFBException *e) {
       printf("DirectFB: Error %s, %s\n", e->GetAction(), e->GetResult());
       delete e;
    }
-   env->ReleaseStringUTFChars(s, str);
 }
 
 void Java_vdr_mhp_awt_MHPNativeGraphics_fill3DRect(JNIEnv* env, jobject obj, jlong nativeData, jlong nativeFlipData, 

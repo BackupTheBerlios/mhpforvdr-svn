@@ -857,6 +857,7 @@ class ApplicationTaskThread extends Thread {
    //guaranteed to be called only after MHPApplications.stopAll
    synchronized void completeAndStop() {
       completeAndStop=true;
+      notifyAll();
       //do not set watchdog to stop here, it shall guard the stopping process!
    }
    
@@ -995,7 +996,7 @@ class WatchdogThread extends Thread {
    
    public synchronized void completeAndStop() {
       running = false;
-      notify();
+      notifyAll();
    }
    
    private void attack() {

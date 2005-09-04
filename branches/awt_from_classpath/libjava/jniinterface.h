@@ -283,6 +283,15 @@ public:
    // Convert to C-Style characters in local encoding.
    // Returned value is valid as long as this JNI::String object exists.
    const char *toCString();
+   // Returns the number of Unicode characters in this string.
+   // Since in UTF8, a character may be represented by up to 3 bytes, this
+   // value will be different if the string contains characters not in
+   // the standard ASCII range from 0 to 127.
+   int getCharactersLength();
+   // Returns the number of bytes of the UTF8 representation of this String.
+   // This number will be larger than getCharacterLength() if the string
+   // contains characters not in the standard ASCII range from 0 to 127.
+   int getUTF8BytesLength();
    
    //internal initialization
    static bool Initialize();

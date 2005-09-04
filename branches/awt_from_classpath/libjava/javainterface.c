@@ -844,6 +844,19 @@ const char *String::toCString() {
    return cstring;
 }
 
+int String::getCharactersLength() {
+   if (!toJavaString())
+      return 0;
+   return JNIEnvProvider::GetEnv()->GetStringLength(javastring);
+}
+
+int String::getUTF8BytesLength() {
+   if (!toJavaString())
+      return 0;
+   return JNIEnvProvider::GetEnv()->GetStringUTFLength(javastring);
+}
+
+
 Constructor String::javaLangStringByteArray;
 InstanceMethod String::javaLangStringGetBytes;
 

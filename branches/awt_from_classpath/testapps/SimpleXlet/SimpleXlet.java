@@ -93,8 +93,7 @@ public class SimpleXlet implements Xlet {
         //testUI_negative();
         //testUI_arcs();
         //testUI_KeyEvent();
-        //testUI_Font();
-        testUI_basic();
+        testUI_Font();
     }
     
     // helper method
@@ -119,6 +118,7 @@ public class SimpleXlet implements Xlet {
     
     // --- Here are the unit tests ---
     
+    // 4.9.2005: test passed
     void testUI_Font() {
        class FontComponent extends HComponent {
           FontComponent() {
@@ -128,22 +128,44 @@ public class SimpleXlet implements Xlet {
           public void paint(Graphics g) {
              System.out.println("FontComponent paint");
              g.setColor(Color.blue);
+             // These four fonts should all result the default font
+             Font def = g.getFont();
              Font medium = new Font("SansSerif", Font.BOLD, 36);
              Font large = new Font(null, Font.PLAIN, 100);
              Font unknown = new Font("abcde", Font.BOLD, 14);
-             String s = "Drawn with default font";
-             g.drawString(s, 10, 20);
+             
+             String s1 = "Drawn with default font";
+             String s2 = "Drawn with medium font";
+             int x = 10;
+             int y1 = 20, y2 = 56;
+             
+             g.drawString(s1, x, y1);
              g.setFont(medium);
-             g.drawString("Drawn with medium font", 10, 56);
+             g.drawString(s2, x, y2);
              g.setFont(large);
              g.drawString("Large", 200, 200);
+             
+             FontMetrics m1 = Toolkit.getDefaultToolkit().getFontMetrics(def);
+             FontMetrics m2 = Toolkit.getDefaultToolkit().getFontMetrics(medium);
+             
+             // Test simple layouting (getting the spacing to line above)
              g.setFont(unknown);
-             g.drawString("Unknown font", 10, 70);
-             FontMetrics m = Toolkit.getDefaultToolkit().getFontMetrics(medium);
-             int width=m.stringWidth(s);
-             System.out.println("FontMetrics: Ascent "+m.getAscent()+", descent "+m.getDescent()+", height "+m.getHeight()+", maxDescent "+m.getMaxDescent()+", width of \'A\' "+m.charWidth('A')+", text width "+width);
-             g.setColor(Color.green);
-             g.drawRect(10, 20-m.getAscent(), width, m.getAscent()+m.getDescent());
+             g.drawString("Unknown font", x, y2 + Toolkit.getDefaultToolkit().getFontMetrics(g.getFont()).getAscent() + m2.getDescent() + m2.getLeading());
+             
+             // Draw rectangle covering the logical extents (including spacing around letters, used to layout)
+             // The ink rectangle (including only the pixels touched when drawing) is available by some newer API
+             // I think but this is not tested here.
+             FontMetrics m=m1;
+             int y=y1;
+             Color color = Color.red;
+             String s = s1;
+             for (; m != null;) {
+               int width=m.stringWidth(s);
+               System.out.println("FontMetrics of medium font: Ascent "+m.getAscent()+", descent "+m.getDescent()+", height "+m.getHeight()+", maxDescent "+m.getMaxDescent()+", width of \'A\' "+m.charWidth('A')+", text width "+width);
+               g.setColor(Color.green);
+               g.drawRect(x, y-m.getAscent(), width, m.getAscent()+m.getDescent());
+               m = ( m == m1 ? m2 : null); color=Color.green; s = s2; y=y2;
+             }
           }
        }
        testComponent(new FontComponent());
