@@ -1,6 +1,7 @@
 
 package org.dvb.application;
 
+import vdr.mhp.lang.NativeData;
 
 
 /*The AppsDatabase is an abstract view of the currently available applications.The entries 
@@ -24,21 +25,21 @@ static AppsDatabase self=null;
 
 
 AppsDatabaseEventListener dbEvListener=null;
-long nativeData = 0; //a pointer to an ApplicationInfo::cApplicationsDatabase
+NativeData nativeData; //a pointer to an ApplicationInfo::cApplicationsDatabase
 //protected Hashtable apps;
 
 //called by the ApplicationManager in the initialization procedure
-public static void CreateDatabase(long nativeData) {
+public static void CreateDatabase(NativeData nativeData) {
    new AppsDatabase(nativeData);
 }
 
-AppsDatabase(long nativeData) {
+AppsDatabase(NativeData nativeData) {
    self=this;
    this.nativeData=nativeData;
    //apps = new Hashtable();
 }
 
-long getNativeData() {
+NativeData getNativeData() {
    return nativeData;
 }
 
@@ -50,7 +51,7 @@ public void addListener(AppsDatabaseEventListener listener) {
 }
 
 //not API
-public void NotifyNewApplication(long nativeData) {
+public void NotifyNewApplication(NativeData nativeData) {
    MHPApplication app=MHPApplication.GetApplication(nativeData);
    if (dbEvListener == null || app == null)
       return;
@@ -59,7 +60,7 @@ public void NotifyNewApplication(long nativeData) {
       dbEvListener.entryAdded(e);
 }
 
-public void NotifyApplicationRemoved(long nativeData) {
+public void NotifyApplicationRemoved(NativeData nativeData) {
    MHPApplication app=MHPApplication.GetApplication(nativeData);
    if (dbEvListener == null || app == null)
       return;
@@ -149,7 +150,7 @@ public int size() {
    return getSize(nativeData);
 }
 
-native int getSize(long nativeData);
+native int getSize(NativeData nativeData);
 //private native LockDatabase();
 //private native UnlockDatabase();
 

@@ -8,7 +8,8 @@ OBJS =  \
 	application.o \
 	si.o \
 	service.o \
-	storage.o
+	storage.o \
+	nativedata.o
    
 LIBS = $(MAIN_LIB_OPTIONS)
 

@@ -51,7 +51,7 @@ public:
    CarouselLoader(ApplicationInfo::cApplication::Ptr a);
    ~CarouselLoader();
    LoadingState getState();
-   float getProgress(int &currentSize, int &totalSize);
+   bool getProgress(uint &currentSize, uint &totalSize);
    void Start();
    void Stop();
    void Hibernate();
@@ -74,7 +74,7 @@ protected:
    LoadingState state;
    ApplicationInfo::cTransportProtocol::Protocol protocol;
    time_t hibernatedTime;
-   int totalSize;
+   uint totalSize;
    bool foreground;
 };
 
@@ -185,7 +185,7 @@ public:
    void StartMhp();
    
    //ProgressIndicator interface   
-   virtual void ShowProgress(float progress, int currentSize, int totalSize);
+   virtual void ShowProgress(int currentSize, int totalSize);
    virtual void SetApplicationName(const std::string &appName);
    virtual void HideProgress();
 private:

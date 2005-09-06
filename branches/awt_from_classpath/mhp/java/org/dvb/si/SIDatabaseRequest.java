@@ -41,7 +41,7 @@ static SIDatabaseRequest ActualNetworkRequest(java.lang.Object appData, SIRetrie
    req.nativeData=req.ActualNetworkRequest(db.getNativeData(), retrieveMode);
    return req;
 }
-private native long ActualNetworkRequest(long nativeDatabase, short retrieveMode);
+private native long ActualNetworkRequest(NativeData nativeDatabase, short retrieveMode);
 
 
 static SIDatabaseRequest ActualServicesRequest(java.lang.Object appData, SIRetrievalListener listener, SIDatabase db,
@@ -51,7 +51,7 @@ static SIDatabaseRequest ActualServicesRequest(java.lang.Object appData, SIRetri
    req.nativeData=req.ActualServicesRequest(db.getNativeData(), retrieveMode);
    return req;
 }
-private native long ActualServicesRequest(long nativeDatabase, short retrieveMode);
+private native long ActualServicesRequest(NativeData nativeDatabase, short retrieveMode);
 
 
 static SIDatabaseRequest ActualTransportStreamRequest(java.lang.Object appData, SIRetrievalListener listener, SIDatabase db, short retrieveMode) {
@@ -60,7 +60,7 @@ static SIDatabaseRequest ActualTransportStreamRequest(java.lang.Object appData, 
    req.nativeData=req.ActualTransportStreamRequest(db.getNativeData(), retrieveMode);
    return req;
 }
-private native long ActualTransportStreamRequest(long nativeDatabase, short retrieveMode);
+private native long ActualTransportStreamRequest(NativeData nativeDatabase, short retrieveMode);
 
 
 static SIDatabaseRequest PMTElementaryStreamsRequest(java.lang.Object appData, SIRetrievalListener listener, SIDatabase db, short retrieveMode, int serviceId, int[] componentTags) {
@@ -69,7 +69,7 @@ static SIDatabaseRequest PMTElementaryStreamsRequest(java.lang.Object appData, S
    req.nativeData=req.PMTElementaryStreamsRequest(db.getNativeData(), retrieveMode, serviceId, componentTags);
    return req;
 }
-private native long PMTElementaryStreamsRequest(long nativeDatabase, short retrieveMode, int serviceId, int[] componentTags);
+private native long PMTElementaryStreamsRequest(NativeData nativeDatabase, short retrieveMode, int serviceId, int[] componentTags);
 
 
 static SIDatabaseRequest PMTServicesRequest(java.lang.Object appData, SIRetrievalListener listener, SIDatabase db,
@@ -79,7 +79,7 @@ static SIDatabaseRequest PMTServicesRequest(java.lang.Object appData, SIRetrieva
    req.nativeData=req.PMTServicesRequest(db.getNativeData(), retrieveMode, serviceId);
    return req;
 }
-private native long PMTServicesRequest(long nativeDatabase, short retrieveMode, int serviceId);
+private native long PMTServicesRequest(NativeData nativeDatabase, short retrieveMode, int serviceId);
 
 
 static SIDatabaseRequest BouquetsRequest(java.lang.Object appData, SIRetrievalListener listener, SIDatabase db,
@@ -89,7 +89,7 @@ static SIDatabaseRequest BouquetsRequest(java.lang.Object appData, SIRetrievalLi
    req.nativeData=req.BouquetsRequest(db.getNativeData(), retrieveMode, bouquetId);
    return req;
 }
-private native long BouquetsRequest(long nativeDatabase, short retrieveMode, int bouquetId);
+private native long BouquetsRequest(NativeData nativeDatabase, short retrieveMode, int bouquetId);
 
 
 static SIDatabaseRequest NetworksRequest(java.lang.Object appData, SIRetrievalListener listener, SIDatabase db,
@@ -99,7 +99,7 @@ static SIDatabaseRequest NetworksRequest(java.lang.Object appData, SIRetrievalLi
    req.nativeData=req.NetworksRequest(db.getNativeData(), retrieveMode, networkId);
    return req;
 }
-private native long NetworksRequest(long nativeDatabase, short retrieveMode, int networkId);
+private native long NetworksRequest(NativeData nativeDatabase, short retrieveMode, int networkId);
 
 
 static SIDatabaseRequest ServicesRequest(java.lang.Object appData, SIRetrievalListener listener, SIDatabase db,
@@ -109,7 +109,7 @@ static SIDatabaseRequest ServicesRequest(java.lang.Object appData, SIRetrievalLi
    req.nativeData=req.ServicesRequest(db.getNativeData(), retrieveMode, originalNetworkId, transportStreamId, serviceId);
    return req;
 }
-private native long ServicesRequest(long nativeDatabase, short retrieveMode, int originalNetworkId, int transportStreamId, int serviceId);
+private native long ServicesRequest(NativeData nativeDatabase, short retrieveMode, int originalNetworkId, int transportStreamId, int serviceId);
 
 static SIDatabaseRequest TDTRequest(java.lang.Object appData, SIRetrievalListener listener, SIDatabase db,
                           short retrieveMode) {
@@ -118,7 +118,7 @@ static SIDatabaseRequest TDTRequest(java.lang.Object appData, SIRetrievalListene
    req.nativeData=req.TDTRequest(db.getNativeData(), retrieveMode);
    return req;
 }
-private native long TDTRequest(long nativeDatabase, short retrieveMode);
+private native long TDTRequest(NativeData nativeDatabase, short retrieveMode);
 
 
 static SIDatabaseRequest TOTRequest(java.lang.Object appData, SIRetrievalListener listener, SIDatabase db,
@@ -128,7 +128,7 @@ static SIDatabaseRequest TOTRequest(java.lang.Object appData, SIRetrievalListene
    req.nativeData=req.TOTRequest(db.getNativeData(), retrieveMode);
    return req;
 }
-private native long TOTRequest(long nativeDatabase, short retrieveMode);
+private native long TOTRequest(NativeData nativeDatabase, short retrieveMode);
 
 
 static SIDatabaseRequest TransportStreamDescriptionRequest(java.lang.Object appData, SIRetrievalListener listener, SIDatabase db, short retrieveMode) {
@@ -137,7 +137,7 @@ static SIDatabaseRequest TransportStreamDescriptionRequest(java.lang.Object appD
    req.nativeData=req.TransportStreamDescriptionRequest(db.getNativeData(), retrieveMode);
    return req;
 }
-private native long TransportStreamDescriptionRequest(long nativeDatabase, short retrieveMode);
+private native long TransportStreamDescriptionRequest(NativeData nativeDatabase, short retrieveMode);
 
 
 
@@ -148,7 +148,7 @@ static SIDatabaseRequest TransportStreamRequest(SINetworkImpl nits, java.lang.Ob
    req.nativeData=req.TransportStreamRequest(db.getNativeData(), retrieveMode, nits.nativeData, nits.request.nativeData);
    return req;
 }
-private native long TransportStreamRequest(long nativeDatabase, short retrieveMode, long nativeList, long nativeRequest);
+private native long TransportStreamRequest(NativeData nativeDatabase, short retrieveMode, long nativeList, long nativeRequest);
 
 
 static SIDatabaseRequest TransportStreamRequest(SIBouquetImpl nits, java.lang.Object appData, SIRetrievalListener listener, SIDatabase db, short retrieveMode) {
@@ -157,7 +157,7 @@ static SIDatabaseRequest TransportStreamRequest(SIBouquetImpl nits, java.lang.Ob
    req.nativeData=req.TransportStreamRequestBAT(db.getNativeData(), retrieveMode, nits.nativeData, nits.request.nativeData);
    return req;
 }
-private native long TransportStreamRequestBAT(long nativeDatabase, short retrieveMode, long nativeList, long nativeRequest);
+private native long TransportStreamRequestBAT(NativeData nativeDatabase, short retrieveMode, long nativeList, long nativeRequest);
 
 
 static SIDatabaseRequest PresentFollowingEventRequest(java.lang.Object appData, SIRetrievalListener listener, SIDatabase db, short retrieveMode, boolean presentOrFollowing, int tid, int sid) {
@@ -166,7 +166,7 @@ static SIDatabaseRequest PresentFollowingEventRequest(java.lang.Object appData, 
    req.nativeData=req.PresentFollowingEventRequest(db.getNativeData(), retrieveMode, presentOrFollowing, tid, sid);
    return req;
 }
-private native long PresentFollowingEventRequest(long nativeDatabase, short retrieveMode, boolean presentOrFollowing, int tid, int sid);
+private native long PresentFollowingEventRequest(NativeData nativeDatabase, short retrieveMode, boolean presentOrFollowing, int tid, int sid);
 
 
 static SIDatabaseRequest ScheduledEventsRequest(java.lang.Object appData, SIRetrievalListener listener, SIDatabase db, short retrieveMode, int tid, int sid) {
@@ -175,7 +175,7 @@ static SIDatabaseRequest ScheduledEventsRequest(java.lang.Object appData, SIRetr
    req.nativeData=req.ScheduledEventsRequest(db.getNativeData(), retrieveMode, tid, sid);
    return req;
 }
-private native long ScheduledEventsRequest(long nativeDatabase, short retrieveMode, int tid, int sid);
+private native long ScheduledEventsRequest(NativeData nativeDatabase, short retrieveMode, int tid, int sid);
 
 
 
@@ -189,7 +189,7 @@ static SIDatabaseRequest DescriptorRequestNetwork(SINetworkImpl nits, short[] ta
    req.nativeData=req.DescriptorRequestNetwork(db.getNativeData(), retrieveMode, nits.nativeData, nits.request.nativeData, tags);
    return req;
 }
-private native long DescriptorRequestNetwork(long nativeDatabase, short retrieveMode, long nativeList, long nativeRequest, short[] tags);
+private native long DescriptorRequestNetwork(NativeData nativeDatabase, short retrieveMode, long nativeList, long nativeRequest, short[] tags);
 
 static SIDatabaseRequest DescriptorRequestBouquet(SIBouquetImpl nits, short[] tags, java.lang.Object appData, SIRetrievalListener listener, SIDatabase db, short retrieveMode) {
    SIDatabaseRequest req=new SIDatabaseRequest(appData, listener, db);
@@ -197,7 +197,7 @@ static SIDatabaseRequest DescriptorRequestBouquet(SIBouquetImpl nits, short[] ta
    req.nativeData=req.DescriptorRequestBouquet(db.getNativeData(), retrieveMode, nits.nativeData, nits.request.nativeData, tags);
    return req;
 }
-private native long DescriptorRequestBouquet(long nativeDatabase, short retrieveMode, long nativeList, long nativeRequest, short[] tags);
+private native long DescriptorRequestBouquet(NativeData nativeDatabase, short retrieveMode, long nativeList, long nativeRequest, short[] tags);
 
 static SIDatabaseRequest DescriptorRequestEvent(SIEventImpl evs, short[] tags, java.lang.Object appData, SIRetrievalListener listener, SIDatabase db, short retrieveMode) {
    SIDatabaseRequest req=new SIDatabaseRequest(appData, listener, db);
@@ -205,7 +205,7 @@ static SIDatabaseRequest DescriptorRequestEvent(SIEventImpl evs, short[] tags, j
    req.nativeData=req.DescriptorRequestEvent(db.getNativeData(), retrieveMode, evs.nativeData, evs.request.nativeData, tags);
    return req;
 }
-private native long DescriptorRequestEvent(long nativeDatabase, short retrieveMode, long nativeList, long nativeRequest, short[] tags);
+private native long DescriptorRequestEvent(NativeData nativeDatabase, short retrieveMode, long nativeList, long nativeRequest, short[] tags);
 
 static SIDatabaseRequest DescriptorRequestService(SIServiceImpl evs, short[] tags, java.lang.Object appData, SIRetrievalListener listener, SIDatabase db, short retrieveMode) {
    SIDatabaseRequest req=new SIDatabaseRequest(appData, listener, db);
@@ -213,7 +213,7 @@ static SIDatabaseRequest DescriptorRequestService(SIServiceImpl evs, short[] tag
    req.nativeData=req.DescriptorRequestService(db.getNativeData(), retrieveMode, evs.nativeData, evs.request.nativeData, tags);
    return req;
 }
-private native long DescriptorRequestService(long nativeDatabase, short retrieveMode, long nativeList, long nativeRequest, short[] tags);
+private native long DescriptorRequestService(NativeData nativeDatabase, short retrieveMode, long nativeList, long nativeRequest, short[] tags);
 
 static SIDatabaseRequest DescriptorRequestTransportStream(SITransportStreamImpl evs, short[] tags, java.lang.Object appData, SIRetrievalListener listener, SIDatabase db, short retrieveMode) {
    SIDatabaseRequest req=new SIDatabaseRequest(appData, listener, db);
@@ -221,7 +221,7 @@ static SIDatabaseRequest DescriptorRequestTransportStream(SITransportStreamImpl 
    req.nativeData=req.DescriptorRequestTransportStream(db.getNativeData(), retrieveMode, evs.nativeData, evs.request.nativeData, tags);
    return req;
 }
-private native long DescriptorRequestTransportStream(long nativeDatabase, short retrieveMode, long nativeList, long nativeRequest, short[] tags);
+private native long DescriptorRequestTransportStream(NativeData nativeDatabase, short retrieveMode, long nativeList, long nativeRequest, short[] tags);
 
 static SIDatabaseRequest DescriptorRequestTime(SITimeImpl evs, short[] tags, java.lang.Object appData, SIRetrievalListener listener, SIDatabase db, short retrieveMode) {
    SIDatabaseRequest req=new SIDatabaseRequest(appData, listener, db);
@@ -229,7 +229,7 @@ static SIDatabaseRequest DescriptorRequestTime(SITimeImpl evs, short[] tags, jav
    req.nativeData=req.DescriptorRequestTime(db.getNativeData(), retrieveMode, evs.nativeData, evs.request.nativeData, tags);
    return req;
 }
-private native long DescriptorRequestTime(long nativeDatabase, short retrieveMode, long nativeTime, long nativeRequest, short[] tags);
+private native long DescriptorRequestTime(NativeData nativeDatabase, short retrieveMode, long nativeTime, long nativeRequest, short[] tags);
 
 static SIDatabaseRequest DescriptorRequestPMTService(PMTServiceImpl evs, short[] tags, java.lang.Object appData, SIRetrievalListener listener, SIDatabase db, short retrieveMode) {
    SIDatabaseRequest req=new SIDatabaseRequest(appData, listener, db);
@@ -237,7 +237,7 @@ static SIDatabaseRequest DescriptorRequestPMTService(PMTServiceImpl evs, short[]
    req.nativeData=req.DescriptorRequestPMTService(db.getNativeData(), retrieveMode, evs.nativeData, evs.request.nativeData, tags);
    return req;
 }
-private native long DescriptorRequestPMTService(long nativeDatabase, short retrieveMode, long nativeTime, long nativeRequest, short[] tags);
+private native long DescriptorRequestPMTService(NativeData nativeDatabase, short retrieveMode, long nativeTime, long nativeRequest, short[] tags);
 
 static SIDatabaseRequest DescriptorRequestPMTElementaryStream(PMTElementaryStreamImpl evs, short[] tags, java.lang.Object appData, SIRetrievalListener listener, SIDatabase db, short retrieveMode) {
    SIDatabaseRequest req=new SIDatabaseRequest(appData, listener, db);
@@ -245,7 +245,7 @@ static SIDatabaseRequest DescriptorRequestPMTElementaryStream(PMTElementaryStrea
    req.nativeData=req.DescriptorRequestPMTElementaryStream(db.getNativeData(), retrieveMode, evs.nativeData, evs.request.nativeData, tags);
    return req;
 }
-private native long DescriptorRequestPMTElementaryStream(long nativeDatabase, short retrieveMode, long nativeTime, long nativeRequest, short[] tags);
+private native long DescriptorRequestPMTElementaryStream(NativeData nativeDatabase, short retrieveMode, long nativeTime, long nativeRequest, short[] tags);
 
 static SIDatabaseRequest DescriptorRequestTransportStreamDescription(SITransportStreamDescriptionImpl evs, short[] tags, java.lang.Object appData, SIRetrievalListener listener, SIDatabase db, short retrieveMode) {
    SIDatabaseRequest req=new SIDatabaseRequest(appData, listener, db);
@@ -253,7 +253,7 @@ static SIDatabaseRequest DescriptorRequestTransportStreamDescription(SITransport
    req.nativeData=req.DescriptorRequestTransportStreamDescription(db.getNativeData(), retrieveMode, evs.nativeData, evs.request.nativeData, tags);
    return req;
 }
-private native long DescriptorRequestTransportStreamDescription(long nativeDatabase, short retrieveMode, long nativeTime, long nativeRequest, short[] tags);
+private native long DescriptorRequestTransportStreamDescription(NativeData nativeDatabase, short retrieveMode, long nativeTime, long nativeRequest, short[] tags);
 
 
 

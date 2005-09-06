@@ -1,5 +1,7 @@
 package org.dvb.si;
 
+import vdr.mhp.lang.NativeData;
+
 
 
 /*This class represents the root of the SI information hierarchy. There is one SIDatabase 
@@ -8,13 +10,13 @@ SIDatabase object. */
 
 public class SIDatabase {
 
-long nativeData;
+NativeData nativeData;
 
-protected SIDatabase(long nativeData) {
+protected SIDatabase(NativeData nativeData) {
    this.nativeData=nativeData;
 }
 
-long getNativeData() {
+NativeData getNativeData() {
    return nativeData;
 }
 
@@ -38,20 +40,20 @@ public static SIDatabase[] getSIDatabase() {
 }
 private static native int numDatabases();
 private static native void checkDatabases();
-private static native long databasePointer(int index);
+private static native NativeData databasePointer(int index);
 
 public static SIDatabase getDatabaseForChannel(int nid, int tid, int sid) {
-   long nD=databaseForChannel(nid, tid, sid);
+   NativeData nD=databaseForChannel(nid, tid, sid);
    if (nD==0)
       return null;
       
    getSIDatabase();
    for (int i=0; i<databases.length; i++)
-      if (databases[i].nativeData==nD)
+      if (databases[i].nativeData.equals(nD))
          return databases[i];
    return null;
 }
-private static native long databaseForChannel(int nid, int tid, int sid);
+private static native NativeData databaseForChannel(int nid, int tid, int sid);
 
 
 /*static class SIIteratorOnCollection implements SIIterator {

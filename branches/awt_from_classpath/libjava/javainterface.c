@@ -15,6 +15,7 @@
  
 #include <libait/ait.h>
 #include "javainterface.h"
+#include "nativewrappertypes.h"
 
 bool JavaInterface::CheckStart() {
    if (self()->jniError)
@@ -39,13 +40,13 @@ bool JavaInterface::InitializeSystem() {
 bool JavaInterface::StartApplication(ApplicationInfo::cApplication::Ptr app) {
    JNI::ReturnType ret;
    self()->CheckAttachThread();
-   return self()->methods->startApplication.CallMethod(ret, (void *)new ApplicationInfo::cApplication::Ptr(app)) && ret.TypeInt == 0;
+   return self()->methods->startApplication.CallMethod(ret, (jobject)NativeApplicationData(app)) && ret.TypeInt == 0;
 }
 
 bool JavaInterface::StopApplication(ApplicationInfo::cApplication::Ptr app) {
    JNI::ReturnType ret;
    self()->CheckAttachThread();
-   return self()->methods->stopApplication.CallMethod(ret, (void *)new ApplicationInfo::cApplication::Ptr(app)) && ret.TypeInt == 0;
+   return self()->methods->stopApplication.CallMethod(ret, (jobject)NativeApplicationData(app)) && ret.TypeInt == 0;
 }
 
 bool JavaInterface::StopApplications() {
@@ -57,26 +58,26 @@ bool JavaInterface::StopApplications() {
 bool JavaInterface::PauseApplication(ApplicationInfo::cApplication::Ptr app) {
    JNI::ReturnType ret;
    self()->CheckAttachThread();
-   return self()->methods->pauseApplication.CallMethod(ret, (void *)new ApplicationInfo::cApplication::Ptr(app)) && ret.TypeInt == 0;
+   return self()->methods->pauseApplication.CallMethod(ret, (jobject)NativeApplicationData(app)) && ret.TypeInt == 0;
 }
 
 bool JavaInterface::ResumeApplication(ApplicationInfo::cApplication::Ptr app) {
    JNI::ReturnType ret;
    self()->CheckAttachThread();
-   return self()->methods->resumeApplication.CallMethod(ret, (void *)new ApplicationInfo::cApplication::Ptr(app)) && ret.TypeInt == 0;
+   return self()->methods->resumeApplication.CallMethod(ret, (jobject)NativeApplicationData(app)) && ret.TypeInt == 0;
 }
 
 
 bool JavaInterface::NewApplication(ApplicationInfo::cApplication::Ptr app) {
    JNI::ReturnType ret;
    self()->CheckAttachThread();
-   return self()->methods->newApplication.CallMethod(ret, (void *)new ApplicationInfo::cApplication::Ptr(app)) && ret.TypeInt == 0;
+   return self()->methods->newApplication.CallMethod(ret, (jobject)NativeApplicationData(app)) && ret.TypeInt == 0;
 }
 
 bool JavaInterface::ApplicationRemoved(ApplicationInfo::cApplication::Ptr app) {
    JNI::ReturnType ret;
    self()->CheckAttachThread();
-   return self()->methods->applicationRemoved.CallMethod(ret, (void *)new ApplicationInfo::cApplication::Ptr(app)) && ret.TypeInt == 0;
+   return self()->methods->applicationRemoved.CallMethod(ret, (jobject)NativeApplicationData(app)) && ret.TypeInt == 0;
 }
 
 bool JavaInterface::ProcessKey(eKeys Key) {
@@ -147,6 +148,49 @@ JavaInterface::~JavaInterface() {
    delete methods;
 }
 
+class VdrMhpLangNativeDataImplementation : public JNI::NativeData::Implementation {
+   public:
+      virtual ~VdrMhpLangNativeDataImplementation() {}
+      virtual void Set(jobject obj, void *data, bool isNull) {
+         JNI::ReturnType value;
+         value.TypeLong = (int64_t)(intptr_t)data;
+         nativeData.SetValue(obj, value);
+         value.TypeBoolean = isNull ? JNI_TRUE : JNI_FALSE;
+         dataIsNull.SetValue(obj, value);
+      }
+      virtual void *Get(jobject obj) {
+         JNI::ReturnType value;
+         nativeData.GetValue(obj, value);
+         return (void *)(intptr_t)(int64_t)value.TypeLong;
+      }
+      virtual jobject Create() {
+         JNI::ReturnType ret;
+         create.CallMethod(ret);
+         return ret.TypeObject;
+      }
+      static bool Initialize() {
+         VdrMhpLangNativeDataImplementation *i=new VdrMhpLangNativeDataImplementation();
+         if (!i->init())
+            return false;
+         JNI::NativeData::SetImplementation(i);
+         return true;
+      }
+   protected:
+      bool init() {
+         JNI::ClassRef clazz, containerClass;
+         return (
+               clazz.SetClass("vdr/mhp/lang/NativeDataContainer$Data") &&
+               containerClass.SetClass("vdr/mhp/lang/NativeDataContainer") &&
+               nativeData.SetField(clazz, "nativeData", JNI::Long) &&
+               dataIsNull.SetField(clazz, "dataIsNull", JNI::Boolean) &&
+               create.SetMethodWithArguments(containerClass, "createNativeData", JNI::Object, 0, "vdr/mhp/lang/NativeData", (char *)NULL)
+                );
+      }
+      JNI::Field nativeData;
+      JNI::Field dataIsNull;
+      JNI::StaticMethod create;
+};
+
 //Calls StartVM and initializes JNI structures to access ApplicationManager
 bool JavaInterface::StartJava() {
    if (jniError)
@@ -163,7 +207,7 @@ bool JavaInterface::StartJava() {
    
    JNI::ReturnType ret;
    //share signatures
-   const char *formatOneLong=JNI::BaseObject::getSignature(JNI::Int, 1, JNI::Long);
+   const char *formatOneLong=JNI::BaseObject::getSignature(JNI::Int, 1, JNI::Object, "vdr/mhp/lang/NativeData");
    const char *formatNoArguments=JNI::BaseObject::getSignature(JNI::Int, 0);
    
    if ( !(
@@ -180,7 +224,8 @@ bool JavaInterface::StartJava() {
       methods->shutdown.SetMethod("vdr/mhp/ApplicationManager", "Shutdown", JNI::Int, formatNoArguments) &&
       methods->stopApplications.SetMethod("vdr/mhp/ApplicationManager", "StopApplications", JNI::Int, formatNoArguments) &&
       JNI::Exception::Initialize() &&
-      JNI::String::Initialize()
+      JNI::String::Initialize() &&
+      VdrMhpLangNativeDataImplementation::Initialize()
          )
       ) {
       esyslog("Failed to initialize Java system: Cannot find method ID");
@@ -192,7 +237,7 @@ bool JavaInterface::StartJava() {
    delete[] formatOneLong;
    delete[] formatNoArguments;
 
-   if (!methods->initialize.CallMethod(ret, (int)&ApplicationInfo::Applications) || ret.TypeInt != 0) {
+   if (!methods->initialize.CallMethod(ret, (jobject)NativeDBData(&ApplicationInfo::Applications)) || ret.TypeInt != 0) {
       esyslog("Failed to initialize Java system: Cannot call method of ApplicationManager");
       jniInitialized=false;
       jniError=true;
@@ -479,7 +524,142 @@ jclass GlobalObjectRef::GetClass() {
    return clazz;
 }
 
+Field::Field() {
+   field=0;
+}
 
+Field::~Field() {
+}
+
+bool Field::SetField(const char *classname, const char *fieldName, Types ft) {
+   if (!classRef.SetClass(classname))
+      return false;
+   return SetField(fieldName, ft);
+}
+
+bool Field::SetField(jclass clazz, const char *fieldName, Types ft) {
+   if (!classRef.SetClass(clazz))
+      return false;
+   return SetField(fieldName, ft);
+}
+
+bool Field::SetField(const char *classname, const char *fieldName, Types ft, const char *type) {
+   if (!classRef.SetClass(classname))
+      return false;
+   return SetField(fieldName, ft, type);
+}
+
+bool Field::SetField(jclass clazz, const char *fieldName, Types ft, const char *type) {
+   if (!classRef.SetClass(clazz))
+      return false;
+   return SetField(fieldName, ft, type);
+}
+
+bool Field::SetField(const char *fieldName, Types ft) {
+   fieldType=ft;
+   //char[2] sig; sig[0]=ft; sig[1]='\0';
+   char sig[] = { fieldType, '\0' };
+   return SetField(fieldName, sig);
+}
+
+bool Field::SetField(const char *fieldName, Types ft, const char *type) {
+   fieldType=ft;
+   if (fieldType == JNI::Object) {
+      char sig[strlen(type)+3];
+      sprintf(sig, "L%s;", type);
+      return SetField(fieldName, sig);
+   } else if (fieldType == JNI::Array) {
+      char sig[strlen(type)+2];
+      sprintf(sig, "[%s", type);
+      return SetField(fieldName, sig);
+   } else
+      return SetField(fieldName, fieldType);
+}
+
+bool Field::SetField(const char *fieldName, const char *signature) {
+   field=JNIEnvProvider::GetEnv()->GetFieldID((jclass)classRef, fieldName, signature);
+   checkException();
+   return field;
+}
+
+bool Field::GetValue(jobject obj, ReturnType &ret) {
+   ret.TypeLong=0;
+   if (!field)
+      return false;
+
+   switch(fieldType) {
+      case Void:
+         break;
+      case Boolean:
+         ret.TypeBoolean=JNIEnvProvider::GetEnv()->GetBooleanField(obj, field);
+         break;
+      case Byte:
+         ret.TypeByte=JNIEnvProvider::GetEnv()->GetByteField(obj, field);
+         break;
+      case Char:
+         ret.TypeChar=JNIEnvProvider::GetEnv()->GetCharField(obj, field);
+         break;
+      case Short:
+         ret.TypeShort=JNIEnvProvider::GetEnv()->GetShortField(obj, field);
+         break;
+      case Int:
+         ret.TypeInt=JNIEnvProvider::GetEnv()->GetIntField(obj, field);
+         break;
+      case Long:
+         ret.TypeLong=JNIEnvProvider::GetEnv()->GetLongField(obj, field);
+         break;
+      case Double:
+         ret.TypeDouble=JNIEnvProvider::GetEnv()->GetDoubleField(obj, field);
+         break;
+      case Float:
+         ret.TypeFloat=JNIEnvProvider::GetEnv()->GetFloatField(obj, field);
+         break;
+      case Object:
+      case Array: //in Java, an array is an object
+         ret.TypeObject=JNIEnvProvider::GetEnv()->GetObjectField(obj, field);
+         break;
+   }
+   return checkException();
+}
+
+bool Field::SetValue(jobject obj, ReturnType value) {
+   if (!field)
+      return false;
+
+   switch(fieldType) {
+      case Void:
+         break;
+      case Boolean:
+         JNIEnvProvider::GetEnv()->SetBooleanField(obj, field, value.TypeBoolean);
+         break;
+      case Byte:
+         JNIEnvProvider::GetEnv()->SetByteField(obj, field, value.TypeByte);
+         break;
+      case Char:
+         JNIEnvProvider::GetEnv()->SetCharField(obj, field, value.TypeChar);
+         break;
+      case Short:
+         JNIEnvProvider::GetEnv()->SetShortField(obj, field, value.TypeShort);
+         break;
+      case Int:
+         JNIEnvProvider::GetEnv()->SetIntField(obj, field, value.TypeInt);
+         break;
+      case Long:
+         JNIEnvProvider::GetEnv()->SetLongField(obj, field, value.TypeLong);
+         break;
+      case Double:
+         JNIEnvProvider::GetEnv()->SetDoubleField(obj, field, value.TypeDouble);
+         break;
+      case Float:
+         JNIEnvProvider::GetEnv()->SetFloatField(obj, field, value.TypeFloat);
+         break;
+      case Object:
+      case Array: //in Java, an array is an object
+         JNIEnvProvider::GetEnv()->SetObjectField(obj, field, value.TypeObject);
+         break;
+   }
+   return checkException();
+}
 
 
 Method::Method()
@@ -783,6 +963,8 @@ bool Exception::Throw(PredefinedException e, const char *errMsg) {
 String::String(const char *cstring) 
    : javastring(0), cstring(cstring), utf8(0), ownsCString(false)
 {
+   if (!cstring)
+      cstring="";
 }
 
 String::String(jstring javastring)
@@ -867,6 +1049,28 @@ bool String::Initialize() {
    return success;
 }
 
+NativeData::NativeData(jobject data)
+   : obj(data)
+{
+}
+
+void NativeData::Set(void *nativeData, bool isNull) {
+   impl->Set(obj, nativeData, isNull);
+}
+
+void *NativeData::Get() {
+   return impl->Get(obj);
+}
+
+jobject NativeData::Create() {
+   return impl->Create();
+}
+
+NativeData::Implementation *NativeData::impl = 0;
+
+void NativeData::SetImplementation(Implementation *i) {
+   impl=i;
+}
 
 }//end of namespace JNI
 

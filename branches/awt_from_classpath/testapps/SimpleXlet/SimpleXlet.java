@@ -21,6 +21,11 @@ import org.dvb.si.*;
 import org.dvb.ui.DVBGraphics;
 import org.dvb.ui.DVBAlphaComposite;
 
+import org.dvb.application.AppID;
+import org.dvb.application.AppsDatabase;
+import org.dvb.application.AppProxy;
+import org.dvb.application.AppAttributes;
+
 import org.havi.ui.HDefaultTextLayoutManager;
 import org.havi.ui.HScene;
 import org.havi.ui.HSceneFactory;
@@ -93,7 +98,8 @@ public class SimpleXlet implements Xlet {
         //testUI_negative();
         //testUI_arcs();
         //testUI_KeyEvent();
-        testUI_Font();
+        //testUI_Font();
+        testOrgDvbApplication();
     }
     
     // helper method
@@ -569,10 +575,29 @@ public class SimpleXlet implements Xlet {
    }
    
    void testOrgDvbApplication() {
-        org.dvb.application.AppID id=new org.dvb.application.AppID(256, 19);
-        org.dvb.application.AppsDatabase db=org.dvb.application.AppsDatabase.getAppsDatabase();
-        org.dvb.application.AppProxy ap=db.getAppProxy(id);
-        System.out.println(ap==null ? "Did not find Proxy" : "Found AppProxy");
+      class OrgDvbAppTester {
+         AppProxy proxy;
+         AppAttributes att;
+         OrgDvbAppTester(int oid, int aid) {
+            System.out.println("Testing application with OID "+oid+", AID "+aid);
+            AppID id = new org.dvb.application.AppID(oid, aid);
+            AppsDatabase db = org.dvb.application.AppsDatabase.getAppsDatabase();
+            proxy = db.getAppProxy(id);
+            att = db.getAppAttributes(id);
+         }
+         void test() {
+            System.out.println(proxy == null ? "Did not find AppProxy" : "Found AppProxy");
+            if (att == null)
+               System.out.println("Did not find AppAttributes");
+            else {
+               System.out.println("Found AppAttributes: Name "+att.getName());
+            }
+         }
+      }
+      // WDR-Ticker, DVB-T
+      new OrgDvbAppTester(19, 100).test();
+      // non-existant
+      new OrgDvbAppTester(100, 100).test();
    }
    
    

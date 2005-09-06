@@ -115,6 +115,9 @@ public:
       // If returnType is either 'Class' or 'Array', then the additionally required specifiers
       // shall be given as the very last arguments. These arguments shall _not_ be counted
       // by numArgs.
+      // Attention: Due to some magic in variadic function calls, if your argument list ends with a
+      // string literal, and this arguments is the only variadic argument, you must end the list with
+      // another arguments such as (char *)NULL! This arguments shall not be counted and will not be read.
       //
       // Examples:     public int doIt(int arg1, bool arg2);
       //               const char *sig = getSignature(JNI::Int, 2, JNI::Int, JNI::Boolean);
@@ -180,6 +183,27 @@ public:
    bool SetClass(const char* classname);
    bool SetClass(jclass localRef);
    virtual void Delete();
+};
+
+class Field : public BaseObject {
+public:
+   Field();
+   ~Field();
+   // For fields of primitive type
+   bool SetField(const char *classname, const char *fieldName, Types fieldType);
+   bool SetField(jclass clazz, const char *fieldName, Types fieldType);
+   // For object or array fields
+   bool SetField(const char *classname, const char *fieldName, Types fieldType, const char *type);
+   bool SetField(jclass clazz, const char *fieldName, Types fieldType, const char *type);
+   bool GetValue(jobject obj, ReturnType &ret);
+   bool SetValue(jobject obj, ReturnType value);
+protected:
+   bool SetField(const char *fieldName, Types fieldType);
+   bool SetField(const char *fieldName, Types fieldType, const char *signature);
+   bool SetField(const char *fieldName, const char *signature);
+   jfieldID field;
+   GlobalClassRef classRef;
+   Types fieldType;
 };
 
 class Method : public BaseObject, public DeletableObject {
@@ -302,6 +326,66 @@ protected:
    bool ownsCString;
    static Constructor javaLangStringByteArray;
    static InstanceMethod javaLangStringGetBytes;
+};
+
+// A utility to wrap native data (pointers) and stores them on Java side.
+// This code here is implementation independent, there must be an implementation
+// which sets itself with SetImplementation().
+class NativeData : public BaseObject {
+public:
+   class Implementation {
+   public:
+      virtual void Set(jobject obj, void *nativeData, bool isNull) = 0;
+      virtual void *Get(jobject obj) = 0;
+      virtual jobject Create() = 0;
+   };
+   static void SetImplementation(Implementation *impl);
+   operator jobject() { return obj; }
+protected:
+   NativeData(jobject data);
+   void Set(void *nativeData, bool isNull);
+   void *Get();
+   static jobject Create();
+   
+   static Implementation *impl;
+   jobject obj;
+};
+
+// Wraps simple pointers for storage on Java side
+template <typename T> class PointerNativeData : public NativeData {
+public:
+   PointerNativeData(jobject obj) : NativeData(obj) {}
+   PointerNativeData(T *p) : NativeData(Create()) { Set(p); }
+   void Set(T *p) { NativeData::Set((void *)p, p == NULL); }
+   T *Get() { return (T *)NativeData::Get(); }
+   PointerNativeData<T> &operator=(T *p)
+   {
+      Set(p);
+      return *this;
+   }
+   operator T *() { return Get(); }
+};
+
+// Wraps classes which are usually passed by reference and value.
+// Internally, such an object is created on the heap and stored as a pointer.
+// Memory management (e.g. reference counting classes) thus rely on being freed
+// from the Java side.
+template <typename T> class ReferenceNativeData : public NativeData {
+public:
+   ReferenceNativeData(jobject obj) : NativeData(obj) {}
+   ReferenceNativeData(T &r, bool isNull = false) : NativeData(Create()) { Set(r, isNull); }
+   void Set(T &ref, bool isNull = false)
+   {
+      T *p = new T(ref);
+      NativeData::Set((void *)p, isNull);
+   }
+   T &Get() { return *(T *)NativeData::Get(); }
+   ReferenceNativeData<T> &operator=(T &r)
+   {
+      Set(r);
+      return *this;
+   }
+   operator T &() { return Get(); }
 };
 
 }//end of namespace JNI

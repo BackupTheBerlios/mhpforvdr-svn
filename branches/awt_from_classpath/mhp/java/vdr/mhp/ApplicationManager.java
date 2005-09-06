@@ -4,6 +4,7 @@ import org.dvb.application.*;
 import org.dvb.lang.DVBClassLoader;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
+import vdr.mhp.lang.NativeData;
 
 /*
    The ApplicationManager is the core class of this implementation.
@@ -76,7 +77,7 @@ ApplicationManager() {
 /* Parameters:
    appDatabase - pointer to a cApplicationDatabase
 */
-public static int Initialize(long appDatabase) {
+public static int Initialize(NativeData appDatabase) {
    try {   
       if (getManager().init)
          return 0;
@@ -100,7 +101,7 @@ public static int Initialize(long appDatabase) {
    return 0;
 }
 
-public static int NewApplication(long nativeData) {
+public static int NewApplication(NativeData nativeData) {
    try {
       if (!getManager().init)
          return 1;
@@ -113,7 +114,7 @@ public static int NewApplication(long nativeData) {
    return 0;
 }
 
-public static int ApplicationRemoved(long nativeData) {
+public static int ApplicationRemoved(NativeData nativeData) {
    try {
       if (!getManager().init)
          return 1;
@@ -129,7 +130,7 @@ public static int ApplicationRemoved(long nativeData) {
 
 
 
-public static int StartApplication(long nativeData) {
+public static int StartApplication(NativeData nativeData) {
    try {
       System.out.println("ApplicationManager.StartApplication()");
       if (!getManager().init) {
@@ -155,7 +156,7 @@ public static int StartApplication(long nativeData) {
    return 0;
 }
 
-public static int StopApplication(long nativeData) {
+public static int StopApplication(NativeData nativeData) {
    try {
       System.out.println("ApplicationManager.StopApplication()");
       if (!getManager().init)
@@ -184,7 +185,7 @@ public static int StopApplications() {
    return 0;
 }
 
-public static int PauseApplication(long nativeData) {
+public static int PauseApplication(NativeData nativeData) {
    try {
       System.out.println("ApplicationManager.PauseApplication()");
       if (!getManager().init)
@@ -200,7 +201,7 @@ public static int PauseApplication(long nativeData) {
    return 0;
 }
 
-public static int ResumeApplication(long nativeData) {
+public static int ResumeApplication(NativeData nativeData) {
    try {
       System.out.println("ApplicationManager.ResumeApplication()");
       if (!getManager().init)
@@ -362,29 +363,29 @@ static class LoadingManagerInterface {
    static void load(MHPApplication app) {
       load(app.getNativeData());
    }
-   private static native void load(long nativeData);
+   private static native void load(NativeData nativeData);
    
    static void stop(MHPApplication app) {
       stop(app.getNativeData());
    }
-   private static native void stop(long nativeData);
+   private static native void stop(NativeData nativeData);
    
    static boolean isAcquired(MHPApplication app) {
       return isAcquired(app.getNativeData());
    }
-   private static native boolean isAcquired(long nativeData);
+   private static native boolean isAcquired(NativeData nativeData);
 }
 
 static class RunningManagerInterface {
    static void started(MHPApplication app) {
       started(app.getNativeData());
    }
-   private static native void started(long nativeData);
+   private static native void started(NativeData nativeData);
    
    static void stopped(MHPApplication app) {
       stopped(app.getNativeData());
    }
-   private static native void stopped(long nativeData);
+   private static native void stopped(NativeData nativeData);
 }
 
 //ThreadGroup for the ApplicationTaskThread from which

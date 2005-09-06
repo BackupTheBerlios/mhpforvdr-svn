@@ -20,7 +20,7 @@ namespace DvbSi {
 /*** Filter Requests ***/
 
 
-PMTServicesRequest::PMTServicesRequest(Database *db, Listener *listener, IdTracker *tr, RetrieveMode mode, void *ad)
+PMTServicesRequest::PMTServicesRequest(Database::Ptr db, Listener *listener, IdTracker *tr, RetrieveMode mode, void *ad)
  : TableFilterRequest<PMT>(db, tr, listener, ad),
    currentPid(0)
 {
@@ -78,7 +78,7 @@ bool PMTServicesRequest::addNext(SI::PAT &pat) {
 }
 
 
-NetworksRequest::NetworksRequest(Database *db, Listener *listener, IdTracker *tr, RetrieveMode mode, void *appData)
+NetworksRequest::NetworksRequest(Database::Ptr db, Listener *listener, IdTracker *tr, RetrieveMode mode, void *appData)
   : TableFilterTrackerRequest<NIT>(db, tr, listener, appData)
 {
    ChangeInterval(FILTER_TIMEOUT_NIT);
@@ -98,7 +98,7 @@ void NetworksRequest::Process(u_short Pid, u_char Tid, const u_char *Data, int L
    }
 }
 
-TransportStreamDescriptionRequest::TransportStreamDescriptionRequest(Database *db, Listener *listener,  RetrieveMode mode, void *appData)
+TransportStreamDescriptionRequest::TransportStreamDescriptionRequest(Database::Ptr db, Listener *listener,  RetrieveMode mode, void *appData)
    //the tableIdExtension of the TSDT has no meaning, so we have to use the duplicates mechanism
   : TableFilterTrackerRequest<TSDT>(db, new IdTracker(), listener, appData)
 {
@@ -117,7 +117,7 @@ void TransportStreamDescriptionRequest::Process(u_short Pid, u_char Tid, const u
    }
 }
 
-ServiceTableRequest::ServiceTableRequest(Database *db, Listener *listener, IdTracker *tr, RetrieveMode mode, void *appData)
+ServiceTableRequest::ServiceTableRequest(Database::Ptr db, Listener *listener, IdTracker *tr, RetrieveMode mode, void *appData)
   : TableFilterTrackerRequest<SDT>(db, tr, listener, appData), duplicatesOther(0)
 {
    ChangeInterval(FILTER_TIMEOUT_SDT);
@@ -143,7 +143,7 @@ void ServiceTableRequest::Process(u_short Pid, u_char Tid, const u_char *Data, i
    }
 }
 
-EventTableRequest::EventTableRequest(Database *db, Listener *listener, bool presentFollowing, IdTracker *serviceIds, RetrieveMode mode, void *appData) 
+EventTableRequest::EventTableRequest(Database::Ptr db, Listener *listener, bool presentFollowing, IdTracker *serviceIds, RetrieveMode mode, void *appData) 
   : SegmentedTableFilterTrackerRequest<EIT>(db, serviceIds, listener, appData), presentFollowing(presentFollowing)
 {
    ChangeInterval(FILTER_TIMEOUT_EIT);
@@ -165,7 +165,7 @@ void EventTableRequest::Process(u_short Pid, u_char Tid, const u_char *Data, int
    }
 }
 
-EventTableOtherRequest::EventTableOtherRequest(Database *db, Listener *listener, bool presentFollowing, IdTracker *serviceIds, RetrieveMode mode, void *appData) 
+EventTableOtherRequest::EventTableOtherRequest(Database::Ptr db, Listener *listener, bool presentFollowing, IdTracker *serviceIds, RetrieveMode mode, void *appData) 
   : SegmentedTableFilterTrackerRequest<EIT>(db, serviceIds, listener, appData), presentFollowing(presentFollowing)
 {
    if (presentFollowing) {
@@ -191,7 +191,7 @@ void EventTableOtherRequest::Process(u_short Pid, u_char Tid, const u_char *Data
 }
 
 
-BouquetsRequest::BouquetsRequest(Database *db, Listener *listener, IdTracker *bouquetIds, RetrieveMode mode, void *appData)
+BouquetsRequest::BouquetsRequest(Database::Ptr db, Listener *listener, IdTracker *bouquetIds, RetrieveMode mode, void *appData)
   : TableFilterTrackerRequest<BAT>(db, bouquetIds, listener, appData)
 {
    ChangeInterval(FILTER_TIMEOUT_BAT);
@@ -210,7 +210,7 @@ void BouquetsRequest::Process(u_short Pid, u_char Tid, const u_char *Data, int L
    }
 }
 
-TDTRequest::TDTRequest(Database *db, Listener *listener, RetrieveMode mode, void *appData)
+TDTRequest::TDTRequest(Database::Ptr db, Listener *listener, RetrieveMode mode, void *appData)
   : FilterRequest(db, listener, appData)
 {
    ChangeInterval(FILTER_TIMEOUT_TDT);
@@ -228,7 +228,7 @@ void TDTRequest::Process(u_short Pid, u_char Tid, const u_char *Data, int Length
    }
 }
 
-TOTRequest::TOTRequest(Database *db, Listener *listener, RetrieveMode mode, void *appData)
+TOTRequest::TOTRequest(Database::Ptr db, Listener *listener, RetrieveMode mode, void *appData)
   : FilterRequest(db, listener, appData)
 {
    ChangeInterval(FILTER_TIMEOUT_TOT);
@@ -254,7 +254,7 @@ void TOTRequest::Process(u_short Pid, u_char Tid, const u_char *Data, int Length
 
 
 
-ActualTransportStreamRequest::ActualTransportStreamRequest(Database *db, Listener *listener, RetrieveMode mode, void *appData)
+ActualTransportStreamRequest::ActualTransportStreamRequest(Database::Ptr db, Listener *listener, RetrieveMode mode, void *appData)
   : ListSecondaryRequest<NIT::TransportStream>(db, listener, appData), nid(0)
 {
    tid=db->getTransportStreamId();
@@ -292,7 +292,7 @@ void ActualTransportStreamRequest::Result(Request *req) {
 }
 
 
-TransportStreamRequest::TransportStreamRequest(Request *re, std::list<NIT> *nitlist,  Database *db, Listener *listener, RetrieveMode mode, void *appData)
+TransportStreamRequest::TransportStreamRequest(Request *re, std::list<NIT> *nitlist,  Database::Ptr db, Listener *listener, RetrieveMode mode, void *appData)
   : ListSecondaryRequest<NIT::TransportStream>(db, listener, appData), nid(0)
 {
    req=re;
@@ -323,7 +323,7 @@ TransportStreamRequest::TransportStreamRequest(Request *re, std::list<NIT> *nitl
 }
 
 
-TransportStreamBATRequest::TransportStreamBATRequest(Request *re, std::list<BAT> *nitlist, Database *db, Listener *listener, RetrieveMode mode, void *appData)
+TransportStreamBATRequest::TransportStreamBATRequest(Request *re, std::list<BAT> *nitlist, Database::Ptr db, Listener *listener, RetrieveMode mode, void *appData)
   : ListSecondaryRequest<NIT::TransportStream>(db, listener, appData), bid(0)
 {
    req=re;
@@ -353,7 +353,7 @@ TransportStreamBATRequest::TransportStreamBATRequest(Request *re, std::list<BAT>
 }
 
 
-PMTElementaryStreamRequest::PMTElementaryStreamRequest(Database *db, Listener *listener, int serviceId, IdTracker *tr, RetrieveMode mode, void *appData)
+PMTElementaryStreamRequest::PMTElementaryStreamRequest(Database::Ptr db, Listener *listener, int serviceId, IdTracker *tr, RetrieveMode mode, void *appData)
   : ListSecondaryRequest<PMT::Stream>(db, listener, appData),
     sid(serviceId),
     tags(tr)
@@ -402,7 +402,7 @@ void PMTElementaryStreamRequest::Result(Request *req) {
 }
 
 
-ServicesRequest::ServicesRequest(Database *db, Listener *listener, int originalNetworkId,
+ServicesRequest::ServicesRequest(Database::Ptr db, Listener *listener, int originalNetworkId,
                          IdTracker *transportStreamIds, IdTracker * serviceIds, RetrieveMode mode, void *appData)
   : ListSecondaryRequest<SDT::Service>(db, listener, appData),
     nid(originalNetworkId),
@@ -447,7 +447,7 @@ void ServicesRequest::Result(Request *req) {
    getDatabase()->DispatchResult(this);   
 }
 
-ActualServicesRequest::ActualServicesRequest(Database *db, Listener *listener, IdTracker *serviceIds, RetrieveMode mode, void *appData)
+ActualServicesRequest::ActualServicesRequest(Database::Ptr db, Listener *listener, IdTracker *serviceIds, RetrieveMode mode, void *appData)
   : ListSecondaryRequest<SDT::Service>(db, listener, appData),
     sids(serviceIds)
 {
@@ -492,7 +492,7 @@ void ActualServicesRequest::Result(Request *req) {
    getDatabase()->DispatchResult(this);
 }
 
-PresentFollowingEventRequest::PresentFollowingEventRequest(Database *db, Listener *listener, 
+PresentFollowingEventRequest::PresentFollowingEventRequest(Database::Ptr db, Listener *listener, 
                         int tid, int sid, bool presentOrFollowing, RetrieveMode mode, void *appData)
    : SecondaryRequest(listener, appData), sid(sid), tid(tid), presentOrFollowing(presentOrFollowing), database(db)
 {
@@ -548,7 +548,7 @@ void PresentFollowingEventRequest::Result(Request *req) {
    database->DispatchResult(this);
 }
 
-ScheduleEventRequest::ScheduleEventRequest(Database *db, Listener *listener, 
+ScheduleEventRequest::ScheduleEventRequest(Database::Ptr db, Listener *listener, 
                         int tid, int sid, RetrieveMode mode, void *appData)
    : ListSecondaryRequest<EIT::Event>(db, listener, appData), tid(tid)
 {

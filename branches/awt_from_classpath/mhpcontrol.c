@@ -152,7 +152,7 @@ void Control::CheckMessage() {
 }
 
 // Shall only be called from VDR's main thread
-void Control::ShowProgress(float progress, int currentSize, int totalSize) {
+void Control::ShowProgress(int currentSize, int totalSize) {
    if (!doShow)
       return;
    if (!visible) {
@@ -526,17 +526,13 @@ ControlLoadingManager::~ControlLoadingManager() {
 }*/
 
 void ControlLoadingManager::Load(ApplicationInfo::cApplication::Ptr a, bool foreground) {
-   //printf("ControlLoadingManager::Load\n");
+   printf("ControlLoadingManager::Load, foreground %d\n", foreground);
    cMutexLock lock(&mutex);
    AppMap::iterator it=apps.find(a);
    if (it == apps.end()) {
       CarouselLoader *loader=new CarouselLoader(a);
       apps[a]=loader;
-      if (foreground) {
-         loadingApp=loader;
-         loader->SetForeground();
-      }
-      loader->Start();
+      Load(loader, foreground);
    } else {
       Load(it->second, foreground);
    }
@@ -547,6 +543,7 @@ void ControlLoadingManager::Stop(ApplicationInfo::cApplication::Ptr a) {
    cMutexLock lock(&mutex);
    AppMap::iterator it=apps.find(a);
    if (it != apps.end()) {
+      Stop(it->second);
    }
 }
 
@@ -598,6 +595,7 @@ void ControlLoadingManager::ChannelSwitch(const cDevice *device, Service::Transp
 }
 
 void ControlLoadingManager::Load(CarouselLoader *l, bool foreground) {
+   printf("ControlLoadingManager::Load %p, %d, %d\n", l, foreground, l->getState());
    switch (l->getState()) {
    case LoadingStateWaiting:
    case LoadingStateError:
@@ -614,6 +612,11 @@ void ControlLoadingManager::Load(CarouselLoader *l, bool foreground) {
       }
       l->WakeUp();
       break;
+   case LoadingStateLoading:
+      if (foreground) {
+         loadingApp=l;
+         l->SetForeground();
+      }
    default:
       break;
    }
@@ -672,9 +675,9 @@ void ControlLoadingManager::ProgressInfo(ProgressIndicator *pi) {
          ApplicationInfo::cApplication::ApplicationName *name=loadingApp->getName();
          if (name)
             pi->SetApplicationName(name->name);
-         int currentSize, totalSize;
-         float progress=loadingApp->getProgress(currentSize, totalSize);
-         pi->ShowProgress(progress, currentSize, totalSize);
+         uint currentSize, totalSize;
+         loadingApp->getProgress(currentSize, totalSize);
+         pi->ShowProgress(currentSize, totalSize);
       }
    }
 }
@@ -838,43 +841,48 @@ CarouselLoader::~CarouselLoader() {
 }
 
 LoadingState CarouselLoader::getState() {
-   //always check if loading completed
-   if (state==LoadingStateLoading) {
-      int a,b;
-      getProgress(a,b);
+   switch (state) {
+      case LoadingStateLoaded:
+      case LoadingStateError:
+      case LoadingStateWaiting:
+      case LoadingStateHibernated:
+         break;
+      case LoadingStateLoading:
+      {
+         //always check if loading completed
+         bool loaded;
+         carousel->getProgress(&loaded);
+         if (loaded)
+            state=LoadingStateLoaded;
+      }
    }
    return state;
 }
 
-float CarouselLoader::getProgress(int &currentSize, int &retTotalSize) {
+bool CarouselLoader::getProgress(uint &currentSize, uint &retTotalSize) {
    switch (state) {
-      case LoadingStateError:
-      case LoadingStateWaiting:
-         currentSize=0;
-         retTotalSize=0;
-         return 0.0;
-      case LoadingStateLoading:
-         {
-         //note that state Loading implies a non-local app
-         float progress=carousel->getProgress(&currentSize, &totalSize);
-         retTotalSize=totalSize;
-         if (progress==1.0)
-            state=LoadingStateLoaded;
-         return progress;
-         }
       case LoadingStateLoaded:
          currentSize=totalSize;
          retTotalSize=totalSize;
-         return 1.0;
+         return true;
+      case LoadingStateError:
+      case LoadingStateWaiting:
       case LoadingStateHibernated:
          currentSize=0;
          retTotalSize=0;
-         return 0.0;
-      default:
-         currentSize=0;
-         retTotalSize=0;
-         return 0.0;
+         return false;
+      case LoadingStateLoading:
+         {
+         //note that state Loading implies a non-local app
+         bool loaded;
+         carousel->getProgress(&loaded, &totalSize, &currentSize);
+         retTotalSize=totalSize;
+         if (loaded)
+            state=LoadingStateLoaded;
+         return loaded;
+         }
    }
+   return false;
 }
 
 void CarouselLoader::Start() {

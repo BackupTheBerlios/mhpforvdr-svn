@@ -29,7 +29,7 @@
 #include <libmhpoutput/outputadministration.h>
 
 
-static const char *VERSION        = "0.3pre";
+static const char *VERSION        = "0.4";
 static const char *DESCRIPTION    = "An MHP implementation";
 static const char *MAINMENUENTRY  = "MHP";
 
@@ -55,6 +55,7 @@ public:
   virtual bool ProcessArgs(int argc, char *argv[]);
   virtual bool Initialize(void);
   virtual bool Start(void);
+  virtual void Stop(void);
   virtual void Housekeeping(void);
   virtual const char *MainMenuEntry(void) { return tr(MAINMENUENTRY); }
   virtual cOsdObject *MainMenuAction(void);
@@ -80,11 +81,7 @@ cPluginMhp::~cPluginMhp()
 {
   // Clean up after yourself!
   //delete status;
-  JavaInterface::ShutdownMHP();
-  DvbSi::Database::CleanUp();
-  JavaInterface::CleanUp();
-  Mhp::LoadingManager::getManager()->CleanUp();
-  MhpOutput::Administration::CleanUp();
+  localApps.clear();
 }
 
 const char *cPluginMhp::CommandLineHelp(void)
@@ -241,6 +238,14 @@ bool cPluginMhp::Start(void)
    Mhp::LoadingManager::getManager()->Initialize();
 
    return true;
+}
+
+void cPluginMhp::Stop(void) {
+  JavaInterface::ShutdownMHP();
+  DvbSi::Database::CleanUp();
+  JavaInterface::CleanUp();
+  Mhp::LoadingManager::getManager()->CleanUp();
+  MhpOutput::Administration::CleanUp();
 }
 
 void cPluginMhp::Housekeeping(void)

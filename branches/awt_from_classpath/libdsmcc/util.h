@@ -193,9 +193,50 @@ public:
    bool operator>(const SmartPtr<T> &p) const { return p_ > p.p_; }
 private:
    T* p_;
-}; 
-  
-  
+};
+
+// A simple bitset implementation. The difference to std::bitstream is that
+// the size of this bitset is set at run-time.
+class Bitset {
+public:
+   Bitset(int size) : size(size)
+   {
+      data = new unsigned char[(size / 8)+1];
+      for (int i=0; i<(size / 8)+1; i++)
+         data[i]=0;
+   }
+   ~Bitset()
+     { delete[] data; }
+   void Set(int index, bool value = true)
+     { data[index/8]|=(1<<(index%8)); }
+   bool isSet(int index) const
+     { return (data[index/8] & (1<<(index%8))); }
+   bool operator[](int index) const { return isSet(index); }
+   bool isComplete() const
+   {
+      for (int i=0; i<(size / 8); i++)
+         if (data[i] != static_cast<unsigned char>(~0))
+            return false;
+      for (int index=(size - (size%8)); index<size; index++)
+         if (!isSet(index))
+            return false;
+      return true;
+   }
+   bool any() const
+   {
+      for (int i=0; i<(size / 8)+1; i++)
+         if (data[i] != static_cast<unsigned char>(0))
+            return true;
+      return false;
+   }
+   bool none() const { return !any(); }
+   int getSize() const { return size; }
+protected:
+   const int size;
+   unsigned char *data;
+};
+
+
 //abstract base class
 class Parsable {
 protected:

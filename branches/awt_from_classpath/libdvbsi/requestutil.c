@@ -14,7 +14,7 @@
 namespace DvbSi {
 
 
-FilterRequest::FilterRequest(Database *db, Listener *l, void *ad)
+FilterRequest::FilterRequest(Database::Ptr db, Listener *l, void *ad)
  : DatabaseRequest(l, ad), Filter(db), TimedBySeconds(FILTER_TIMEOUT), timeOutCode(ResultCodeTableNotFound) {
    db->Add(this, false); //add to scheduler for timeout
 }

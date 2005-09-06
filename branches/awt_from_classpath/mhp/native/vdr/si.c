@@ -8,6 +8,8 @@
 #include <libjava/jniinterface.h>
 #include <libjava/jnithread.h>
 
+#include <libjava/nativewrappertypes.h>
+
 //These classes, all inheriting from RequestWrapper, form a native layer for org.dvb.si
 //encapsulating DvbSi objects that can't be stored in Java and using templates
 //to access the DvbSi Request (which themselves are mostly templates)
@@ -275,12 +277,14 @@ void Java_org_dvb_si_SIDatabase_checkDatabases(JNIEnv* env, jclass clazz) {
       DvbSi::Database::getDatabase(i);
 }
 
-jlong Java_org_dvb_si_SIDatabase_databasePointer(JNIEnv* env, jclass clazz, jint index) {
-   return (jlong )DvbSi::Database::getDatabase(index);
+jobject Java_org_dvb_si_SIDatabase_databasePointer(JNIEnv* env, jclass clazz, jint index) {
+   DvbSi::Database::Ptr ptr = DvbSi::Database::getDatabase(index);
+   return (jobject)NativeDvbsiDatabaseData(ptr, !ptr);
 }
 
-jlong Java_org_dvb_si_SIDatabase_databaseForChannel(JNIEnv* env, jclass clazz, jint nid, jint tid, jint sid) {
-   return (jlong )DvbSi::Database::getDatabaseForChannel(nid, tid, sid, true);
+jobject Java_org_dvb_si_SIDatabase_databaseForChannel(JNIEnv* env, jclass clazz, jint nid, jint tid, jint sid) {
+   DvbSi::Database::Ptr ptr = DvbSi::Database::getDatabaseForChannel(nid, tid, sid, true);
+   return (jobject)NativeDvbsiDatabaseData(ptr, !ptr);
 }
 
 void Java_org_dvb_si_SIDatabaseRequest_cleanUp(JNIEnv* env, jobject obj, jlong nativeData) {
@@ -291,33 +295,33 @@ jint Java_org_dvb_si_SIDatabaseRequest_resultCode(JNIEnv* env, jobject obj, jlon
    return ((RequestWrapper *)nativeData)->getResultCode();
 }
 
-jlong Java_org_dvb_si_SIDatabaseRequest_ActualNetworkRequest(JNIEnv* env, jobject obj, jlong nativeDatabase, jshort retrieveMode) {
+jlong Java_org_dvb_si_SIDatabaseRequest_ActualNetworkRequest(JNIEnv* env, jobject obj, jobject nativeDatabase, jshort retrieveMode) {
    JNI::JNIEnvProvider::SetJavaEnv(env);
-   DvbSi::Database *db=(DvbSi::Database *)nativeDatabase;
+   DvbSi::Database::Ptr db=NativeDvbsiDatabaseData(nativeDatabase);
    NetworksRequestWrapper *wrapper=new NetworksRequestWrapper(obj);
    wrapper->req=db->retrieveActualNetwork(wrapper, (DvbSi::RetrieveMode)retrieveMode);
    return (jlong)wrapper;
 }
 
-jlong Java_org_dvb_si_SIDatabaseRequest_ActualServicesRequest(JNIEnv* env, jobject obj, jlong nativeDatabase, jshort retrieveMode) {
+jlong Java_org_dvb_si_SIDatabaseRequest_ActualServicesRequest(JNIEnv* env, jobject obj, jobject nativeDatabase, jshort retrieveMode) {
    JNI::JNIEnvProvider::SetJavaEnv(env);
-   DvbSi::Database *db=(DvbSi::Database *)nativeDatabase;
+   DvbSi::Database::Ptr db=NativeDvbsiDatabaseData(nativeDatabase);
    ActualServicesRequestWrapper *wrapper=new ActualServicesRequestWrapper(obj);
    wrapper->req=db->retrieveActualServices(wrapper, (DvbSi::RetrieveMode)retrieveMode);
    return (jlong)wrapper;
 }
 
-jlong Java_org_dvb_si_SIDatabaseRequest_ActualTransportStreamRequest(JNIEnv* env, jobject obj, jlong nativeDatabase, jshort retrieveMode) {
+jlong Java_org_dvb_si_SIDatabaseRequest_ActualTransportStreamRequest(JNIEnv* env, jobject obj, jobject nativeDatabase, jshort retrieveMode) {
    JNI::JNIEnvProvider::SetJavaEnv(env);
-   DvbSi::Database *db=(DvbSi::Database *)nativeDatabase;
+   DvbSi::Database::Ptr db=NativeDvbsiDatabaseData(nativeDatabase);
    ActualTransportStreamRequestWrapper *wrapper=new ActualTransportStreamRequestWrapper(obj);
    wrapper->req=db->retrieveActualTransportStream(wrapper, (DvbSi::RetrieveMode)retrieveMode);
    return (jlong)wrapper;
 }
 
-jlong Java_org_dvb_si_SIDatabaseRequest_PMTElementaryStreamsRequest(JNIEnv* env, jobject obj, jlong nativeDatabase, jshort retrieveMode, jint serviceId, jintArray componentTags) {
+jlong Java_org_dvb_si_SIDatabaseRequest_PMTElementaryStreamsRequest(JNIEnv* env, jobject obj, jobject nativeDatabase, jshort retrieveMode, jint serviceId, jintArray componentTags) {
    JNI::JNIEnvProvider::SetJavaEnv(env);
-   DvbSi::Database *db=(DvbSi::Database *)nativeDatabase;
+   DvbSi::Database::Ptr db=NativeDvbsiDatabaseData(nativeDatabase);
    PMTElementaryStreamsRequestWrapper *wrapper=new PMTElementaryStreamsRequestWrapper(obj);
    
    jint *ar=env->GetIntArrayElements(componentTags, 0);
@@ -331,26 +335,26 @@ jlong Java_org_dvb_si_SIDatabaseRequest_PMTElementaryStreamsRequest(JNIEnv* env,
    return (jlong)wrapper;
 }
 
-jlong Java_org_dvb_si_SIDatabaseRequest_PMTServicesRequest(JNIEnv* env, jobject obj, jlong nativeDatabase, jshort retrieveMode, jint serviceId) {
+jlong Java_org_dvb_si_SIDatabaseRequest_PMTServicesRequest(JNIEnv* env, jobject obj, jobject nativeDatabase, jshort retrieveMode, jint serviceId) {
    JNI::JNIEnvProvider::SetJavaEnv(env);
-   DvbSi::Database *db=(DvbSi::Database *)nativeDatabase;
+   DvbSi::Database::Ptr db=NativeDvbsiDatabaseData(nativeDatabase);
    PMTServicesRequestWrapper *wrapper=new PMTServicesRequestWrapper(obj);
    wrapper->req=db->retrievePMTServices(wrapper, serviceId==-1 ? new DvbSi::IdTracker(): new DvbSi::IdTracker(serviceId),
                (DvbSi::RetrieveMode)retrieveMode);
    return (jlong)wrapper;
 }
 
-jlong Java_org_dvb_si_SIDatabaseRequest_BouquetsRequest(JNIEnv* env, jobject obj, jlong nativeDatabase, jshort retrieveMode, jint bouquetId) {
+jlong Java_org_dvb_si_SIDatabaseRequest_BouquetsRequest(JNIEnv* env, jobject obj, jobject nativeDatabase, jshort retrieveMode, jint bouquetId) {
    JNI::JNIEnvProvider::SetJavaEnv(env);
-   DvbSi::Database *db=(DvbSi::Database *)nativeDatabase;
+   DvbSi::Database::Ptr db=NativeDvbsiDatabaseData(nativeDatabase);
    BouquetsRequestWrapper *wrapper=new BouquetsRequestWrapper(obj);
    wrapper->req=db->retrieveBouquets(wrapper, new DvbSi::IdTracker(bouquetId), (DvbSi::RetrieveMode)retrieveMode);
    return (jlong)wrapper;
 }
 
-jlong Java_org_dvb_si_SIDatabaseRequest_NetworksRequest(JNIEnv* env, jobject obj, jlong nativeDatabase, jshort retrieveMode, jint networkId) {
+jlong Java_org_dvb_si_SIDatabaseRequest_NetworksRequest(JNIEnv* env, jobject obj, jobject nativeDatabase, jshort retrieveMode, jint networkId) {
    JNI::JNIEnvProvider::SetJavaEnv(env);
-   DvbSi::Database *db=(DvbSi::Database *)nativeDatabase;
+   DvbSi::Database::Ptr db=NativeDvbsiDatabaseData(nativeDatabase);
    NetworksRequestWrapper *wrapper=new NetworksRequestWrapper(obj);
    if (networkId==-1)
       wrapper->req=db->retrieveNetworks(wrapper, (DvbSi::RetrieveMode)retrieveMode);
@@ -359,9 +363,9 @@ jlong Java_org_dvb_si_SIDatabaseRequest_NetworksRequest(JNIEnv* env, jobject obj
    return (jlong)wrapper;
 }
 
-jlong Java_org_dvb_si_SIDatabaseRequest_ServicesRequest(JNIEnv* env, jobject obj, jlong nativeDatabase, jshort retrieveMode, jint originalNetworkId, jint transportStreamId, jint serviceId) {
+jlong Java_org_dvb_si_SIDatabaseRequest_ServicesRequest(JNIEnv* env, jobject obj, jobject nativeDatabase, jshort retrieveMode, jint originalNetworkId, jint transportStreamId, jint serviceId) {
    JNI::JNIEnvProvider::SetJavaEnv(env);
-   DvbSi::Database *db=(DvbSi::Database *)nativeDatabase;
+   DvbSi::Database::Ptr db=NativeDvbsiDatabaseData(nativeDatabase);
    ServicesRequestWrapper *wrapper=new ServicesRequestWrapper(obj);
    wrapper->req=db->retrieveServices(wrapper, originalNetworkId,
                transportStreamId==-1 ? new DvbSi::IdTracker(): new DvbSi::IdTracker(transportStreamId),
@@ -370,33 +374,33 @@ jlong Java_org_dvb_si_SIDatabaseRequest_ServicesRequest(JNIEnv* env, jobject obj
    return (jlong)wrapper;
 }
 
-jlong Java_org_dvb_si_SIDatabaseRequest_TDTRequest(JNIEnv* env, jobject obj, jlong nativeDatabase, jshort retrieveMode) {
+jlong Java_org_dvb_si_SIDatabaseRequest_TDTRequest(JNIEnv* env, jobject obj, jobject nativeDatabase, jshort retrieveMode) {
    JNI::JNIEnvProvider::SetJavaEnv(env);
-   DvbSi::Database *db=(DvbSi::Database *)nativeDatabase;
+   DvbSi::Database::Ptr db=NativeDvbsiDatabaseData(nativeDatabase);
    TDTRequestWrapper *wrapper=new TDTRequestWrapper(obj);
    wrapper->req=db->retrieveTDT(wrapper, (DvbSi::RetrieveMode)retrieveMode);
    return (jlong)wrapper;
 }
 
-jlong Java_org_dvb_si_SIDatabaseRequest_TOTRequest(JNIEnv* env, jobject obj, jlong nativeDatabase, jshort retrieveMode) {
+jlong Java_org_dvb_si_SIDatabaseRequest_TOTRequest(JNIEnv* env, jobject obj, jobject nativeDatabase, jshort retrieveMode) {
    JNI::JNIEnvProvider::SetJavaEnv(env);
-   DvbSi::Database *db=(DvbSi::Database *)nativeDatabase;
+   DvbSi::Database::Ptr db=NativeDvbsiDatabaseData(nativeDatabase);
    TOTRequestWrapper *wrapper=new TOTRequestWrapper(obj);
    wrapper->req=db->retrieveTOT(wrapper, (DvbSi::RetrieveMode)retrieveMode);
    return (jlong)wrapper;
 }
 
-jlong Java_org_dvb_si_SIDatabaseRequest_TransportStreamDescriptionRequest(JNIEnv* env, jobject obj, jlong nativeDatabase, jshort retrieveMode) {
+jlong Java_org_dvb_si_SIDatabaseRequest_TransportStreamDescriptionRequest(JNIEnv* env, jobject obj, jobject nativeDatabase, jshort retrieveMode) {
    JNI::JNIEnvProvider::SetJavaEnv(env);
-   DvbSi::Database *db=(DvbSi::Database *)nativeDatabase;
+   DvbSi::Database::Ptr db=NativeDvbsiDatabaseData(nativeDatabase);
    TransportStreamDescriptionRequestWrapper *wrapper=new TransportStreamDescriptionRequestWrapper(obj);
    wrapper->req=db->retrieveTransportStreamDescription(wrapper, (DvbSi::RetrieveMode)retrieveMode);
    return (jlong)wrapper;
 }
 
-jlong Java_org_dvb_si_SIDatabaseRequest_TransportStreamRequest(JNIEnv* env, jobject obj, jlong nativeDatabase, jshort retrieveMode, jlong nativeList, jlong nativeRequest) {
+jlong Java_org_dvb_si_SIDatabaseRequest_TransportStreamRequest(JNIEnv* env, jobject obj, jobject nativeDatabase, jshort retrieveMode, jlong nativeList, jlong nativeRequest) {
    JNI::JNIEnvProvider::SetJavaEnv(env);
-   DvbSi::Database *db=(DvbSi::Database *)nativeDatabase;
+   DvbSi::Database::Ptr db=NativeDvbsiDatabaseData(nativeDatabase);
    
    TransportStreamRequestWrapper *wrapper=new TransportStreamRequestWrapper(obj);
    
@@ -404,9 +408,9 @@ jlong Java_org_dvb_si_SIDatabaseRequest_TransportStreamRequest(JNIEnv* env, jobj
    return (jlong)wrapper;
 }
 
-jlong Java_org_dvb_si_SIDatabaseRequest_TransportStreamRequestBAT(JNIEnv* env, jobject obj, jlong nativeDatabase, jshort retrieveMode, jlong nativeList, jlong nativeRequest) {
+jlong Java_org_dvb_si_SIDatabaseRequest_TransportStreamRequestBAT(JNIEnv* env, jobject obj, jobject nativeDatabase, jshort retrieveMode, jlong nativeList, jlong nativeRequest) {
    JNI::JNIEnvProvider::SetJavaEnv(env);
-   DvbSi::Database *db=(DvbSi::Database *)nativeDatabase;
+   DvbSi::Database::Ptr db=NativeDvbsiDatabaseData(nativeDatabase);
    
    TransportStreamBATRequestWrapper *wrapper=new TransportStreamBATRequestWrapper(obj);
    
@@ -414,26 +418,26 @@ jlong Java_org_dvb_si_SIDatabaseRequest_TransportStreamRequestBAT(JNIEnv* env, j
    return (jlong)wrapper;
 }
 
-jlong Java_org_dvb_si_SIDatabaseRequest_PresentFollowingEventRequest(JNIEnv* env, jobject obj, jlong nativeDatabase, jshort retrieveMode, jboolean presentOrFollowing, jint tid, jint sid) {
+jlong Java_org_dvb_si_SIDatabaseRequest_PresentFollowingEventRequest(JNIEnv* env, jobject obj, jobject nativeDatabase, jshort retrieveMode, jboolean presentOrFollowing, jint tid, jint sid) {
    JNI::JNIEnvProvider::SetJavaEnv(env);
-   DvbSi::Database *db=(DvbSi::Database *)nativeDatabase;
+   DvbSi::Database::Ptr db=NativeDvbsiDatabaseData(nativeDatabase);
    SingleEventRequestWrapper *wrapper=new SingleEventRequestWrapper(obj);
    wrapper->req=db->retrievePresentFollowingEvent(wrapper, tid, sid, presentOrFollowing, (DvbSi::RetrieveMode)retrieveMode);
    return (jlong)wrapper;
 }
 
-jlong Java_org_dvb_si_SIDatabaseRequest_ScheduledEventsRequest(JNIEnv* env, jobject obj, jlong nativeDatabase, jshort retrieveMode, jint tid, jint sid) {
+jlong Java_org_dvb_si_SIDatabaseRequest_ScheduledEventsRequest(JNIEnv* env, jobject obj, jobject nativeDatabase, jshort retrieveMode, jint tid, jint sid) {
    JNI::JNIEnvProvider::SetJavaEnv(env);
-   DvbSi::Database *db=(DvbSi::Database *)nativeDatabase;
+   DvbSi::Database::Ptr db=NativeDvbsiDatabaseData(nativeDatabase);
    EventRequestWrapper *wrapper=new EventRequestWrapper(obj);
    wrapper->req=db->retrieveScheduledEvents(wrapper, tid, sid, (DvbSi::RetrieveMode)retrieveMode);
    return (jlong)wrapper;
 }
 
 
-jlong Java_org_dvb_si_SIDatabaseRequest_DescriptorRequestNetwork(JNIEnv* env, jobject obj, jlong nativeDatabase, jshort retrieveMode, jlong nativeList, jlong nativeRequest, jshortArray tags) {
+jlong Java_org_dvb_si_SIDatabaseRequest_DescriptorRequestNetwork(JNIEnv* env, jobject obj, jobject nativeDatabase, jshort retrieveMode, jlong nativeList, jlong nativeRequest, jshortArray tags) {
    JNI::JNIEnvProvider::SetJavaEnv(env);
-   DvbSi::Database *db=(DvbSi::Database *)nativeDatabase;
+   DvbSi::Database::Ptr db=NativeDvbsiDatabaseData(nativeDatabase);
    std::list<DvbSi::NIT> *list=(std::list<DvbSi::NIT> *)nativeList;
    DvbSi::DataSource source;
    ((RequestWrapper *)nativeRequest)->getDataSource(source);
@@ -452,9 +456,9 @@ jlong Java_org_dvb_si_SIDatabaseRequest_DescriptorRequestNetwork(JNIEnv* env, jo
 }
 
 
-jlong Java_org_dvb_si_SIDatabaseRequest_DescriptorRequestBouquet(JNIEnv* env, jobject obj, jlong nativeDatabase, jshort retrieveMode, jlong nativeList, jlong nativeRequest, jshortArray tags) {
+jlong Java_org_dvb_si_SIDatabaseRequest_DescriptorRequestBouquet(JNIEnv* env, jobject obj, jobject nativeDatabase, jshort retrieveMode, jlong nativeList, jlong nativeRequest, jshortArray tags) {
    JNI::JNIEnvProvider::SetJavaEnv(env);
-   DvbSi::Database *db=(DvbSi::Database *)nativeDatabase;
+   DvbSi::Database::Ptr db=NativeDvbsiDatabaseData(nativeDatabase);
    std::list<DvbSi::BAT> *list=(std::list<DvbSi::BAT> *)nativeList;
    DvbSi::DataSource source;
    ((RequestWrapper *)nativeRequest)->getDataSource(source);
@@ -473,9 +477,9 @@ jlong Java_org_dvb_si_SIDatabaseRequest_DescriptorRequestBouquet(JNIEnv* env, jo
 }
 
 
-jlong Java_org_dvb_si_SIDatabaseRequest_DescriptorRequestTransportStreamDescription(JNIEnv* env, jobject obj, jlong nativeDatabase, jshort retrieveMode, jlong nativeList, jlong nativeRequest, jshortArray tags) {
+jlong Java_org_dvb_si_SIDatabaseRequest_DescriptorRequestTransportStreamDescription(JNIEnv* env, jobject obj, jobject nativeDatabase, jshort retrieveMode, jlong nativeList, jlong nativeRequest, jshortArray tags) {
    JNI::JNIEnvProvider::SetJavaEnv(env);
-   DvbSi::Database *db=(DvbSi::Database *)nativeDatabase;
+   DvbSi::Database::Ptr db=NativeDvbsiDatabaseData(nativeDatabase);
    std::list<DvbSi::TSDT> *list=(std::list<DvbSi::TSDT> *)nativeList;
    DvbSi::DataSource source;
    ((RequestWrapper *)nativeRequest)->getDataSource(source);
@@ -494,9 +498,9 @@ jlong Java_org_dvb_si_SIDatabaseRequest_DescriptorRequestTransportStreamDescript
 }
 
 
-jlong Java_org_dvb_si_SIDatabaseRequest_DescriptorRequestEvent(JNIEnv* env, jobject obj, jlong nativeDatabase, jshort retrieveMode, jlong nativeEvent, jlong nativeRequest, jshortArray tags) {
+jlong Java_org_dvb_si_SIDatabaseRequest_DescriptorRequestEvent(JNIEnv* env, jobject obj, jobject nativeDatabase, jshort retrieveMode, jlong nativeEvent, jlong nativeRequest, jshortArray tags) {
    JNI::JNIEnvProvider::SetJavaEnv(env);
-   DvbSi::Database *db=(DvbSi::Database *)nativeDatabase;
+   DvbSi::Database::Ptr db=NativeDvbsiDatabaseData(nativeDatabase);
    DvbSi::EIT::Event *event=(DvbSi::EIT::Event *)nativeEvent;
    DvbSi::DataSource source;
    ((RequestWrapper *)nativeRequest)->getDataSource(source);
@@ -513,9 +517,9 @@ jlong Java_org_dvb_si_SIDatabaseRequest_DescriptorRequestEvent(JNIEnv* env, jobj
 }
 
 
-jlong Java_org_dvb_si_SIDatabaseRequest_DescriptorRequestService(JNIEnv* env, jobject obj, jlong nativeDatabase, jshort retrieveMode, jlong nativeService, jlong nativeRequest, jshortArray tags) {
+jlong Java_org_dvb_si_SIDatabaseRequest_DescriptorRequestService(JNIEnv* env, jobject obj, jobject nativeDatabase, jshort retrieveMode, jlong nativeService, jlong nativeRequest, jshortArray tags) {
    JNI::JNIEnvProvider::SetJavaEnv(env);
-   DvbSi::Database *db=(DvbSi::Database *)nativeDatabase;
+   DvbSi::Database::Ptr db=NativeDvbsiDatabaseData(nativeDatabase);
    DvbSi::SDT::Service *service=(DvbSi::SDT::Service *)nativeService;
    DvbSi::DataSource source;
    ((RequestWrapper *)nativeRequest)->getDataSource(source);
@@ -532,9 +536,9 @@ jlong Java_org_dvb_si_SIDatabaseRequest_DescriptorRequestService(JNIEnv* env, jo
 }
 
 
-jlong Java_org_dvb_si_SIDatabaseRequest_DescriptorRequestTransportStream(JNIEnv* env, jobject obj, jlong nativeDatabase, jshort retrieveMode, jlong nativeTransportStream, jlong nativeRequest, jshortArray tags) {
+jlong Java_org_dvb_si_SIDatabaseRequest_DescriptorRequestTransportStream(JNIEnv* env, jobject obj, jobject nativeDatabase, jshort retrieveMode, jlong nativeTransportStream, jlong nativeRequest, jshortArray tags) {
    JNI::JNIEnvProvider::SetJavaEnv(env);
-   DvbSi::Database *db=(DvbSi::Database *)nativeDatabase;
+   DvbSi::Database::Ptr db=NativeDvbsiDatabaseData(nativeDatabase);
    DvbSi::NIT::TransportStream *ts=(DvbSi::NIT::TransportStream *)nativeTransportStream;
    DvbSi::DataSource source;
    ((RequestWrapper *)nativeRequest)->getDataSource(source);
@@ -551,9 +555,9 @@ jlong Java_org_dvb_si_SIDatabaseRequest_DescriptorRequestTransportStream(JNIEnv*
 }
 
 
-jlong Java_org_dvb_si_SIDatabaseRequest_DescriptorRequestTime(JNIEnv* env, jobject obj, jlong nativeDatabase, jshort retrieveMode, jlong nativeTime, jlong nativeRequest, jshortArray tags) {
+jlong Java_org_dvb_si_SIDatabaseRequest_DescriptorRequestTime(JNIEnv* env, jobject obj, jobject nativeDatabase, jshort retrieveMode, jlong nativeTime, jlong nativeRequest, jshortArray tags) {
    JNI::JNIEnvProvider::SetJavaEnv(env);
-   DvbSi::Database *db=(DvbSi::Database *)nativeDatabase;
+   DvbSi::Database::Ptr db=NativeDvbsiDatabaseData(nativeDatabase);
    RequestWrapper *wr=(RequestWrapper *)nativeRequest;
    
    DvbSi::DataSource source;
@@ -573,9 +577,9 @@ jlong Java_org_dvb_si_SIDatabaseRequest_DescriptorRequestTime(JNIEnv* env, jobje
 }
 
 
-jlong Java_org_dvb_si_SIDatabaseRequest_DescriptorRequestPMTService(JNIEnv* env, jobject obj, jlong nativeDatabase, jshort retrieveMode, jlong nativePMT, jlong nativeRequest, jshortArray tags) {
+jlong Java_org_dvb_si_SIDatabaseRequest_DescriptorRequestPMTService(JNIEnv* env, jobject obj, jobject nativeDatabase, jshort retrieveMode, jlong nativePMT, jlong nativeRequest, jshortArray tags) {
    JNI::JNIEnvProvider::SetJavaEnv(env);
-   DvbSi::Database *db=(DvbSi::Database *)nativeDatabase;
+   DvbSi::Database::Ptr db=NativeDvbsiDatabaseData(nativeDatabase);
    DvbSi::PMT *pmt=(DvbSi::PMT *)nativePMT;
    DvbSi::DataSource source;
    ((RequestWrapper *)nativeRequest)->getDataSource(source);
@@ -592,9 +596,9 @@ jlong Java_org_dvb_si_SIDatabaseRequest_DescriptorRequestPMTService(JNIEnv* env,
 }
 
 
-jlong Java_org_dvb_si_SIDatabaseRequest_DescriptorRequestPMTElementaryStream(JNIEnv* env, jobject obj, jlong nativeDatabase, jshort retrieveMode, jlong nativeStream, jlong nativeRequest, jshortArray tags) {
+jlong Java_org_dvb_si_SIDatabaseRequest_DescriptorRequestPMTElementaryStream(JNIEnv* env, jobject obj, jobject nativeDatabase, jshort retrieveMode, jlong nativeStream, jlong nativeRequest, jshortArray tags) {
    JNI::JNIEnvProvider::SetJavaEnv(env);
-   DvbSi::Database *db=(DvbSi::Database *)nativeDatabase;
+   DvbSi::Database::Ptr db=NativeDvbsiDatabaseData(nativeDatabase);
    DvbSi::PMT::Stream *str=(DvbSi::PMT::Stream *)nativeStream;
    DvbSi::DataSource source;
    ((RequestWrapper *)nativeRequest)->getDataSource(source);
