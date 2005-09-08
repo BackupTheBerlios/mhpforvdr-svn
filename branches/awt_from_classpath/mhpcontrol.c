@@ -530,23 +530,39 @@ ControlLoadingManager::~ControlLoadingManager() {
 
 void ControlLoadingManager::Load(ApplicationInfo::cApplication::Ptr a, bool foreground) {
    printf("ControlLoadingManager::Load, foreground %d\n", foreground);
-   cMutexLock lock(&mutex);
-   AppMap::iterator it=apps.find(a);
-   if (it == apps.end()) {
-      CarouselLoader *loader=new CarouselLoader(a);
-      apps[a]=loader;
-      Load(loader, foreground);
-   } else {
-      Load(it->second, foreground);
+   switch (a->GetTransportProtocol()->GetProtocol()) {
+      case ApplicationInfo::cTransportProtocol::ObjectCarousel:
+      {
+         cMutexLock lock(&mutex);
+         AppMap::iterator it=apps.find(a);
+         if (it == apps.end()) {
+            CarouselLoader *loader=new CarouselLoader(a);
+            apps[a]=loader;
+            Load(loader, foreground);
+         } else {
+            Load(it->second, foreground);
+         }
+         break;
+      }
+      default:
+         break;;
    }
 }
 
 void ControlLoadingManager::Stop(ApplicationInfo::cApplication::Ptr a) {
    //printf("ControlLoadingManager::Stop\n");
-   cMutexLock lock(&mutex);
-   AppMap::iterator it=apps.find(a);
-   if (it != apps.end()) {
-      Stop(it->second);
+   switch (a->GetTransportProtocol()->GetProtocol()) {
+      case ApplicationInfo::cTransportProtocol::ObjectCarousel:
+      {
+         cMutexLock lock(&mutex);
+         AppMap::iterator it=apps.find(a);
+         if (it != apps.end()) {
+            Stop(it->second);
+         }
+         break;
+      }
+      default:
+         break;
    }
 }
 
@@ -555,45 +571,75 @@ void ControlLoadingManager::Stop(ApplicationInfo::cApplication::Ptr a) {
 
 LoadingState ControlLoadingManager::getState(ApplicationInfo::cApplication::Ptr a) {
    //printf("ControlLoadingManager::getState\n");
-   cMutexLock lock(&mutex);
-   AppMap::iterator it=apps.find(a);
-   if (it != apps.end()) {
-      return it->second->getState();
+   switch (a->GetTransportProtocol()->GetProtocol()) {
+      case ApplicationInfo::cTransportProtocol::ObjectCarousel:
+      {
+         cMutexLock lock(&mutex);
+         AppMap::iterator it=apps.find(a);
+         if (it != apps.end()) {
+            return it->second->getState();
+         }
+         return LoadingStateWaiting;
+      }
+      case ApplicationInfo::cTransportProtocol::Local:
+         return LoadingStateLoaded;
+      default:
+         return LoadingStateWaiting;
    }
-   return LoadingStateWaiting;
 }
 
 SmartPtr<Cache::Cache> ControlLoadingManager::getCache(ApplicationInfo::cApplication::Ptr a) {
-   cMutexLock lock(&mutex);
-   AppMap::iterator it=apps.find(a);
-   if (it != apps.end()) {
-      return it->second->getCache();
+   switch (a->GetTransportProtocol()->GetProtocol()) {
+      case ApplicationInfo::cTransportProtocol::ObjectCarousel:
+      {
+         cMutexLock lock(&mutex);
+         AppMap::iterator it=apps.find(a);
+         if (it != apps.end()) {
+            return it->second->getCache();
+         }
+         return SmartPtr<Cache::Cache>(0);
+      }
+      default:
+         return SmartPtr<Cache::Cache>(0);
    }
-   return SmartPtr<Cache::Cache>(0);
 }
 
 void ControlLoadingManager::NewApplication(ApplicationInfo::cApplication::Ptr app) {
 }
 
 void ControlLoadingManager::ApplicationRemoved(ApplicationInfo::cApplication::Ptr app) {
-   cMutexLock lock(&mutex);
-   AppMap::iterator it=apps.find(app);
-   if (it != apps.end()) {
-      it->second->Stop();
-      //apps.erase(it);
-   }   
+   switch (a->GetTransportProtocol()->GetProtocol()) {
+      case ApplicationInfo::cTransportProtocol::ObjectCarousel:
+      {
+         cMutexLock lock(&mutex);
+         AppMap::iterator it=apps.find(app);
+         if (it != apps.end()) {
+            it->second->Stop();
+            //apps.erase(it);
+         }
+      }
+      default:
+         break;
+   }
 }
 
 void ControlLoadingManager::ChannelSwitch(const cDevice *device, Service::TransportStreamID oldTs, Service::TransportStreamID newTs) {
-   cMutexLock lock(&mutex);
-   for (AppMap::iterator it=apps.begin(); it != apps.end(); ++it) {
-      if (it->second->ChannelSwitchedAway(device, oldTs, newTs)) {
-         //it is cleaner to stop/hibernate first, then to retry loading if needed.
-         Stop(it->second);
-         if (it->second->IsForeground()) {
-            Load(it->second, false);
+   switch (a->GetTransportProtocol()->GetProtocol()) {
+      case ApplicationInfo::cTransportProtocol::ObjectCarousel:
+      {
+         cMutexLock lock(&mutex);
+         for (AppMap::iterator it=apps.begin(); it != apps.end(); ++it) {
+            if (it->second->ChannelSwitchedAway(device, oldTs, newTs)) {
+               //it is cleaner to stop/hibernate first, then to retry loading if needed.
+               Stop(it->second);
+               if (it->second->IsForeground()) {
+                  Load(it->second, false);
+               }
+            }
          }
       }
+      default:
+         break;
    }
 }
 
