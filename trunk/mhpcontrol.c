@@ -608,7 +608,7 @@ void ControlLoadingManager::NewApplication(ApplicationInfo::cApplication::Ptr ap
 }
 
 void ControlLoadingManager::ApplicationRemoved(ApplicationInfo::cApplication::Ptr app) {
-   switch (a->GetTransportProtocol()->GetProtocol()) {
+   switch (app->GetTransportProtocol()->GetProtocol()) {
       case ApplicationInfo::cTransportProtocol::ObjectCarousel:
       {
          cMutexLock lock(&mutex);
@@ -624,22 +624,15 @@ void ControlLoadingManager::ApplicationRemoved(ApplicationInfo::cApplication::Pt
 }
 
 void ControlLoadingManager::ChannelSwitch(const cDevice *device, Service::TransportStreamID oldTs, Service::TransportStreamID newTs) {
-   switch (a->GetTransportProtocol()->GetProtocol()) {
-      case ApplicationInfo::cTransportProtocol::ObjectCarousel:
-      {
-         cMutexLock lock(&mutex);
-         for (AppMap::iterator it=apps.begin(); it != apps.end(); ++it) {
-            if (it->second->ChannelSwitchedAway(device, oldTs, newTs)) {
-               //it is cleaner to stop/hibernate first, then to retry loading if needed.
-               Stop(it->second);
-               if (it->second->IsForeground()) {
-                  Load(it->second, false);
-               }
-            }
+   cMutexLock lock(&mutex);
+   for (AppMap::iterator it=apps.begin(); it != apps.end(); ++it) {
+      if (it->second->ChannelSwitchedAway(device, oldTs, newTs)) {
+         //it is cleaner to stop/hibernate first, then to retry loading if needed.
+         Stop(it->second);
+         if (it->second->IsForeground()) {
+            Load(it->second, false);
          }
       }
-      default:
-         break;
    }
 }
 
