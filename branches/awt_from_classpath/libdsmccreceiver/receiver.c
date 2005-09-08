@@ -251,8 +251,8 @@ void ObjectCarousel::ModuleData::AddData(DDB &ddb) {
    if (bstatus->isSet(ddb.block_number)) { //block not yet received
       blocks.push_back(ddb);
       curp+=ddb.blockdata.getLength();
-      char bl[bstatus->getSize()+1];for (int i=0;i<bstatus->getSize();i++) bl[i]=(bstatus->isSet(i) ? '1':'0');bl[bstatus->getSize()]=0;
-      printf("Received block number %d of module %d, size %d, curp now %ld, blocks %s\n", ddb.block_number, module_id, ddb.blockdata.getLength(), curp, bl);
+      //char bl[bstatus->getSize()+1];for (int i=0;i<bstatus->getSize();i++) bl[i]=(bstatus->isSet(i) ? '1':'0');bl[bstatus->getSize()]=0;
+      //printf("Received block number %d of module %d, size %d, curp now %ld, blocks %s\n", ddb.block_number, module_id, ddb.blockdata.getLength(), curp, bl);
       bstatus->Set(ddb.block_number);
    }
    if (bstatus->isComplete()) {
@@ -269,7 +269,7 @@ void ObjectCarousel::ModuleData::AddData(DDB &ddb) {
             p+=(*it).blockdata.getLength();
          }
       }
-      printf("blocks.size() %d, data[0] %d, module %d.\n", blocks.size(), data[(uint)0], module_id);
+      //printf("blocks.size() %d, data[0] %d, module %d.\n", blocks.size(), data[(uint)0], module_id);
       
       blocks.clear();
       

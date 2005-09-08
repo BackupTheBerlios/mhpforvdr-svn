@@ -261,7 +261,7 @@ jlong Java_org_dvb_dsmcc_DSMCCObject_createListener(JNIEnv* env, jobject obj, jo
    if (l->cache)
       l->cache->addListener(path.toCString(), l);
    else
-      printf("Java_org_dvb_dsmcc_DSMCCObject_createListener: Cache is null!\n");
+      printf("Java_org_dvb_dsmcc_DSMCCObject_createListener: Cache is null. This is all right for local applications.\n");
       
    return (jlong)l;
 }

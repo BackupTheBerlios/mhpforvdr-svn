@@ -17,7 +17,7 @@ class DFBDataBuffer {
 private long nativeData;
 
 private native long createBufferFromFile(byte[] filename) throws IOException;
-private native long createBufferFromData(byte[] data, int offset, int len) throws ArrayIndexOutOfBoundsException;
+private native long createBufferFromData(byte[] data, int offset, int len) throws ArrayIndexOutOfBoundsException, IOException;
 private native long createBufferForStreaming() throws IOException;
 private native long createBufferFromStreamingBuffer(long nativeStreamingBuffer) throws IOException;
 private native void putData(long nativeData, byte[] data, int len);

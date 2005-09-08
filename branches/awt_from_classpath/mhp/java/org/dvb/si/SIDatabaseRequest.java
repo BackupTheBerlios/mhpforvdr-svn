@@ -1,6 +1,6 @@
 package org.dvb.si;
 
-
+import vdr.mhp.lang.NativeData;
 
 public class SIDatabaseRequest extends SIRequest {
 

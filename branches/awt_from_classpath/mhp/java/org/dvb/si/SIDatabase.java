@@ -44,7 +44,7 @@ private static native NativeData databasePointer(int index);
 
 public static SIDatabase getDatabaseForChannel(int nid, int tid, int sid) {
    NativeData nD=databaseForChannel(nid, tid, sid);
-   if (nD==0)
+   if (nD.isNull())
       return null;
       
    getSIDatabase();

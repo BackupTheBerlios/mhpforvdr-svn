@@ -82,11 +82,12 @@ public ServiceContext [] getServiceContexts () {
       try {
          s.checkPermission(new ServiceContextPermission("access", "own"));
       } catch (SecurityException e) {
-         return new ServiceContext[0];
+         e.printStackTrace();
+         return new ServiceContext [] {};
       }
    }
 
-   return new VDRServiceContext[] { VDRServiceContext.getContext() };
+   return new VDRServiceContext [] { VDRServiceContext.getContext() };
    /*
    MHPApplication app = ApplicationManager.getManager().getApplicationFromStack());
    if (app == null)

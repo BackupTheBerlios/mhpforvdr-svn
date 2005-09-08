@@ -53,7 +53,9 @@ Control::~Control() {
    Hide();
    // Do not call Stop() directly, there may be a race condition since Stop() may be called from any thread.
    // ShutdownControl() calls Stop(), is thread safe and cleanly sets the status for RunningManager.
-   ((ControlRunningManager *)RunningManager::getManager())->ShutdownControl();
+   ControlRunningManager *manager=(ControlRunningManager *)RunningManager::getManager();
+   if (manager)
+      ((ControlRunningManager *)RunningManager::getManager())->ShutdownControl();
 }
 
 // Shall only be called from VDR's main thread
@@ -358,6 +360,7 @@ ControlRunningManager::ControlRunningManager()
 }
 
 ControlRunningManager::~ControlRunningManager() {
+   ShutdownControl();
 }
 
 void ControlRunningManager::Initialize() {

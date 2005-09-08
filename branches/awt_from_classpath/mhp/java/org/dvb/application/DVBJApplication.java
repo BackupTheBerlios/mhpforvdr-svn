@@ -93,6 +93,7 @@ public java.lang.Object getProperty(java.lang.String index) {
       return getBaseDir();
    } else if (index.equals("dvb.j.location.cpath.extension")) {
       //TODO, p. 261
+      System.out.println("TODO: DVBJApplication.getProperty "+index);
       return new String[0];
    }
    return null;
@@ -408,10 +409,10 @@ public java.lang.Object getXletProperty (java.lang.String key) {
    }
    else if (key.equals("dvb.org.id")) {
       //an Integer? a String?? spec says nothing!
-      return new Integer(getOID());
+      return Integer.toString(getOID());
    }
    else if (key.equals("dvb.app.id")) {
-      return new Integer(getAID());
+      return Integer.toString(getAID());
    }
    else if (key.equals("dvb.caller.parameters")) {
       //the parameters passed to this application if it was

@@ -36,7 +36,7 @@ public class HScreen extends MHPScreen {
   
   HGraphicsDevice defaultGraphicsDevice = new HGraphicsDevice();
   HBackgroundDevice defaultBackgroundDevice = new HBackgroundDevice();
-  HVideoDevice defaultVideoDevice = null;
+  HVideoDevice defaultVideoDevice = new HVideoDevice();
   
   /** Constructor */
   HScreen() {

@@ -189,13 +189,16 @@ bool cPluginMhp::Initialize(void)
 }
 
 void cPluginMhp::InitializeLocalApps() {
-//SPECIFICATION for local apps:
-//The directory localAppPath can be specified by an command line argument.
-//The default is "/usr/local/vdr/apps".
-//An application with the name "XYApp" must be have an initial class "XYApp"
-//defined in the class file "XYApp.class" in the directory "XYApp" under the localAppPath.
-//Example: "/usr/local/vdr/apps/XYApp/XYApp.class".
-//The classpath will contain "/usr/local/vdr/apps/XYApp/".
+// SPECIFICATION for local apps:
+// The directory localAppPath can be specified by an command line argument.
+// The default is "/usr/local/vdr/apps".
+// An application with the name "XYApp" must be have an initial class "XYApp"
+// defined in the class file "XYApp.class" in the directory "XYApp" under the localAppPath.
+// Example: "/usr/local/vdr/apps/XYApp/XYApp.class".
+// The classpath will contain "/usr/local/vdr/apps/XYApp/".
+// If in a given application layout the initial class has a different name or is located in a different
+// directory, a symlink with the name specified above (XYApp.class) shall point to the initial class
+// which will be launched instead of the symlink location.
    DIR *dir=opendir(localAppPath);
    ApplicationInfo::cTransportProtocolLocal *tp=0;
    if (dir) {
@@ -206,15 +209,26 @@ void cPluginMhp::InitializeLocalApps() {
          sprintf(path, "%s/%s", localAppPath, entry->d_name);
          if ( (stat(path, &st) != -1) && S_ISDIR(st.st_mode)) {
             sprintf(path, "%s/%s/%s.class", localAppPath, entry->d_name, entry->d_name);
-            //int filedes;
-            if ( (stat(path, &st) != -1) && (S_ISREG(st.st_mode) || S_ISLNK(st.st_mode)) && access(path, R_OK)==0/*((filedes=open(path, O_RDONLY))!=-1)*/ ) {
+            if ( (lstat(path, &st) != -1) && (S_ISREG(st.st_mode) || S_ISLNK(st.st_mode)) && access(path, R_OK)==0 ) {
                if (!tp) {
                   tp=new ApplicationInfo::cTransportProtocolLocal();
                   tp->SetPath(localAppPath);
                }
-               ApplicationInfo::cApplication *app=new cLocalApplication(entry->d_name, entry->d_name, entry->d_name, tp);
-               localApps.push_back(app);
-               //close(filedes);
+               ApplicationInfo::cApplication *app = 0;
+               if (S_ISREG(st.st_mode)) {
+                  app=new cLocalApplication(entry->d_name, entry->d_name, entry->d_name, tp);
+               } else if (S_ISLNK(st.st_mode)) {
+                  char buf[PATH_MAX];
+                  int length = readlink(path, buf, PATH_MAX);
+                  if (length != -1) {
+                     buf[length-6]='\0'; // remove .class
+                     strreplace(buf, '/', '.'); // / -> .
+                     app=new cLocalApplication(entry->d_name, entry->d_name, buf, tp);
+                  }
+                  printf("Readlink %s, %d, %s\n", path, errno, buf);
+               }
+               if (app)
+                  localApps.push_back(app);
             }
          }
       }
@@ -245,6 +259,7 @@ void cPluginMhp::Stop(void) {
   DvbSi::Database::CleanUp();
   JavaInterface::CleanUp();
   Mhp::LoadingManager::getManager()->CleanUp();
+  Mhp::RunningManager::getManager()->CleanUp();
   MhpOutput::Administration::CleanUp();
 }
 

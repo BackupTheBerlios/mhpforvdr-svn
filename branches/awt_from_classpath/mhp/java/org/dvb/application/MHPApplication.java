@@ -354,7 +354,7 @@ Returns: either the return value corresponding to the property name or null if t
 unknown */
 public java.lang.Object getProperty(java.lang.String index) {
    if (index.equals("dvb.transport.oc.component.tag")) {
-      return new Integer(componentTag(nativeData));
+      return Integer.toString(componentTag(nativeData));
    }
    return null;
 }

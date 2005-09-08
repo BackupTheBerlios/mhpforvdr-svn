@@ -96,6 +96,7 @@ import java.awt.image.ImageProducer;
 import java.awt.peer.RobotPeer;
 import java.io.File;
 import java.io.InputStream;
+import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.text.AttributedString;
@@ -591,13 +592,96 @@ public class MHPToolkit extends gnu.java.awt.ClasspathToolkit
   }
   
   public Image createImage(String filename) {
-     return new MHPImage(filename);
+     try {
+        return new MHPImage(filename);
+     } catch (IllegalArgumentException e) {
+        e.printStackTrace();
+     }
+     return new MhpErrorImage();
   }
 
   public Image createImage(URL url) {
      MHPImageDecoder producer = new MHPImageDecoder(url);
      MHPImage image = new MHPImage(producer);
      return image;
+  }
+
+  /** 
+   * A helper class to return to clients in cases where a BufferedImage is
+   * desired but its construction fails.
+   */
+  private class MhpErrorImage extends Image
+  {
+    public MhpErrorImage()
+    {
+       System.out.println("Creating MHPErrorImage in MHPToolkit");
+    }
+
+    public int getWidth(ImageObserver observer)
+    {
+      return -1;
+    }
+
+    public int getHeight(ImageObserver observer)
+    {
+      return -1;
+    }
+
+    public ImageProducer getSource()
+    {
+
+      return new ImageProducer() 
+        {          
+          HashSet consumers = new HashSet();          
+          public void addConsumer(ImageConsumer ic)
+          {
+            consumers.add(ic);
+          }
+
+          public boolean isConsumer(ImageConsumer ic)
+          {
+            return consumers.contains(ic);
+          }
+
+          public void removeConsumer(ImageConsumer ic)
+          {
+            consumers.remove(ic);
+          }
+
+          public void startProduction(ImageConsumer ic)
+          {
+            consumers.add(ic);
+            Iterator i = consumers.iterator();
+            while(i.hasNext())
+              {
+                ImageConsumer c = (ImageConsumer) i.next();
+                c.imageComplete(ImageConsumer.IMAGEERROR);
+              }
+          }
+          public void requestTopDownLeftRightResend(ImageConsumer ic)
+          {
+            startProduction(ic);
+          }        
+        };
+    }
+
+    public Graphics getGraphics() 
+    { 
+      return null; 
+    }
+
+    public Object getProperty(String name, ImageObserver observer)
+    {
+      return null;
+    }
+    public Image getScaledInstance(int width, int height, int flags)
+    {
+      return new MhpErrorImage();
+    }
+
+    public void flush() 
+    {
+    }
   }
 
   /**
@@ -667,7 +751,7 @@ public class MHPToolkit extends gnu.java.awt.ClasspathToolkit
    * @return The created image.
    */
   public Image createImage(ImageProducer producer) {
-      return new MHPImage(producer);
+     return new MHPImage(producer);
   }
 
   /**

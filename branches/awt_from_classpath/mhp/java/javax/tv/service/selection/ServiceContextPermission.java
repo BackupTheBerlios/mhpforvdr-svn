@@ -101,9 +101,11 @@ public ServiceContextPermission (java.lang.String name,
 
 public boolean implies (java.security.Permission p){
    // BasicPermission checks for name and type.
+   System.out.print("ServiceContextPermission.implies: "+p+", super "+super.implies(p)+", this ");
    if (super.implies(p))
    {
       ServiceContextPermission o=(ServiceContextPermission)p;
+      System.out.println((getActions().equals("*") || getActions().equals(o.getActions()) ));
       return (getActions().equals("*") || getActions().equals(o.getActions()) );
    }
    return false;

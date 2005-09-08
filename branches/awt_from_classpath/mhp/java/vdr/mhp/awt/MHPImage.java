@@ -187,7 +187,7 @@ native static long getSubImage( long nativeData, int x, int y, int w, int h);
    *
    * @throws IllegalArgumentException if the image could not be loaded.
    */
-  public MHPImage (String filename)
+  public MHPImage (String filename) throws IllegalArgumentException
   {
     isLoaded = true;
     observers = null;
@@ -224,7 +224,7 @@ native static long getSubImage( long nativeData, int x, int y, int w, int h);
   /**
     * Creates an image which contains the specified part of the src image
     */
-  protected MHPImage (MHPImage src, int x, int y, int width, int height)
+  protected MHPImage (MHPImage src, int x, int y, int width, int height) throws IllegalArgumentException, IllegalStateException
   {
     if (x+width <= src.width || y+height <= src.height || x < 0 || y < 0)
        throw new IllegalArgumentException();

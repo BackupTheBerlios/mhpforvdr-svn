@@ -64,55 +64,6 @@ public class DVBClassLoader extends URLClassLoader {
 MHPApplication app;
 //ProtectionDomain protectionDomain;
 
-/*
-//this permission is not used as a permission,
-//but abused to retrieve the calling MHP application from stack
-static class ApplicationTracePermission extends Permission {
-   MHPApplication app;
-   
-   ApplicationTracePermission(MHPApplication app) {
-      super(null);
-      this.app=app;
-   }
-   
-   ApplicationTracePermission() {
-      super(null);
-   }
-   
-   MHPApplication getApplication() {
-      return app;
-   }
-   
-   public boolean implies(Permission p) {
-      System.out.println("ApplicationTracePermission.implies"+p);
-      if (p instanceof ApplicationTracePermission) {
-         //here we do not check for a permission, but rather modify the calling permission
-         ApplicationTracePermission o=(ApplicationTracePermission)p;
-         if (o.app == null) {
-            o.app = app;
-            return true;
-         } else //strange
-            return o.app == app;
-      }
-      return false;
-   }
-   
-   public String getActions() {
-      return null;
-   }
-   
-   public boolean equals(Object obj) {
-      if (obj instanceof ApplicationTracePermission)
-         return ((ApplicationTracePermission)obj).app == app;
-      return false;
-   }
-   
-   public int hashCode() {
-      return app==null ? 0 : app.hashCode();
-   }
-}
-*/
-
 //not API
 //use this constructor or the next only from inside the implementation
 public DVBClassLoader(java.net.URL[] URLs, org.dvb.application.MHPApplication app) {

@@ -75,13 +75,13 @@ private:
                      MHPLIBDIR
 */
 
-//The boot class path needs to contain all classes an entry any this path depends on.
-//This means e.g. the ASM jar file cannot be included in the SYSTEM_CLASS_PATH
-//because central classes in MHPJARFILE depend on them.
+// The boot class path needs to contain all classes an entry of this path depends on.
+// This means e.g. the ASM jar file cannot be included in the SYSTEM_CLASS_PATH
+// because central classes in MHPJARFILE depend on them.
 
 #define BOOT_CLASS_PATH      MHPJARFILE ":"  \
-                             SABLEVM_LIB "/libclasspath.jar" \
-                             SABLEVM_LIB "/resources.jar" \
+                             SABLEVM_LIB "/libclasspath.jar" ":" \
+                             SABLEVM_LIB "/resources.jar" ":" \
                              GLOBAL_EXTRA_CLASSPATH
 #define SYSTEM_CLASS_PATH
 #define BOOT_LIBRARY_PATH    SABLEVM_NATIVE
