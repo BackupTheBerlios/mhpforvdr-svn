@@ -403,12 +403,12 @@ const tI18nPhrase MhpI18nPhrases[] = {
   { "This application has already been started", // English
     "Diese Anwendung wurde bereits gestartet", // Deutsch
     "", // Slovenski
-    "", // Italiano
+    "Questa applicazione è già stata avviata", // Italiano
     "", // Nederlands
     "", // Português
     "", // Français
     "", // Norsk
-    "", // suomi
+    "Tämä sovellus on jo käynnistetty", // suomi
     "", // Polski
     "", // Español
     "", // ÅëëçíéêÜ (Greek)
