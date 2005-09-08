@@ -48,10 +48,17 @@ Control::Control()
 }
 
 Control::~Control() {
+   // Hide shall only be called from main thread, but we are in main thread because
+   // cControl objects are always deleted by VDR from main thread.
    Hide();
-   Stop();
+   // Do not call Stop() directly, there may be a race condition since Stop() may be called from any thread.
+   // ShutdownControl() calls Stop(), is thread safe and cleanly sets the status for RunningManager.
+   ControlRunningManager *manager=(ControlRunningManager *)RunningManager::getManager();
+   if (manager)
+      ((ControlRunningManager *)RunningManager::getManager())->ShutdownControl();
 }
 
+// Shall only be called from VDR's main thread
 void Control::Hide(void) {
    if (visible) {
       delete display;
@@ -62,7 +69,7 @@ void Control::Hide(void) {
 }
 
 void Control::Stop() {
-   printf("Control::Stop()\n");
+   //printf("Control::Stop()\n");
    //set status to Stopped so that osEnd is returned when ProcessKey is called again
    //(asynchronous stop)
    status=Stopped;
@@ -102,7 +109,7 @@ eOSState Control::ProcessKey(eKeys Key) {
    case Running:
       switch (Key) {
       case kBack:
-         printf("Status Running, kBack\n");
+         //printf("Status Running, kBack\n");
          RunningManager::getManager()->Stop(app);
          ((ControlRunningManager *)RunningManager::getManager())->ShutdownControl();
          status=Waiting;
@@ -119,6 +126,7 @@ eOSState Control::ProcessKey(eKeys Key) {
    return osContinue;
 }
 
+// Shall only be called from VDR's main thread
 void Control::CheckMessage() {
    switch (Messages::message) {
    case Messages::NoMessage:
@@ -145,8 +153,8 @@ void Control::CheckMessage() {
 
 }
 
-
-void Control::ShowProgress(float progress, int currentSize, int totalSize) {
+// Shall only be called from VDR's main thread
+void Control::ShowProgress(int currentSize, int totalSize) {
    if (!doShow)
       return;
    if (!visible) {
@@ -175,6 +183,7 @@ void Control::SetApplicationName(const std::string &a) {
    appName=a;
 }
 
+// Shall only be called from VDR's main thread
 void Control::HideProgress() {
    Hide();
    appName=unknownName;
@@ -187,7 +196,7 @@ void Control::SetApplication(ApplicationInfo::cApplication::Ptr a) {
 //#include <dfb++/dfb++.h>
 //#include <libmhpoutput/output.h>
 void Control::StartMhp() {
-   printf("Control::StartMhp()\n");
+   //printf("Control::StartMhp()\n");
    if (status==Stopped)
       return;
    //Check that everything essential is working, as far as we can see it.
@@ -351,6 +360,7 @@ ControlRunningManager::ControlRunningManager()
 }
 
 ControlRunningManager::~ControlRunningManager() {
+   ShutdownControl();
 }
 
 void ControlRunningManager::Initialize() {
@@ -433,9 +443,11 @@ void ControlRunningManager::Stop() {
 
 void ControlRunningManager::ShutdownControl() {
    cMutexLock lock(&mutex);
-   control->Stop();
-   //do not delete control, ownership is passed to VDR
-   control=0;
+   if (control) {
+      control->Stop();
+      //do not delete control, ownership is passed to VDR
+      control=0;
+   }
 }
 
 //Inform manager that the given application has been started
@@ -517,27 +529,40 @@ ControlLoadingManager::~ControlLoadingManager() {
 }*/
 
 void ControlLoadingManager::Load(ApplicationInfo::cApplication::Ptr a, bool foreground) {
-   printf("ControlLoadingManager::Load\n");
-   cMutexLock lock(&mutex);
-   AppMap::iterator it=apps.find(a);
-   if (it == apps.end()) {
-      CarouselLoader *loader=new CarouselLoader(a);
-      apps[a]=loader;
-      if (foreground) {
-         loadingApp=loader;
-         loader->SetForeground();
+   printf("ControlLoadingManager::Load, foreground %d\n", foreground);
+   switch (a->GetTransportProtocol()->GetProtocol()) {
+      case ApplicationInfo::cTransportProtocol::ObjectCarousel:
+      {
+         cMutexLock lock(&mutex);
+         AppMap::iterator it=apps.find(a);
+         if (it == apps.end()) {
+            CarouselLoader *loader=new CarouselLoader(a);
+            apps[a]=loader;
+            Load(loader, foreground);
+         } else {
+            Load(it->second, foreground);
+         }
+         break;
       }
-      loader->Start();
-   } else {
-      Load(it->second, foreground);
+      default:
+         break;;
    }
 }
 
 void ControlLoadingManager::Stop(ApplicationInfo::cApplication::Ptr a) {
-   printf("ControlLoadingManager::Stop\n");
-   cMutexLock lock(&mutex);
-   AppMap::iterator it=apps.find(a);
-   if (it != apps.end()) {
+   //printf("ControlLoadingManager::Stop\n");
+   switch (a->GetTransportProtocol()->GetProtocol()) {
+      case ApplicationInfo::cTransportProtocol::ObjectCarousel:
+      {
+         cMutexLock lock(&mutex);
+         AppMap::iterator it=apps.find(a);
+         if (it != apps.end()) {
+            Stop(it->second);
+         }
+         break;
+      }
+      default:
+         break;
    }
 }
 
@@ -545,50 +570,81 @@ void ControlLoadingManager::Stop(ApplicationInfo::cApplication::Ptr a) {
 }*/
 
 LoadingState ControlLoadingManager::getState(ApplicationInfo::cApplication::Ptr a) {
-   printf("ControlLoadingManager::getState\n");
-   cMutexLock lock(&mutex);
-   AppMap::iterator it=apps.find(a);
-   if (it != apps.end()) {
-      return it->second->getState();
+   //printf("ControlLoadingManager::getState\n");
+   switch (a->GetTransportProtocol()->GetProtocol()) {
+      case ApplicationInfo::cTransportProtocol::ObjectCarousel:
+      {
+         cMutexLock lock(&mutex);
+         AppMap::iterator it=apps.find(a);
+         if (it != apps.end()) {
+            return it->second->getState();
+         }
+         return LoadingStateWaiting;
+      }
+      case ApplicationInfo::cTransportProtocol::Local:
+         return LoadingStateLoaded;
+      default:
+         return LoadingStateWaiting;
    }
-   return LoadingStateWaiting;
 }
 
 SmartPtr<Cache::Cache> ControlLoadingManager::getCache(ApplicationInfo::cApplication::Ptr a) {
-   cMutexLock lock(&mutex);
-   AppMap::iterator it=apps.find(a);
-   if (it != apps.end()) {
-      return it->second->getCache();
+   switch (a->GetTransportProtocol()->GetProtocol()) {
+      case ApplicationInfo::cTransportProtocol::ObjectCarousel:
+      {
+         cMutexLock lock(&mutex);
+         AppMap::iterator it=apps.find(a);
+         if (it != apps.end()) {
+            return it->second->getCache();
+         }
+         return SmartPtr<Cache::Cache>(0);
+      }
+      default:
+         return SmartPtr<Cache::Cache>(0);
    }
-   return SmartPtr<Cache::Cache>(0);
 }
 
 void ControlLoadingManager::NewApplication(ApplicationInfo::cApplication::Ptr app) {
 }
 
 void ControlLoadingManager::ApplicationRemoved(ApplicationInfo::cApplication::Ptr app) {
-   cMutexLock lock(&mutex);
-   AppMap::iterator it=apps.find(app);
-   if (it != apps.end()) {
-      it->second->Stop();
-      //apps.erase(it);
-   }   
+   switch (a->GetTransportProtocol()->GetProtocol()) {
+      case ApplicationInfo::cTransportProtocol::ObjectCarousel:
+      {
+         cMutexLock lock(&mutex);
+         AppMap::iterator it=apps.find(app);
+         if (it != apps.end()) {
+            it->second->Stop();
+            //apps.erase(it);
+         }
+      }
+      default:
+         break;
+   }
 }
 
 void ControlLoadingManager::ChannelSwitch(const cDevice *device, Service::TransportStreamID oldTs, Service::TransportStreamID newTs) {
-   cMutexLock lock(&mutex);
-   for (AppMap::iterator it=apps.begin(); it != apps.end(); ++it) {
-      if (it->second->ChannelSwitchedAway(device, oldTs, newTs)) {
-         //it is cleaner to stop/hibernate first, then to retry loading if needed.
-         Stop(it->second);
-         if (it->second->IsForeground()) {
-            Load(it->second, false);
+   switch (a->GetTransportProtocol()->GetProtocol()) {
+      case ApplicationInfo::cTransportProtocol::ObjectCarousel:
+      {
+         cMutexLock lock(&mutex);
+         for (AppMap::iterator it=apps.begin(); it != apps.end(); ++it) {
+            if (it->second->ChannelSwitchedAway(device, oldTs, newTs)) {
+               //it is cleaner to stop/hibernate first, then to retry loading if needed.
+               Stop(it->second);
+               if (it->second->IsForeground()) {
+                  Load(it->second, false);
+               }
+            }
          }
       }
+      default:
+         break;
    }
 }
 
 void ControlLoadingManager::Load(CarouselLoader *l, bool foreground) {
+   printf("ControlLoadingManager::Load %p, %d, %d\n", l, foreground, l->getState());
    switch (l->getState()) {
    case LoadingStateWaiting:
    case LoadingStateError:
@@ -605,6 +661,11 @@ void ControlLoadingManager::Load(CarouselLoader *l, bool foreground) {
       }
       l->WakeUp();
       break;
+   case LoadingStateLoading:
+      if (foreground) {
+         loadingApp=l;
+         l->SetForeground();
+      }
    default:
       break;
    }
@@ -629,6 +690,7 @@ void ControlLoadingManager::Stop(CarouselLoader *l) {
    }
 }
 
+// Shall only be called from VDR's main thread
 void ControlLoadingManager::ProgressInfo(ProgressIndicator *pi) {
    cMutexLock lock(&mutex);
    //There may be more than one loading app, loadingApp is the last started
@@ -662,9 +724,9 @@ void ControlLoadingManager::ProgressInfo(ProgressIndicator *pi) {
          ApplicationInfo::cApplication::ApplicationName *name=loadingApp->getName();
          if (name)
             pi->SetApplicationName(name->name);
-         int currentSize, totalSize;
-         float progress=loadingApp->getProgress(currentSize, totalSize);
-         pi->ShowProgress(progress, currentSize, totalSize);
+         uint currentSize, totalSize;
+         loadingApp->getProgress(currentSize, totalSize);
+         pi->ShowProgress(currentSize, totalSize);
       }
    }
 }
@@ -828,43 +890,48 @@ CarouselLoader::~CarouselLoader() {
 }
 
 LoadingState CarouselLoader::getState() {
-   //always check if loading completed
-   if (state==LoadingStateLoading) {
-      int a,b;
-      getProgress(a,b);
+   switch (state) {
+      case LoadingStateLoaded:
+      case LoadingStateError:
+      case LoadingStateWaiting:
+      case LoadingStateHibernated:
+         break;
+      case LoadingStateLoading:
+      {
+         //always check if loading completed
+         bool loaded;
+         carousel->getProgress(&loaded);
+         if (loaded)
+            state=LoadingStateLoaded;
+      }
    }
    return state;
 }
 
-float CarouselLoader::getProgress(int &currentSize, int &retTotalSize) {
+bool CarouselLoader::getProgress(uint &currentSize, uint &retTotalSize) {
    switch (state) {
-      case LoadingStateError:
-      case LoadingStateWaiting:
-         currentSize=0;
-         retTotalSize=0;
-         return 0.0;
-      case LoadingStateLoading:
-         {
-         //note that state Loading implies a non-local app
-         float progress=carousel->getProgress(&currentSize, &totalSize);
-         retTotalSize=totalSize;
-         if (progress==1.0)
-            state=LoadingStateLoaded;
-         return progress;
-         }
       case LoadingStateLoaded:
          currentSize=totalSize;
          retTotalSize=totalSize;
-         return 1.0;
+         return true;
+      case LoadingStateError:
+      case LoadingStateWaiting:
       case LoadingStateHibernated:
          currentSize=0;
          retTotalSize=0;
-         return 0.0;
-      default:
-         currentSize=0;
-         retTotalSize=0;
-         return 0.0;
+         return false;
+      case LoadingStateLoading:
+         {
+         //note that state Loading implies a non-local app
+         bool loaded;
+         carousel->getProgress(&loaded, &totalSize, &currentSize);
+         retTotalSize=totalSize;
+         if (loaded)
+            state=LoadingStateLoaded;
+         return loaded;
+         }
    }
+   return false;
 }
 
 void CarouselLoader::Start() {
@@ -938,7 +1005,7 @@ void CarouselLoader::StartObjectCarousel(Dsmcc::ObjectCarousel *hibernated) {
    std::list<ApplicationInfo::cTransportStream::Component>::iterator it;
    for (it=service->GetComponents()->begin(); it != service->GetComponents()->end(); ++it) {
       receiver->AddStream( (*it).pid, (*it).componentTag );
-      printf("Adding assoc_tag %d\n", (*it).componentTag);
+      //printf("Adding assoc_tag %d\n", (*it).componentTag);
    }
    //create or add carousel
    if (hibernated)

@@ -6,6 +6,7 @@ import java.util.Iterator;
 import javax.tv.xlet.*;
 import org.dvb.application.*;
 import vdr.mhp.ApplicationManager;
+import vdr.mhp.lang.NativeData;
 
 
 //TODO: implement creating AppStateChangeEvents (in DVBJApplication I think)
@@ -13,11 +14,12 @@ import vdr.mhp.ApplicationManager;
 public abstract class MHPApplication extends AppID implements AppProxy, AppAttributes {
 
 AppStateChangeEventListener AppSCEListener;
- long nativeData; //a pointer to an ApplicationInfo::cApplication
- int state;
- static Hashtable apps = new Hashtable();
+int state;
+static Hashtable apps = new Hashtable();
 
-public MHPApplication(long nativeData) {
+NativeData nativeData;
+
+public MHPApplication(NativeData nativeData) {
    super(getOid(nativeData), getAid(nativeData));
    AppSCEListener=null;
    state=NOT_LOADED;
@@ -29,7 +31,7 @@ static protected MHPApplication GetApplication(AppID id) {
    return DVBJApplication.GetApplication(id);
 }
 
-static public MHPApplication GetApplication(long nativeData) {
+static public MHPApplication GetApplication(NativeData nativeData) {
    switch (type(nativeData)) {
    case AppAttributes.DVB_J_application:
       return DVBJApplication.GetApplication(new AppID(getOid(nativeData), getAid(nativeData)));
@@ -49,30 +51,37 @@ static public MHPApplication GetApplication(long nativeData) {
 
 //private abstract static int getApplicationPointer(int oid, int aid);
 
-private static native int getAid(long nativeData);
-private static native int getOid(long nativeData);
+private static native int getAid(NativeData nativeData);
+private static native int getOid(NativeData nativeData);
 
 //get the path under which the Object Carousel is stored
 public String getCarouselRoot() {
-   return new String(carouselRoot(nativeData));
+   return carouselRoot(nativeData);
 }
 
-private native byte[] carouselRoot(long nativeData);
+private native String carouselRoot(NativeData nativeData);
 
 //path used as a base directory for relative path names (overridden by DVBJApplication)
 public String getCarouselBasePath() {
    return getCarouselRoot();
 }
 
-public long getNativeData() {
+public NativeData getNativeData() {
    return nativeData;
 }
 
 public long getNativeChannel() {
+   //TODO: port
+   /*
+   NativeData nativeChannel = NativeDataContainer.getNewNativeData();
+   channel(nativeData, nativeChannel);
+   return nativeChannel;
+   */
    return channel(nativeData);
 }
 
-private native long channel(long nativeData);
+// private native NativeData channel(NativeData nativeData, NativeData nativeChannel);
+private native long channel(NativeData nativeData);
 
 
 /* Interface for ApplicationManager */
@@ -257,8 +266,8 @@ public AppID getIdentifier() {
    return new AppID(getOid(nativeData), getAid(nativeData));
 }
 
-//private native int getOid(long nativeData);
-//private native int getAid(long nativeData);
+//private native int getOid(NativeData nativeData);
+//private native int getAid(NativeData nativeData);
 
 /*
 This method determines whether the application is bound to a single service. Returns: true if the application is bound 
@@ -267,18 +276,18 @@ public boolean getIsServiceBound() {
    return isServiceBound(nativeData);
 }
 
-private native boolean isServiceBound(long nativeData);
+private native boolean isServiceBound(NativeData nativeData);
 
 /*
 This method returns the name of the application.If the default language (as speci  ed in user preferences)is in the set 
 of available language /name pairs then the name in that language shall be returned.Otherwise this method will return a 
 name which appears in that set on a "best-effort basis". Returns: the name of the 
 application */
-public java.lang.String getName() {
-   return new String(name(nativeData));
+public String getName() {
+   return name(nativeData);
 }
 
-private native byte[] name(long nativeData);
+private native String name(NativeData nativeData);
 
 
 /*
@@ -288,13 +297,13 @@ thrown. Parameters: iso639code -the speci  ed language,encoded as per ISO 639. R
 application in the speci  ed language Throws: LanguageNotAvailableException -if the name is not available in the 
 language speci  ed */
 public java.lang.String getName(java.lang.String iso639code) throws LanguageNotAvailableException{
-   byte[] ret=nameForLanguage(nativeData, iso639code.getBytes());
-   if (ret==null)
+   String name=nameForLanguage(nativeData, iso639code);
+   if (name == null)
       throw new LanguageNotAvailableException();
-   return new String(ret);
+   return name;
 }
 
-private native byte[] nameForLanguage(long nativeData, byte[] iso639code);
+private native String nameForLanguage(NativeData nativeData, String iso639code);
 
 
 /*
@@ -308,7 +317,7 @@ public java.lang.String[][] getNames() {
    //return names(nativeData);
 }
 
-//private native String[][] names(long nativeData);
+//private native String[][] names(NativeData nativeData);
 
 /*
 This method returns the priority of the application. Returns: the priority of the 
@@ -317,7 +326,7 @@ public int getPriority() {
    return priority(nativeData);
 }
 
-private native int priority(long nativeData);
+private native int priority(NativeData nativeData);
 
 
 /*
@@ -335,7 +344,7 @@ public java.lang.String[] getProfiles() {
    //return profiles(nativeData);
 }
 
-//private native String[] profiles(long nativeData);
+//private native String[] profiles(NativeData nativeData);
 
 
 /*
@@ -345,13 +354,13 @@ Returns: either the return value corresponding to the property name or null if t
 unknown */
 public java.lang.Object getProperty(java.lang.String index) {
    if (index.equals("dvb.transport.oc.component.tag")) {
-      return new Integer(componentTag(nativeData));
+      return Integer.toString(componentTag(nativeData));
    }
    return null;
 }
 
-private native int componentTag(long nativeData);
-//private native byte[] property(long nativeData, String index);
+private native int componentTag(NativeData nativeData);
+//private native String property(NativeData nativeData, String index);
 
 
 /*
@@ -381,7 +390,7 @@ public int getType() {
    return type(nativeData);
 }
 
-private static native int type(long nativeData);
+private static native int type(NativeData nativeData);
 
 
 /*
@@ -410,7 +419,7 @@ public boolean isStartable() {
    return startable(nativeData);
 }
 
-private native boolean startable(long nativeData);
+private native boolean startable(NativeData nativeData);
 
 
 

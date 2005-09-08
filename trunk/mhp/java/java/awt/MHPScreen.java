@@ -1,8 +1,12 @@
 package java.awt;
 
 import java.awt.image.ColorModel;
+import java.awt.event.KeyEvent;
+import org.dvb.event.EventManager;
+import org.dvb.event.UserEvent;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
+import vdr.mhp.awt.MHPNativeGraphics;
 
 
 //At once the heart of the graphics implementation,
@@ -19,21 +23,23 @@ static Dimension deviceResolution;
 
 
 static {
-   //don't catch any exception, if an exception is thrown,
-   //let it go toplevel, since the whole thing won't work without this lib.
+   // don't catch any exception, if an exception is thrown,
+   // let it go toplevel, since the whole thing won't work without this lib.
    AccessController.doPrivileged(new PrivilegedAction() {
             public Object run() {
                 System.loadLibrary("mhpjni_directfbawt");
                 return null;
             }
         });
-   Toolkit.initToolkit();
+        
+   // Set this property so that our Toolkit is loaded by AWT
+   System.setProperty("awt.toolkit", "vdr.mhp.awt.MHPToolkit");
 }
 
-//called by ApplicationMananger
+// called by ApplicationMananger
 public static void InitializeDisplaySystem() {
-   //do not create an instance of MHPScreen here - this is done by HScreen
-   //(and not necessary since MHPScreen is all static).
+   // do not create an instance of MHPScreen here - this is done by HScreen
+   // (and not necessary since MHPScreen is all static).
    int ratio=aspectRatio();
    if (ratio==0)
       aspectRatio=FourToThree;
@@ -41,9 +47,54 @@ public static void InitializeDisplaySystem() {
       aspectRatio=SixteenToNine; //probably not well supported?
    
    deviceResolution=new Dimension(getDeviceResolutionX(), getDeviceResolutionY());
+   
+   KeyboardFocusManager manager;
+   manager = KeyboardFocusManager.getCurrentKeyboardFocusManager ();
+   
+   // install link to the org.dvb.event package
+   manager.addKeyEventDispatcher(
+      new KeyEventDispatcher() {
+         public boolean dispatchKeyEvent(KeyEvent e) {
+            EventManager manager=EventManager.getInstance();
+            return manager.DispatchEvent(new UserEvent(e));
+         }
+      }
+   );
+   
+   // set appropriate FocusTraversalPolicy
+   manager.setDefaultFocusTraversalPolicy(
+      new ContainerOrderFocusTraversalPolicy() {
+      // This policy differs from DefaultFocusTraversalPolicy in the one point
+      // that lightweight components will get the focus as well -
+      // which is important since in MHP all components are lightweight.
+         protected boolean accept (Component comp) {
+            if (comp.visible
+               && comp.isDisplayable ()
+               && comp.enabled)
+            {
+               if (comp.isFocusTraversableOverridden != 0
+                  && (comp.isFocusTraversable () || comp.isFocusable()))
+                  return true;
+         
+               if (!(comp instanceof Canvas
+                     || comp instanceof Panel
+                     || comp instanceof Label
+                     || comp instanceof ScrollPane
+                     || comp instanceof Scrollbar
+                     || comp instanceof Window))
+                  return true;
+            }
+            return false;
+         }
+      }
+   );
+
+         
+   // set default background configuration
+   MHPBackgroundLayer.setDefaultBackgroundConfiguration();
 }
 
-//called by ApplicationMananger
+// called by ApplicationMananger
 public static void CleanUpDisplaySystem() {
 }
 
@@ -91,6 +142,7 @@ public static float getPixelAspectRatio() {
    // 16/9 / (5/4) = 64/45
 }
 
+// currently unused
 public static MHPBackgroundPlane createBackgroundPlane(int x, int y, int width, int height) {
    return new MHPBackgroundPlane(x, y, width, height);
 }
@@ -99,11 +151,36 @@ public static MHPVideoPlane createVideoPlane(int x, int y, int width, int height
    return new MHPVideoPlane(x, y, width, height);
 }
 
+/*
    //shall be called by the class representing a native window - MHPPlane
 public static void checkEventDispatching() {
-   Toolkit.startDispatch();
+   //Toolkit.startDispatch();
+}
+*/
+static native long getMainLayer();
+static native long getVideoLayer();
+static native boolean hasVideoLayer();
+static native long getBackgroundLayer();
+static native boolean hasBackgroundLayer();
+
+//the standard software approach, all composing done in software.
+public static boolean isOneLayerConfiguration() {
+   return !hasVideoLayer() && !hasBackgroundLayer();
 }
 
+//Case for a graphics and a video plane.
+//I think it's best to put background+video in the lower and graphics in the upper layer.
+//Possibly background is not supported.
+public static boolean isTwoLayerConfiguration() {
+   return hasVideoLayer() && !hasBackgroundLayer();
+}
+
+//the ideal configuration, blending the three planes done in hardware
+public static boolean isThreeLayerConfiguration() {
+   return hasVideoLayer() && hasBackgroundLayer();
+}
+
+/*
     //actual creation methods - not official API
 public static Graphics createClippedGraphics(Component comp) {
    return MHPNativeGraphics.createClippedGraphics(comp);
@@ -113,9 +190,11 @@ public static Graphics getImageGraphics(java.awt.Image img) {
    return MHPNativeGraphics.getImageGraphics(img);
 }
 
+
 public static void postPaintEvent ( int id, Component c, int x, int y, int width, int height ) {
-   Toolkit.eventQueue.postPaintEvent( id, c, x, y, width, height);
+   Toolkit.getDefaultToolkit().getSystemEventQueue().postPaintEvent( id, c, x, y, width, height);
 }
+*/
 
 public static ColorModel getColorModel() {
    //ARGB

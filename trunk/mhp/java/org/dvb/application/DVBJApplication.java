@@ -4,12 +4,13 @@ package org.dvb.application;
 import vdr.mhp.ApplicationManager;
 import org.dvb.application.*;
 import javax.tv.xlet.*;
+import vdr.mhp.lang.NativeData;
 
 public class DVBJApplication extends MHPApplication implements DVBJProxy, XletContext {
 
-DVBJApplication(long nativeData) {
+DVBJApplication(NativeData nativeData) {
    super(nativeData);
-   (new Exception("Stacktrace only: Here a new application is created")).printStackTrace();
+   //(new Exception("Stacktrace only: Here a new application is created")).printStackTrace();
 }
 
 protected Xlet xlet= null;
@@ -19,21 +20,22 @@ protected String[] dvbCallerParameters = null; //only used in a special case
 static protected MHPApplication GetApplication(AppID id) {
    MHPApplication app;
    if ( (app=(MHPApplication)apps.get(id)) == null ) {
-      long nD=getApplicationPointer(AppsDatabase.getAppsDatabase().getNativeData(), id.getOID(), id.getAID());
-      if (nD != 0) {
-         app=new DVBJApplication(nD);
+      NativeData nativeData = getApplicationPointer(AppsDatabase.getAppsDatabase().getNativeData(), id.getOID(), id.getAID());
+      if (nativeData.isNull()) {
+         app = null;
+      } else {
+         app=new DVBJApplication(nativeData);
          apps.put(id, app);
-      } else
-         app=null;
+      }
    }
-   System.out.println("DVBJApplication: Requesting application app ID "+id.getAID()+", org ID "+id.getOID()+", returning "+app);
+   //System.out.println("DVBJApplication: Requesting application app ID "+id.getAID()+", org ID "+id.getOID()+", returning "+app);
    return app;
 }
 
-static protected MHPApplication GetLocalApplication(AppID id, long nativeData) {
+static protected MHPApplication GetLocalApplication(AppID id, NativeData nativeData) {
    MHPApplication app;
    if ( (app=(MHPApplication)apps.get(id)) == null ) {
-      if (nativeData != 0) {
+      if (!nativeData.isNull()) {
          app=new DVBJApplication(nativeData);
          apps.put(id, app);
       } else
@@ -43,26 +45,26 @@ static protected MHPApplication GetLocalApplication(AppID id, long nativeData) {
 }
 
 
-private static native long getApplicationPointer(long nativeData /*database!*/, int oid, int aid);
+private static native NativeData getApplicationPointer(NativeData nativeDBData /*database!*/, int oid, int aid);
 
 
 String getBaseDir() {
-   return new String(baseDir(nativeData));
+   return baseDir(nativeData);
 }
 
-private native byte[] baseDir(long nativeData);
+private native String baseDir(NativeData nativeData);
 
 String getClassPath() {
-   return new String(classPath(nativeData));
+   return classPath(nativeData);
 }
 
-private native byte[] classPath(long nativeData);
+private native String classPath(NativeData nativeData);
 
 String getInitialClass() {
-   return new String(initialClass(nativeData));
+   return initialClass(nativeData);
 }
 
-private native byte[] initialClass(long nativeData);
+private native String initialClass(NativeData nativeData);
 
 public String getCarouselBasePath() {
    return getCarouselRoot()+"/"+getBaseDir();
@@ -74,13 +76,13 @@ String[] getParameters() {
    int num=numberOfParameters(nativeData);
    parameters=new String[num];
    for (int i=0;i<num;i++) {
-      parameters[i]=new String(parameter(nativeData, i));
+      parameters[i]=parameter(nativeData, i);
    }
    return parameters;
 }
 
-private native int numberOfParameters(long nativeData);
-private native byte[] parameter(long nativeData, int index);
+private native int numberOfParameters(NativeData nativeData);
+private native String parameter(NativeData nativeData, int index);
 
 public java.lang.Object getProperty(java.lang.String index) {
    Object ret=super.getProperty(index);
@@ -91,6 +93,7 @@ public java.lang.Object getProperty(java.lang.String index) {
       return getBaseDir();
    } else if (index.equals("dvb.j.location.cpath.extension")) {
       //TODO, p. 261
+      System.out.println("TODO: DVBJApplication.getProperty "+index);
       return new String[0];
    }
    return null;
@@ -406,10 +409,10 @@ public java.lang.Object getXletProperty (java.lang.String key) {
    }
    else if (key.equals("dvb.org.id")) {
       //an Integer? a String?? spec says nothing!
-      return new Integer(getOID());
+      return Integer.toString(getOID());
    }
    else if (key.equals("dvb.app.id")) {
-      return new Integer(getAID());
+      return Integer.toString(getAID());
    }
    else if (key.equals("dvb.caller.parameters")) {
       //the parameters passed to this application if it was

@@ -32,24 +32,42 @@ private:
    pthread_key_t key;
 };
 
-//two implementations for a JNIEnvProvider
+// Three implementations for a JNIEnvProvider
+
+// For a VM which returns the same env pointer for all threads
 class SimpleJNIEnvProvider : public JNI::JNIEnvProvider {
 public:
    SimpleJNIEnvProvider() : jnienv(0) {}
-   void SetEnv(JNIEnv *env) { jnienv=env; }
 protected:
    virtual JNIEnv *env() { return jnienv; }
-   virtual void setJavaEnv(JNIEnv *env) { SetEnv(env); }
+   virtual void setJavaEnv(JNIEnv *env) { jnienv=env; }
    JNIEnv *jnienv;
 };
 
+// For a VM which returns a specific env pointer for each attached thread.
+// The threads created on Java side, the pointer must be set by the JNI code
+// using the JNI interface.
+// This is currently NOT the case for large parts of the JNI code
+// of this implementation.
 class PerThreadJNIEnvProvider : public JNI::JNIEnvProvider, public ThreadWatch<JNIEnv *> {
 public:
    PerThreadJNIEnvProvider() {}
-   void SetEnvForCurrentThread(JNIEnv *env) { return Set(env); }
 protected:
    virtual JNIEnv *env() { return Get(); }
    virtual void setJavaEnv(JNIEnv *env) { Set(env); }
+};
+
+// For a VM which returns a specific env pointer for each attached thread.
+// The VM must additionally (complying with the spec) return the pointer
+// in the JNI function AttachCurrentThread even of the thread is
+// already attached, and the JavaInterface implementation here must set
+// the JNIEnv for this provider in its CheckAttachThread function.
+class PerThreadAutomagicJNIEnvProvider : public PerThreadJNIEnvProvider {
+public:
+   PerThreadAutomagicJNIEnvProvider() {}
+   JNIEnv *GetEnvNoMagic() { return Get(); }
+protected:
+   virtual JNIEnv *env();
 };
 
 //utility to dlopen a library with RTDL_GLOBAL flag
@@ -116,7 +134,8 @@ protected:
    virtual void SyncShutdown() = 0;
    //return whether VM has been created
    virtual bool isStarted() = 0;
-   //check that current thread is attached to VM, and the JNIEnvProvider has the JNIEnv
+   //check that current thread is attached to VM,
+   //and make sure the JNIEnvProvider returns the JNIEnv for this thread
    virtual void CheckAttachThread() = 0;
    virtual void CheckDetachThread() = 0;
    //actually start VM, and create a JNIEnvProvider
@@ -151,6 +170,7 @@ protected:
    StaticMethods *methods;
 private:
    bool jniInitialized;
+   bool jniError;
 };
 
 

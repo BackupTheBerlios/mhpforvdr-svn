@@ -80,15 +80,13 @@ jlong Java_javax_tv_service_navigation_VDRServiceList_nextChannel(JNIEnv* env, j
 class VDRServiceStatus : public Service::ServiceStatus {
 public:
    VDRServiceStatus(jclass clazz) {
-      char signature[15];
-      JNI::BaseObject::getSignature(signature, JNI::Void, 1, JNI::Int);
-      callback.SetMethod(clazz, "nativeServiceEvent", signature);
+      callback.SetMethodWithArguments(clazz, "nativeServiceEvent", JNI::Void, 1, JNI::Int);
    }
 protected:
    virtual void ServiceEvent(Message event, Service::Service service)
    {
       JNI::ReturnType type;
-      callback.CallMethod(type, JNI::Void, (jint)event);
+      callback.CallMethod(type, (jint)event);
    }
 private:
    static JNI::StaticMethod callback;
@@ -97,24 +95,23 @@ private:
 JNI::StaticMethod VDRServiceStatus::callback;
 VDRServiceStatus *status=0;
 
-void Java_javax_tv_service_VDRServiceContext_initializeStatus(JNIEnv* env, jclass clazz) {
-   JNI::JNIEnvProvider::SetJavaEnv(env);
+void Java_javax_tv_service_selection_VDRServiceContext_initializeStatus(JNIEnv* env, jclass clazz) {
    status=new VDRServiceStatus(clazz);
 }
 
-jboolean Java_javax_tv_service_VDRServiceContext_isPresenting(JNIEnv* env, jobject obj) {
+jboolean Java_javax_tv_service_selection_VDRServiceContext_isPresenting(JNIEnv* env, jobject obj) {
    return Service::Context::getContext()->isPresenting();
 }
 
-void Java_javax_tv_service_VDRServiceContext_doSelect(JNIEnv* env, jobject obj, jlong nativeData) {
+void Java_javax_tv_service_selection_VDRServiceContext_doSelect(JNIEnv* env, jobject obj, jlong nativeData) {
    Service::Context::getContext()->SelectService((cChannel *)nativeData);
 }
 
-void Java_javax_tv_service_VDRServiceContext_doStop(JNIEnv* env, jobject obj) {
+void Java_javax_tv_service_selection_VDRServiceContext_doStop(JNIEnv* env, jobject obj) {
    Service::Context::getContext()->StopPresentation();
 }
 
-jlong Java_javax_tv_service_VDRServiceContext_getNativeService(JNIEnv* env, jobject obj) {
+jlong Java_javax_tv_service_selection_VDRServiceContext_getNativeService(JNIEnv* env, jobject obj) {
    return (jlong)Service::Context::getContext()->getService();
 }
 

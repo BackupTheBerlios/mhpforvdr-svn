@@ -81,7 +81,12 @@ static final int DESTROYED            = 3;
 static {
    initializeStatus();
 }
+
 private static native void initializeStatus();
+private native boolean isPresenting();
+private native void doSelect(long nativeData);
+private native void doStop();
+private native long getNativeService();
 
 static VDRServiceContext context = null;
 
@@ -108,7 +113,6 @@ private VDRServiceContext() {
       state=PRESENTING;
 }
 
-private native boolean isPresenting();
 
 /*
  
@@ -147,7 +151,6 @@ private void doSelect(VDRService selection) {
    doSelect(selection.getNativeData());
 }
 
-private native void doSelect(long nativeData);
 
 
 /*
@@ -204,7 +207,6 @@ public void stop ()
    }
 }
 
-private native void doStop();
 
 
 /*
@@ -274,9 +276,22 @@ private void doDestroy() {
  
  */
 
+// Intermediate solution. Remove after implementing media playback.
+
+class DefaultMediaHandler extends vdr.mhp.media.DefaultPlayer implements ServiceMediaHandler {
+
+// ContentHandler interface
+
+public javax.tv.locator.Locator[] getServiceContentLocators() {
+   return null;
+}
+
+}
+
 public ServiceContentHandler [] getServiceContentHandlers ()
                          throws SecurityException, IllegalStateException
 {
+   System.out.println("VDRServiceContext.getServiceContentHandlers");
    synchronized (this) {
       switch (state) {
       case NOT_PRESENTING:
@@ -288,15 +303,13 @@ public ServiceContentHandler [] getServiceContentHandlers ()
             s.checkPermission(new ServiceContextPermission("getServiceContentHandlers", "own"));
          }
          //implement
-         return new ServiceContentHandler[] {};
-         //ServiceContentHandler[] ret=new ServiceContentHandler[1];
-         //ret[0]=new org.dvb.media.content.vdrdvb.Player();
-         //return ret;
+         System.out.println("returning default media handler");
+         return new ServiceContentHandler[] { new DefaultMediaHandler() };
       case DESTROYED:
          throw new IllegalStateException();
       }
    }
-   return new ServiceContentHandler[0];
+   return new ServiceContentHandler [] {};
 }
 
 
@@ -329,7 +342,6 @@ public Service  getService () throws IllegalStateException {
    return null;
 }
 
-private native long getNativeService();
 
 
 /*

@@ -29,7 +29,7 @@ int Database::getNumberOfValidDatabases() {
    return count;
 }
 
-Database *Database::getPrimaryDatabase() {
+Database::Ptr Database::getPrimaryDatabase() {
    checkInitialDatabaseSetup();
       
    if (primaryIndex != -1)
@@ -46,9 +46,9 @@ Database *Database::getPrimaryDatabase() {
          noReceptionDatabases[indexOfPrimary]=true;
    }
    
-   Database *db;
+   Database::Ptr db(0);
    for (int i=0;i<cDevice::NumDevices();i++) {
-      if ((db=getDatabase(i)) != 0) {
+      if ( (db=getDatabase(i)) ) {
          primaryIndex=i;
          return db;
       }
@@ -57,7 +57,7 @@ Database *Database::getPrimaryDatabase() {
    return 0;
 }
 
-Database *Database::getDatabase(cDevice *dev) {
+Database::Ptr Database::getDatabase(cDevice *dev) {
    checkInitialDatabaseSetup();
    
    for (int i=0;i<cDevice::NumDevices();i++)
@@ -77,7 +77,7 @@ Database *Database::getDatabase(cDevice *dev) {
    return 0;
 }
 
-Database *Database::getDatabase(int numDevice) {
+Database::Ptr Database::getDatabase(int numDevice) {
    checkInitialDatabaseSetup();
    
    DeliverySystem system;
@@ -93,13 +93,13 @@ Database *Database::getDatabase(int numDevice) {
 
 
 
-Database *Database::getDatabaseForChannel(int nid, int tid, int sid, bool shallBeTunedTo, cChannel **chan) {
+Database::Ptr Database::getDatabaseForChannel(int nid, int tid, int sid, bool shallBeTunedTo, cChannel **chan) {
    ReadLock rwlock(&Channels);
    std::vector<cChannel *> list;
    findChannels(nid, tid, sid, list);
    
    std::vector<cChannel *>::iterator it;
-   Database *db=0;
+   Database::Ptr db(0);
    for (it=list.begin(); it != list.end();++it) {
       if ( (db=shallBeTunedTo ? getDatabaseTunedForChannel(*it) : getDatabaseForChannel(*it)) )
          break;
@@ -110,36 +110,36 @@ Database *Database::getDatabaseForChannel(int nid, int tid, int sid, bool shallB
    return db;
 }
 
-Database *Database::Database::getDatabaseForChannel(int source, int nid, int tid, int sid, bool shallBeTunedTo) {
+Database::Ptr Database::Database::getDatabaseForChannel(int source, int nid, int tid, int sid, bool shallBeTunedTo) {
    cChannel *channel=0;
    ReadLock rwlock(&Channels);
       
    tChannelID cid(source, nid, tid, sid);
    channel=Channels.GetByChannelID(cid);
    
-   Database *db= shallBeTunedTo ? getDatabaseTunedForChannel(channel) : getDatabaseForChannel(channel);
+   Database::Ptr db= shallBeTunedTo ? getDatabaseTunedForChannel(channel) : getDatabaseForChannel(channel);
    
    return db;
 }
 
       //to be used with Channels rwlocked
-Database *Database::Database::getDatabaseForChannel(cChannel *channel) {
+Database::Ptr Database::Database::getDatabaseForChannel(cChannel *channel) {
    if (channel) {
       //first try primary database
-      Database *db=getPrimaryDatabase();
+      Database::Ptr db=getPrimaryDatabase();
       if (db->getDevice()->ProvidesTransponder(channel))
          return db;
       
       //then try created databases
       for (int i=0;i<cDevice::NumDevices();i++) {
-         if ((db=databases[i]) != 0)
+         if ( (db=databases[i]) )
             if (db->getDevice()->ProvidesTransponder(channel))
                return db;
       }
       
       //then try all possibilities
       for (int i=0;i<cDevice::NumDevices();i++) {
-         if ((db=getDatabase(i)) != 0)
+         if ( (db=getDatabase(i)) )
             if (db->getDevice()->ProvidesTransponder(channel))
                return db;
       }
@@ -148,24 +148,24 @@ Database *Database::Database::getDatabaseForChannel(cChannel *channel) {
 }
 
       //to be used with Channels rwlocked
-Database *Database::Database::getDatabaseTunedForChannel(cChannel *channel) {
+Database::Ptr Database::Database::getDatabaseTunedForChannel(cChannel *channel) {
    bool needsDetachReceivers;
    if (channel) {
       //first try primary database
-      Database *db=getPrimaryDatabase();
+      Database::Ptr db=getPrimaryDatabase();
       if (db->getDevice()->ProvidesChannel(channel, Setup.PrimaryLimit, &needsDetachReceivers) && !needsDetachReceivers)
          return db;
       
       //then try created databases
       for (int i=0;i<cDevice::NumDevices();i++) {
-         if ((db=databases[i]) != 0)
+         if ( (db=databases[i]) )
             if (db->getDevice()->ProvidesChannel(channel, Setup.PrimaryLimit, &needsDetachReceivers) && !needsDetachReceivers)
                return db;
       }
       
       //then try all possibilities
       for (int i=0;i<cDevice::NumDevices();i++) {
-         if ((db=getDatabase(i)) != 0)
+         if ( (db=getDatabase(i)) )
             if (db->getDevice()->ProvidesChannel(channel, Setup.PrimaryLimit, &needsDetachReceivers) && !needsDetachReceivers)
                return db;
       }
@@ -365,11 +365,13 @@ Database::~Database() {
    //printf("Deleting database\n");
    {
       cMutexLock lock(&listMutex);
-      /*for (std::list<Filter *>::iterator it=activeFilters.begin(); it != activeFilters.end(); ++it) {
+      /*
+      for (std::list<Filter *>::iterator it=activeFilters.begin(); it != activeFilters.end(); ++it) {
          Detach(*it); //do not delete a filter, they do not belong to us
-      }*/
-      //at this point, we cannot be sure that any VDR object still exists, so no devices, no detaching!
+      }
       activeFilters.clear();
+      */
+      dataSwitchListener.clear();
    }
 }
 

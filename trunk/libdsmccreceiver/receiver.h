@@ -34,12 +34,15 @@ public:
    unsigned long getId() { return id; }
    
    //Public API
-   float getProgress() { return getProgress(0, 0); }
-                        //returns value between 0 and 1.0
-                        //which is the percentage of the data already received
-   float getProgress(int *currentSize, int *totalSize); 
-                        //if the pointers are non-null, returns the currently loaded
-                        //and the total expected size in Bytes
+    // Returns five values indicating loading progress.
+    // If you are not interested in a certain value, pass a NULL pointer.
+    //  complete: true if loading is complete
+    //  percentage: value between 0.0 and 1.0 indicating the progress ( currentSizeReceivedData / totalSize )
+    //  currentSizeReceivedData: The number of bytes already received
+    //  currentSizeCompleteBlocks: The number of bytes already received, but only the data of complete blocks is counted
+    //  totalSize: The total number of bytes
+   void getProgress(bool *complete = NULL, uint *totalSize = NULL, uint *currentSizeReceivedData = NULL, uint *currentSizeCompleteBlocks = NULL, float *percentage = NULL); 
+   
    //Public API
    //the Cache will survive as long as a smart pointer is kept!
    SmartPtr<Cache::Cache> getCache() { return filecache; }
@@ -86,7 +89,7 @@ protected:
       unsigned long size;
       unsigned long curp;
 
-      char *bstatus;	/* Block status bit field */
+      Bitset *bstatus;
       std::list<DDB> blocks;
       bool cached;
       ObjectCarousel *carousel;

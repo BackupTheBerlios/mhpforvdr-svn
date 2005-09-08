@@ -41,7 +41,7 @@ protected:
 //Request which is a cFilter and cleanly handles cancelling, channel switches, timeouts and dispatches
 class FilterRequest : public DatabaseRequest, protected Filter, protected TimedBySeconds {
 public:
-   FilterRequest(Database *db, Listener *l, void *ad=0);
+   FilterRequest(DatabasePtr  db, Listener *l, void *ad=0);
    virtual ~FilterRequest();
    bool CancelRequest();
 protected:
@@ -236,14 +236,14 @@ protected:
 //this class simply merges the hierachy
 template <class T> class TableFilterRequest : public FilterRequest, public SectionList<T> {
 public:
-   TableFilterRequest(Database *db, IdTracker *tracker, Listener *l, void *ad=0)
+   TableFilterRequest(DatabasePtr  db, IdTracker *tracker, Listener *l, void *ad=0)
       : FilterRequest(db, l, ad), SectionList<T>(tracker) {}
 };
 
 //this is a class that unifies code common to several requests (NIT, BAT, SDT)
 template <class T> class TableFilterTrackerRequest : public TableFilterRequest<T> {
 public:
-   TableFilterTrackerRequest(Database *db, IdTracker *tracker, Listener *l, void *ad=0)
+   TableFilterTrackerRequest(DatabasePtr  db, IdTracker *tracker, Listener *l, void *ad=0)
       : TableFilterRequest<T>(db, tracker, l, ad),
         completeSubtables(0),
         duplicates(0) {}
@@ -304,7 +304,7 @@ protected:
 
 template <class T> class SegmentedTableFilterTrackerRequest : public TableFilterTrackerRequest<T> {
 public:
-   SegmentedTableFilterTrackerRequest(Database *db, IdTracker *tracker, Listener *l, void *ad=0)
+   SegmentedTableFilterTrackerRequest(DatabasePtr  db, IdTracker *tracker, Listener *l, void *ad=0)
       : TableFilterTrackerRequest<T>(db, tracker, l, ad) {}
 protected:
    virtual int addSection(const T &section, bool &currentSubtableComplete) {
@@ -316,14 +316,14 @@ protected:
 //a secondary request which will return a list of SI objects
 template <class T> class ListSecondaryRequest : public SecondaryRequest {
 public:
-   ListSecondaryRequest(Database *db, Listener *l, void *ad=0)
+   ListSecondaryRequest(DatabasePtr  db, Listener *l, void *ad=0)
       : SecondaryRequest(l, ad), database(db) {}
    std::list<T> list;
    typedef typename std::list<T>::iterator iterator;
    typedef T objectType;
-   Database *getDatabase() { return database; }
+   DatabasePtr  getDatabase() { return database; }
 protected:
-   Database *database;
+   DatabasePtr  database;
 };
 
 

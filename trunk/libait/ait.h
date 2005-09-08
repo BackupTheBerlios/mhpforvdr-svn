@@ -35,10 +35,10 @@ namespace ApplicationInfo {
 class cApplicationMonitor : public DvbSi::Listener, public DvbSi::Filter, public DvbSi::DataSwitchListener {
 public:
    static void InitializeAllDevices();
-   cApplicationMonitor(DvbSi::Database *d);
+   cApplicationMonitor(DvbSi::Database::Ptr d);
    virtual ~cApplicationMonitor();
    virtual void Result(DvbSi::Request *r);
-   virtual void DataSwitch(DvbSi::Database *db);
+   virtual void DataSwitch(DvbSi::Database::Ptr db);
 protected:
    cTransportStream *ts;
    DvbSi::PMTServicesRequest *request;

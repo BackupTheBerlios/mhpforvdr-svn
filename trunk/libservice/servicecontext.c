@@ -51,10 +51,18 @@ cChannel *Context::getService() {
 }
 
 bool Context::isPresenting() {
+   // I am still unsure about how to interpret "presenting" with respect to VDR devices.
+   // I think they are always presenting some sort of content, so true is returned.
+   // The spec (JavaTV) suggests ServiceContexts are initially in the NOT_PRESENTING state,
+   // and switch to presenting after a select() call. However, one might argue that this select
+   // call happens when VDR initially switches the primary device to a channel.
+   return true;
+   /*
    //Please note that this access of cControl::Control out of VDR's main thread is
    //not thread-safe and possibly illegal.
    cControl *c=cControl::Control();
    return (c==0 || typeid(*cControl::Control()) != typeid(Mhp::Control));
+   */
 }
 
       //Tries to switch to given service - including tuning!

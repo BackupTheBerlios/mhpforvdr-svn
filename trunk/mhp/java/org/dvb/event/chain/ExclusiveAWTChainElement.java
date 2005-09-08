@@ -5,6 +5,9 @@ import vdr.mhp.ApplicationManager;
 import org.dvb.event.UserEvent;
 import org.dvb.event.RepositoryDescriptor;
 import java.awt.MHPPlane;
+import java.awt.KeyboardFocusManager;
+import java.awt.Component;
+import java.awt.event.KeyEvent;
 
 public class ExclusiveAWTChainElement extends FilterChainElement implements ExclusiveFilterElement {
 
@@ -31,11 +34,13 @@ public RepositoryDescriptor getRepositoryDescriptor() {
 
 public void dispatch(UserEvent e) {
    if ( (getMask(e.getType()) & mask) != 0) {
-      java.awt.Component focusComponent=java.awt.MHPEventFilter.getFocusComponent();
+      KeyboardFocusManager manager;
+      manager = KeyboardFocusManager.getCurrentKeyboardFocusManager ();
+      Component focusComponent = manager.getFocusOwner();
       if (focusComponent==null)
          return;
-      if (focusComponent.getMHPPlane().getApplication() == app)
-         java.awt.MHPEventFilter.dispatchAWT(e.getAWTEvent());
+      if (MHPPlane.getApplication(focusComponent) == app)
+         dispatchAWT(e.getAWTEvent());
    }
 }
 
@@ -57,5 +62,14 @@ boolean belongsTo(Object o) {
             ?  ((org.davic.resources.ResourceClient)o)==descriptor.getClient() : false;
 }
 
+void dispatchAWT(KeyEvent evt) {
+   Object source = evt.getSource();
+
+   if (source instanceof Component)
+   {
+      Component srccmp = (Component) source;
+      srccmp.dispatchEvent(evt);
+   }
+}
 
 }

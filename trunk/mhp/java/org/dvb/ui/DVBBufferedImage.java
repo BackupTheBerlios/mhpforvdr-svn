@@ -6,7 +6,7 @@ import java.awt.image.ImageObserver;
 import java.awt.image.ImageProducer;
 import java.util.Hashtable;
 
-//Implementation (get/setRGB, getSubimage) is done in java.awt.Image.
+//Implementation (get/setRGB, getSubimage) is done in superclass
 //There is a Classpath implementation in awt/image, see comment
 //in java.awt.Image
 
@@ -24,7 +24,7 @@ import java.util.Hashtable;
  * values are set to 0;
  * @since MHP 1.0
  */
-public class DVBBufferedImage extends Image {
+public class DVBBufferedImage extends vdr.mhp.awt.MHPImage {
     /**
      *	Represents an image stored in a best possible SampleModel (platform
      * dependent) The image has a DirectColorModel
@@ -57,7 +57,8 @@ public class DVBBufferedImage extends Image {
     // color channels
     
     //not API
-    public DVBBufferedImage() {
+    DVBBufferedImage(DVBBufferedImage src, int x, int y, int width, int height) {
+       super(src, x, y, width, height);
     }
 
     /**
@@ -85,9 +86,9 @@ public class DVBBufferedImage extends Image {
      *    @param type - the ColorSpace of the DVBBufferedImage
      *    @since MHP 1.0
      */
-    public DVBBufferedImage( int width, int height, int typ ) {
+    public DVBBufferedImage( int width, int height, int type ) {
         super(width, height);
-        type = typ;
+        this.type = type;
     }
 
     /* * private DVBBufferedImage(BufferedImage b) * { *    bimg = b; * } */
@@ -151,9 +152,23 @@ public class DVBBufferedImage extends Image {
         /* return bimg.getProperty(name,observer); */
     }
     
+    /**
+     * Returns a subimage defined by a specified rectangular region.
+     * The returned <code>DVBBufferedImage</code> shares the same
+     * data array as the original image.
+     * @param x,&nbsp;y the coordinates of the upper-left corner of the
+     * specified rectangular region
+     * @param w the width of the specified rectangular region
+     * @param h the height of the specified rectangular region
+     * @return a <code>DVBBufferdImage</code> that is the subimage of this
+     * <code>DVBBufferdImage</code>.
+     * @exception <code>RasterFormatException</code> if the specified
+     * area is not contained within this <code>DVBBufferdImage</code>.
+     * @since MHP 1.0
+     */
     public DVBBufferedImage getSubimage( int x, int y, int w, int h ) 
                             throws DVBRasterFormatException {
-        return getSubimageDVB(x, y, w, h);
+       return new DVBBufferedImage(this, x, y, w, h);
     }
 
     

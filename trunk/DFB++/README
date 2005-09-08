@@ -1,0 +1,63 @@
+DFB++
+
+
+This is a C++ binding for DirectFB providing a much easier usage.
+
+One advantage is that the 'thiz' doesn't need to be passed
+as the first argument of every interface function, e.g.
+
+	dfb->SetVideoMode (dfb, 640, 480, 16);
+
+As C++ provides "this" you simply call:
+
+	dfb->SetVideoMode (640, 480, 16);
+
+
+Another feature is the usage of exceptions. It's annoying having
+these error checking stuff with growing deinitialization stacks.
+Most functions are 'void'. As soon as a DirectFB function returns
+an error a DFBException is thrown. This also means that all functions
+that return only one argument return it directly. Another example:
+
+	IDirectFB             *dfb;
+	DFBResult              ret;
+	DFBSurfaceDescription  dsc;
+
+	[... set dsc ...]
+
+	ret = dfb->CreateSurface (dfb, &dsc, &surface);
+	if (ret) {
+		DirectFBError ("IDirectFB::CreateSurface", ret);
+		[...deinit stuff...]
+		return;
+	}
+
+The DFB++ version:
+
+	IDirectFB *dfb;
+
+	try {
+		DFBSurfaceDescription dsc;
+
+		[... set dsc ...]
+
+		surface = dfb->CreateSurface (dsc);
+	}
+	catch (DFBException *ex) {
+		cerr << "Caught exception: " << ex << endl;
+		[...deinit stuff...]
+	}
+
+
+You may also notice that some arguments (e.g. 'dsc')
+that have been pointers are references now where applicable.
+
+The DFBException has some useful functions like 'GetAction()' and
+'GetResult()' both returning a string. The example above uses
+the "<<" operator which produces output like this:
+
+	Caught exception: DirectFB::Create() -> General initialization failure!
+
+
+Please have a look at the example(s) within the distribution
+for a more sophisticated demonstration.

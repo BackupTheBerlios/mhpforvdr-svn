@@ -36,7 +36,7 @@ public class HScreen extends MHPScreen {
   
   HGraphicsDevice defaultGraphicsDevice = new HGraphicsDevice();
   HBackgroundDevice defaultBackgroundDevice = new HBackgroundDevice();
-  HVideoDevice defaultVideoDevice = null;
+  HVideoDevice defaultVideoDevice = new HVideoDevice();
   
   /** Constructor */
   HScreen() {
@@ -44,9 +44,7 @@ public class HScreen extends MHPScreen {
 
   /** Return the HScreens available on this system */
   public static HScreen[] getHScreens() {
-     HScreen[] l = new HScreen[1];
-     l[0] = getDefaultHScreen();
-     return l;
+     return new HScreen [] { defaultHScreen };
   }
 
   /** Return the default HScreen for this "application"
@@ -76,9 +74,7 @@ public class HScreen extends MHPScreen {
   /** Return an array of available graphics devices on this screen.
    *  @return list of graphics devices or null if none */
   public HGraphicsDevice[] getHGraphicsDevices() {
-    HGraphicsDevice[] ret=new HGraphicsDevice[1];
-    ret[0]=defaultGraphicsDevice;
-    return ret;
+     return new HGraphicsDevice [] { defaultGraphicsDevice };
   }
   
   /** Default graphics device for this screen.
@@ -90,9 +86,7 @@ public class HScreen extends MHPScreen {
   /** Return an array of available background devices on this screen.
    *  @return list of background devices or null if none */
   public HBackgroundDevice[] getHBackgroundDevices() {
-    HBackgroundDevice[] ret=new HBackgroundDevice[1];
-    ret[0]=defaultBackgroundDevice;
-    return ret;
+     return new HBackgroundDevice [] { defaultBackgroundDevice };
   }
 
   
@@ -106,8 +100,7 @@ public class HScreen extends MHPScreen {
    *  *** SEE SPECS (C) ***
    *  @param hscta  an array of objects describing desired/required config.
    *  @return array of non-null objects or null if no match */
-  public HScreenConfiguration[]
-    getCoherentScreenConfigurations(HScreenConfigTemplate[] hscta) {
+  public HScreenConfiguration[] getCoherentScreenConfigurations(HScreenConfigTemplate[] hscta) {
     System.err.println("HScreen.getCoherentScreenConfigurations: Only returning null");
     return null;
   }

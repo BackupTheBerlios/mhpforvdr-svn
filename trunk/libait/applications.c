@@ -443,6 +443,7 @@ void cApplicationsDatabase::addApplication(cApplication *newApp) {
    cApplication::Ptr a=findApplication(newApp->GetAid(), newApp->GetOid(), newApp->GetApplicationType());
    if (a) {
       a->tagged=false;
+      printf("Application already in list, deleting object\n");
       delete newApp; //already in list
    } else {
       a=newApp;

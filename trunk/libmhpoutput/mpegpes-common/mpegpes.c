@@ -174,7 +174,9 @@ bool MpegPesSystem::Initialize(const char *arg) {
    
    try {
       layer->EnableCursor(false);
-      //layer->SetBackgroundColor(0,0,0,255); //or better white?
+      // Background mode is handled from Java side. Set initial defaults here, anyway.
+      layer->SetBackgroundColor(0, 0, 0, 255);
+      layer->SetBackgroundMode(DLBM_COLOR);
    } catch (DFBException *e) {
         esyslog("MhpOutput: DirectFB: Error %s, %s.", e->GetAction(), e->GetResult());
         delete e;

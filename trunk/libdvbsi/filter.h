@@ -13,11 +13,16 @@
 
 #include <vdr/filter.h>
 #include <vdr/thread.h>
+#include <libdsmcc/util.h>
 
 namespace DvbSi {
 
-class Database;
 class Request;
+class Database;
+
+// Do this here to resolve circular dependency.
+// Database::Ptr will be typedef'ed DatabasePtr.
+typedef SmartPtr<Database> DatabasePtr;
 
 //See ETSI TR 101 211 (chapter 4.4) for minimum repetition rates.
 //These here are a simplified version.
@@ -33,34 +38,34 @@ class Request;
 class Filter : public cFilter {
 friend class Database;
 public:
-   Filter(Database *db, bool attach=true);
+   Filter(DatabasePtr db, bool attach=true);
    virtual ~Filter();
    void Attach();
    void Detach();
-   Database *getDatabase() { return database; }
+   DatabasePtr getDatabase();
 protected:
-   Database *database;
+   DatabasePtr database;
 private:
    bool attached;
 };
 
 class RequestFilter : public Filter {
 public:
-   RequestFilter(Database *db, Request *r) : Filter(db), request(r) {}
+   RequestFilter(DatabasePtr db, Request *r);
 protected:
    Request *request;
 };
 
 /*class SingleShotFilter : public Filter {
 public:
-   SingleShotFilter(Database *db) : Filter(db) {}
+   SingleShotFilter(Database::Ptr db) : Filter(db) {}
 protected:
    bool singleShot;
 };*/
 
 /*class IntermittentFilter : public Filter {
 public:
-   IntermittentFilter(Database *db) : Filter(db), isAttached(false) {}
+   IntermittentFilter(Database::Ptr db) : Filter(db), isAttached(false) {}
    void SafeAttach();
    void SafeDetach();
 protected:

@@ -24,13 +24,13 @@ cApplications Applications;
 
 void cApplicationMonitor::InitializeAllDevices() {
    for (int i=0; i<DvbSi::Database::getNumberOfDatabases(); i++) {
-      DvbSi::Database *d=DvbSi::Database::getDatabase(i);
+      DvbSi::Database::Ptr d=DvbSi::Database::getDatabase(i);
       if (d)
          new cApplicationMonitor(d);
    }
 }
 
-cApplicationMonitor::cApplicationMonitor(DvbSi::Database *d)
+cApplicationMonitor::cApplicationMonitor(DvbSi::Database::Ptr d)
   : DvbSi::Filter(d), ts(0), request(0), numAitEntries(0) 
 {
    d->addDataSwitchListener(this);
@@ -101,7 +101,7 @@ void cApplicationMonitor::Result(DvbSi::Request *r) {
    }
 }
 
-void cApplicationMonitor::DataSwitch(DvbSi::Database *db) {
+void cApplicationMonitor::DataSwitch(DvbSi::Database::Ptr db) {
    /*if (request) {
       printf("AIT Data switch thus cancelling pmt filter\n");
       request->CancelRequest();
@@ -299,8 +299,8 @@ void cAIT::ProcessAIT(int aitPid) {
       if (!foundTransportProtocol)
          delete a;
       else {
+         printf("Read AIT of application %s type %d ccode %d aid %d oid %d\n", a->GetName(0) ? a->GetName(0)->name.c_str() : "noname", a->GetApplicationType(), a->GetControlCode(), a->GetAid(), a->GetOid());
          database->addApplication(a);
-         printf("Ready to add application %s type %d ccode %d aid %d oid %d\n", a->GetName(0) ? a->GetName(0)->name.c_str() : "noname", a->GetApplicationType(), a->GetControlCode(), a->GetAid(), a->GetOid());
       }
    } //end of application loop
    database->deleteTagged();

@@ -51,6 +51,7 @@ final public static int kNone = 48;
 
 public static void dispatchKey(int eKey) {
    int key;
+   char keyChar = CHAR_UNDEFINED;
    switch (eKey) {
       case kUp:
          key=VK_UP;
@@ -88,33 +89,43 @@ public static void dispatchKey(int eKey) {
          break;
       case k0:
          key=VK_0;
+         keyChar='1';
          break;
       case k1:
          key=VK_1;
+         keyChar='1';
          break;
       case k2:
          key=VK_2;
+         keyChar='2';
          break;
       case k3:
          key=VK_3;
+         keyChar='3';
          break;
       case k4:
          key=VK_4;
+         keyChar='4';
          break;
       case k5:
          key=VK_5;
+         keyChar='5';
          break;
       case k6:
          key=VK_6;
+         keyChar='6';
          break;
       case k7:
          key=VK_7;
+         keyChar='7';
          break;
       case k8:
          key=VK_8;
+         keyChar='8';
          break;
       case k9:
          key=VK_9;
+         keyChar='9';
          break;
       case kPlay:
          key=VK_PLAY;
@@ -162,30 +173,56 @@ public static void dispatchKey(int eKey) {
    java.awt.Component comp = findKeyTarget();
    if (comp==null)
       return;
+   System.out.println("java.awt.VDREventDispatcher: Sending HRcEvents to component "+comp);
       
-   Toolkit.eventQueue.postEvent(
+   Toolkit.getDefaultToolkit().getSystemEventQueue().postEvent(
                                  new HRcEvent(comp,
                                              HRcEvent.KEY_PRESSED,
                                              millis,
                                              0, //no modifier pressed
-                                             key
+                                             key,
+                                             keyChar
                                              )
                                );
-   Toolkit.eventQueue.postEvent(
+   if (keyChar != CHAR_UNDEFINED)
+      Toolkit.getDefaultToolkit().getSystemEventQueue().postEvent(
+                                    new HRcEvent(comp,
+                                                HRcEvent.KEY_TYPED,
+                                                millis,
+                                                0, //no modifier pressed
+                                                VK_UNDEFINED,
+                                                keyChar
+                                                )
+                                 );
+   Toolkit.getDefaultToolkit().getSystemEventQueue().postEvent(
                                  new HRcEvent(comp,
                                              HRcEvent.KEY_RELEASED,
                                              millis,
                                              0, //no modifier pressed
-                                             key
+                                             key,
+                                             keyChar
                                              )
                                );
+   /*System.out.println("Now dispatching directly with KeyboardFocusManager");
+   KeyboardFocusManager
+         .getCurrentKeyboardFocusManager()
+         .dispatchEvent(
+         new HRcEvent(comp,
+                      HRcEvent.KEY_PRESSED,
+                      millis,
+                      0, //no modifier pressed
+                      key
+                     )
+                       );*/
 }
 
 static java.awt.Component findKeyTarget() {
-   java.awt.Component comp = MHPEventFilter.getFocusComponent();
-   if (comp==null)
-      System.out.println("java.awt.VDREventDispatcher: MHPEventFilter.getFocusComponent() is Null, don't know where to send VDR event!");
-   return comp;
+   KeyboardFocusManager manager;
+   manager = KeyboardFocusManager.getCurrentKeyboardFocusManager ();
+   Component focusComponent = manager.getActiveWindow();
+   if (focusComponent == null)
+      System.out.println("java.awt.VDREventDispatcher: KeyboardFocusManager.getActiveWindow() is Null, don't know where to send VDR event!");
+   return focusComponent;
 }
 
 

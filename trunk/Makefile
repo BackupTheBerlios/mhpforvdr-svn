@@ -21,6 +21,7 @@ PLUGINDIR_RELATIVE = .
 # testapps-install  copy the contents of testapps to /usr/local/vdr/apps,
 #                   currently simply copies the whole dir to that location
 # testcase  Compile the "SimpleXlet" test suite found in testapps/
+# ti        = testcase testapps-install
 
 
 
@@ -63,6 +64,13 @@ DEFINES += -DPLUGIN_NAME_I18N='"$(PLUGIN)"' -DBASEDIR='"$(BASEDIR)"' -DLOCALAPPS
            -DMHPDIR='"$(MHPDIR)"' -DPLUGINLIBDIR=\"$(VDR_PLUGINLIBDIR)\"
            
 
+### The subdirectories:
+
+SUBDIRS = libdsmcc libdsmccreceiver libait libmhpoutput libdvbsi libjava libservice mhp
+SUBPLUGINDIRS = libmhpoutput mhp
+LIBXMI = libxmi
+dfb++ = DFB++
+
 ##The --whole-archive option makes ld add all symbols of the static library to the binary
 ##instead of only the ones actually used in this binary. This is necessary because other
 ##dynamic objects (the libraries for JNI, output) will link to this library and use additional symbols.
@@ -71,19 +79,14 @@ LIBS_PLUGIN += $(MAIN_LIB_OPTIONS)
 LIBS_LIBRARY += -lm -lavcodec -lz -Wl,--whole-archive \
         libdsmccreceiver/libdsmccreceiver.a libdsmcc/libdsmcc.a  libmhpoutput/libmhpoutput.a  \
         libait/libait.a libdvbsi/libdvbsi.a libservice/libservice.a  libjava/libjava.a \
-        -Wl,--no-whole-archive -ldfb++ -ldirectfb $(VM_LINK_PATH)
+        $(dfb++)/dfb++/.libs/libdfb++.a \
+        -Wl,--no-whole-archive -ldirectfb $(VM_LINK_PATH)
         
 ### The object files (add further files here):
 
 OBJS_PLUGIN = $(PLUGIN).o
 OBJS_LIBRARY = mhpcontrol.o applicationmenu.o i18n.o
 OBJS = $(OBJS_PLUGIN) $(OBJS_LIBRARY)
-
-### The subdirectories:
-
-SUBDIRS = libdsmcc libdsmccreceiver libait libmhpoutput libdvbsi libjava libservice mhp
-SUBPLUGINDIRS = libmhpoutput mhp
-LIBXMI = libxmi
 
 ### Implicit rules:
 
@@ -117,7 +120,7 @@ libvdr-$(PLUGIN).so: $(MAIN_LIBRARY) $(OBJS_PLUGIN)
 $(MAIN_LIBRARY): subdirs $(OBJS_LIBRARY)
 	$(CXX) $(CXXFLAGS) -shared -export-dynamic $(OBJS_LIBRARY) $(LIBS_LIBRARY) -o $@
 
-subdirs: libxmi
+subdirs: libxmi dfb++
 	@for i in $(SUBDIRS) ;\
 	do \
 	    ( cd $$i;\
@@ -162,8 +165,36 @@ libxmi-clean:
             test -e Makefile || exit 0 ;\
             $(MAKE) clean;\
         ) \
+
+.PHONY: dfb++
+dfb++: ./$(dfb++)/config.h
+	@\
+        ( cd $(dfb++);\
+            $(MAKE) all;\
+        )
+
+./$(dfb++)/config.h:
+	@\
+        ( cd $(dfb++);\
+            PKG_CONFIG_PATH=$$PKG_CONFIG_PATH:$(DIRECTFB_ROOT)/lib/pkgconfig/;\
+            ./configure --enable-static --disable-shared \
+        ) \
+        
+dfb++-distclean:
+	@\
+        ( cd $(dfb++);\
+            test -e Makefile || exit 0 ;\
+            $(MAKE) distclean;\
+        ) \
+        
+dfb++-clean:
+	@\
+        ( cd $(dfb++);\
+            test -e Makefile || exit 0 ;\
+            $(MAKE) clean;\
+        ) \
    
-#includes java-install
+## includes java-install
 install: library-install
 	$(MAKE) -C mhp/ install
 	$(MAKE) -C libmhpoutput/ install
@@ -175,14 +206,15 @@ library-install:
 dist: distclean
 	@-rm -rf $(TMPDIR)/$(ARCHIVE)
 	@mkdir $(TMPDIR)/$(ARCHIVE)
-	@cp -a * $(TMPDIR)/$(ARCHIVE)
+	@find -not -path "*.svn*" -and -not -type d -exec cp -a --parents "{}" $(TMPDIR)/$(ARCHIVE) \;
+##	@cp -a * $(TMPDIR)/$(ARCHIVE)
 	@tar czf $(PACKAGE).tgz -C $(TMPDIR) $(ARCHIVE)
 	@-rm -rf $(TMPDIR)/$(ARCHIVE)
 	@echo Distribution package created as $(PACKAGE).tgz
 
-clean: plugin-clean libxmi-clean
+clean: plugin-clean libxmi-clean dfb++-clean
 
-distclean: plugin-clean libxmi-distclean java-clean
+distclean: plugin-clean libxmi-distclean dfb++-distclean java-clean
 
 plugin-clean:
 	@-rm -f $(OBJS) $(DEPFILE) *.so *.tgz core* *~
@@ -196,7 +228,10 @@ plugin-clean:
    
 testapps-install:
 	@install -d $(BASEDIR)/apps
-	cp -r testapps/* $(BASEDIR)/apps
+	@echo Copying content of ./testapps to $(BASEDIR)/apps
+	@( cd testapps; \
+	  find -not -path "*.svn*" -and -not -type d -and -not -name "*.java" -exec cp -a --parents "{}" $(BASEDIR)/apps \; \
+	)
 
 ##Do not delete testapps in distclean, include .class files in distribution
 testapps-clean-all:
@@ -216,6 +251,8 @@ javas: java java-install
 
 testcase:
 	make -C mhp/java testcase
+
+ti: testcase testapps-install
         
 getjikes:
 	make -C mhp/java getjikes-for-topdir

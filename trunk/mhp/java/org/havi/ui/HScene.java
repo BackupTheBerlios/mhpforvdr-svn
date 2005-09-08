@@ -73,39 +73,43 @@ public static final int IMAGE_TILE = 3;
   }
   
   public void dispose() {
-    HSceneFactory.getInstance().dispose(this);
+    HScreen.getDefaultHScreen().getDefaultHGraphicsDevice().removeHScene(this);
+    super.dispose();
   }
 
   
+// Leave to Window
   /*
   Returns the child component of this HScene which has focus if and only 
   if this HScene is active. Returns: the component with focus,or null 
   if no children have focus assigned to them.
   */
+  /*
   public java.awt.Component getFocusOwner() {
-     //I do not know how to implement this. Kaffe's Component does not seem
-     //to provide a hook
-     System.err.println("HScene.getFocusOwner(): Only returning null");
-     return null;
   }  
+  */
   
   /** Request that the HScene be made visible, that is request focus from WM
       and realize and its subcomponent.
       @param show visibility state
   */
+/*
   public void setVisible(boolean show) {
     if(show) {
       this.requestFocus();
     }
     super.setVisible(show);
   }
+*/
 
   /** Query whether the container is currently visible. Since there is
       no WM implemented yet, simply returns the visibility status of the
       parent Component */
+/*
   public boolean isVisible() {
     return super.isVisible();
   }
+*/
   
   /*
   Get the rendering mode of any background image associated with this HScene . 
@@ -120,6 +124,7 @@ public static final int IMAGE_TILE = 3;
       itself.
       @param g Graphics context to use for this operation */   
 public void paint(Graphics g) {
+    System.out.println("HScene.paint");
     org.dvb.ui.DVBGraphics dvbG=(org.dvb.ui.DVBGraphics)g;
     
     dvbG.enterBuffered();
@@ -213,20 +218,23 @@ public boolean setRenderMode(int mode) {
    }
 }  
 
+// The spec requires this WindowEvent infrastructure like java.awt.Window.
+// Now, MHPPlane is a Window, but this is not specified!
+// Leave this to Window
 
   /** Private list of window listeners */
   // TODO Fire these events accordingly
-  private WindowListener windowListeners = null;
+  //private WindowListener windowListeners = null;
   
   /** Add a listener to receive WindowEvents
       @param wl object implementing WindowListener to notify */
-  public void addWindowListener(WindowListener wl) {
+  /*public void addWindowListener(WindowListener wl) {
     windowListeners = AWTEventMulticaster.add(windowListeners, wl);
-  }
+  }*/
 
   /** Remove a WindowEvent listener
       @param wl object implementing WindowListener to remove */
-  public void removeWindowListener(WindowListener wl) {
+  /*public void removeWindowListener(WindowListener wl) {
     windowListeners = AWTEventMulticaster.remove(windowListeners, wl);
   } 
 
@@ -258,6 +266,7 @@ protected void processWindowEvent(java.awt.event.WindowEvent event) {
       }
    }
 }
+*/
   
   
   /** Shortcut Hash table */
@@ -615,7 +624,7 @@ public synchronized boolean pushToBack(java.awt.Component component) {
       @return index of <code>component</code> in the internal Component array
               or -1 if not found
   */
-  private int getComponentIndex(Component component) {
+private int getComponentIndex(Component component) {
     Component[] current = getComponents();
     int i;
 

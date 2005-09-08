@@ -4,6 +4,7 @@ import org.dvb.application.*;
 import org.dvb.lang.DVBClassLoader;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
+import vdr.mhp.lang.NativeData;
 
 /*
    The ApplicationManager is the core class of this implementation.
@@ -76,7 +77,7 @@ ApplicationManager() {
 /* Parameters:
    appDatabase - pointer to a cApplicationDatabase
 */
-public static int Initialize(long appDatabase) {
+public static int Initialize(NativeData appDatabase) {
    try {   
       if (getManager().init)
          return 0;
@@ -91,14 +92,16 @@ public static int Initialize(long appDatabase) {
       //set some properties for System.getProperty()
       setupProperties();
    } catch (Exception e) {
+      System.out.println("ApplicationManager.Init(): Caught exception");
       e.printStackTrace();
       return -1;
    }
    getManager().init=true;
+   System.out.println("Leaving successfully ApplicationManager.Init()");
    return 0;
 }
 
-public static int NewApplication(long nativeData) {
+public static int NewApplication(NativeData nativeData) {
    try {
       if (!getManager().init)
          return 1;
@@ -111,7 +114,7 @@ public static int NewApplication(long nativeData) {
    return 0;
 }
 
-public static int ApplicationRemoved(long nativeData) {
+public static int ApplicationRemoved(NativeData nativeData) {
    try {
       if (!getManager().init)
          return 1;
@@ -127,7 +130,7 @@ public static int ApplicationRemoved(long nativeData) {
 
 
 
-public static int StartApplication(long nativeData) {
+public static int StartApplication(NativeData nativeData) {
    try {
       System.out.println("ApplicationManager.StartApplication()");
       if (!getManager().init) {
@@ -153,7 +156,7 @@ public static int StartApplication(long nativeData) {
    return 0;
 }
 
-public static int StopApplication(long nativeData) {
+public static int StopApplication(NativeData nativeData) {
    try {
       System.out.println("ApplicationManager.StopApplication()");
       if (!getManager().init)
@@ -182,7 +185,7 @@ public static int StopApplications() {
    return 0;
 }
 
-public static int PauseApplication(long nativeData) {
+public static int PauseApplication(NativeData nativeData) {
    try {
       System.out.println("ApplicationManager.PauseApplication()");
       if (!getManager().init)
@@ -198,7 +201,7 @@ public static int PauseApplication(long nativeData) {
    return 0;
 }
 
-public static int ResumeApplication(long nativeData) {
+public static int ResumeApplication(NativeData nativeData) {
    try {
       System.out.println("ApplicationManager.ResumeApplication()");
       if (!getManager().init)
@@ -360,29 +363,29 @@ static class LoadingManagerInterface {
    static void load(MHPApplication app) {
       load(app.getNativeData());
    }
-   private static native void load(long nativeData);
+   private static native void load(NativeData nativeData);
    
    static void stop(MHPApplication app) {
       stop(app.getNativeData());
    }
-   private static native void stop(long nativeData);
+   private static native void stop(NativeData nativeData);
    
    static boolean isAcquired(MHPApplication app) {
       return isAcquired(app.getNativeData());
    }
-   private static native boolean isAcquired(long nativeData);
+   private static native boolean isAcquired(NativeData nativeData);
 }
 
 static class RunningManagerInterface {
    static void started(MHPApplication app) {
       started(app.getNativeData());
    }
-   private static native void started(long nativeData);
+   private static native void started(NativeData nativeData);
    
    static void stopped(MHPApplication app) {
       stopped(app.getNativeData());
    }
-   private static native void stopped(long nativeData);
+   private static native void stopped(NativeData nativeData);
 }
 
 //ThreadGroup for the ApplicationTaskThread from which
@@ -653,7 +656,7 @@ class ApplicationTask {
          return REMOVE;
       }
       
-      System.out.println("ApplicationTask: Executing task "+task);
+      //System.out.println("ApplicationTask: Executing task "+task);
       boolean success=true;
       //After having accessed the application code we may not make any assumption about
       //the contents of todo; we call StopApplication ourselves in some cases and alter todo!
@@ -703,6 +706,8 @@ class ApplicationTask {
          if (acquiring)
             stopAcquiring();
          boolean force = (arg==null) ? true : ((Boolean)arg).booleanValue();
+         //Only case where watchdog is activated
+         taskThread.watchdog.setBiting(force);
          //may only fail if not forced
          success=app.doStop(force);
          if (!success)
@@ -777,11 +782,13 @@ class ApplicationTaskThread extends Thread {
    java.util.LinkedList list = new java.util.LinkedList();
    java.util.LinkedList delayedList = new java.util.LinkedList();
    ApplicationTask currentTask =  null;
+   WatchdogThread watchdog = null;
    
    Thread thread;
    
    ApplicationTaskThread(ThreadGroup group) {
       super(group, "ApplicationTaskThread");
+      watchdog=new WatchdogThread();
    }
    
    void requestStateChange(MHPApplication app, int procedure) {
@@ -823,6 +830,7 @@ class ApplicationTaskThread extends Thread {
                running=true;
                try {
                   thread = new Thread(this);
+                  watchdog.setThread(thread);
                   thread.start();
                } catch (IllegalThreadStateException e) {
                   //If this thread has already been started and is dead now,
@@ -850,6 +858,8 @@ class ApplicationTaskThread extends Thread {
    //guaranteed to be called only after MHPApplications.stopAll
    synchronized void completeAndStop() {
       completeAndStop=true;
+      notifyAll();
+      //do not set watchdog to stop here, it shall guard the stopping process!
    }
    
    void waitForShutdown() {
@@ -861,6 +871,16 @@ class ApplicationTaskThread extends Thread {
             return;
          }
          thread=null;
+         if (watchdog != null) {
+            watchdog.setThread(null);
+            watchdog.completeAndStop();
+            try {
+               watchdog.join(2000);
+            } catch (InterruptedException e) {
+               e.printStackTrace();
+               return;
+            }
+         }
       }
    }
    
@@ -911,6 +931,8 @@ class ApplicationTaskThread extends Thread {
                   currentTask=(ApplicationTask)list.removeFirst();
             }
             
+            watchdog.setBiting(false);
+            
             if (currentTask != null) {
                //here the actual work is done
                try {
@@ -919,6 +941,8 @@ class ApplicationTaskThread extends Thread {
                   e.printStackTrace();
                }
             }
+            
+            watchdog.reset();
             
          }
       //these catch clauses are the last resort for internal errors.
@@ -929,7 +953,58 @@ class ApplicationTaskThread extends Thread {
       } catch (Throwable x) {
          reportError(x);
       }
+      watchdog.setThread(null);
       running=false;
+   }
+}
+
+class WatchdogThread extends Thread {
+   final static int DEFAULT_TIMEOUT = 10 * 1000;
+   long timeout = 0;
+   long time;
+   private boolean running;
+   Thread thread = null;
+   public void run() {
+      time = System.currentTimeMillis();
+      while (running) {
+         synchronized (this) {
+            try {
+               wait(1000);
+            } catch (InterruptedException e) {
+               continue;
+            }
+            if (timeout != 0 && System.currentTimeMillis()-time > timeout)
+               attack();
+         }
+      }
+   }
+   
+   public synchronized void reset() {
+      time = System.currentTimeMillis();
+      notify();
+   }
+   
+   public synchronized void setBiting(boolean bite) {
+      if (bite)
+         timeout=DEFAULT_TIMEOUT;
+      else
+         timeout=0;
+   }
+   
+   public synchronized void setThread(Thread thread) {
+      this.thread=thread;
+   }
+   
+   public synchronized void completeAndStop() {
+      running = false;
+      notifyAll();
+   }
+   
+   private void attack() {
+      // The Spec says Thread.stop() is deprecated, use interrupt() in such case.
+      // As well, it is said that if interrupt has no effect, stop() has not either.
+      reportError(new RuntimeException("Watchdog timer for TaskThread expired, interrupting thread!"));
+      thread.interrupt();
    }
 }
 

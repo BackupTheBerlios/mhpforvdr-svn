@@ -29,42 +29,34 @@
 namespace DvbSi {
 
 class PMTServicesRequest;
+class DataSwitchListener;
 
-class DataSwitchListener {
-protected:
-   friend class Database;
-     //indicates the SI data (transport stream) was switched - the database is in TuningStatePat.
-   virtual void DataSwitch(class Database *db) {};
-     //indicates the SI data (transport stream) is switching - the database is in TuningStateChannel.
-   virtual void DataSwitching(class Database *db) {};
-     //indicated that the service changed, but not the transport stream.
-   virtual void ServiceChange(class Database *db) {};
-};
-
-
-class Database : public SchedulerBySeconds, public cStatus {
+class Database : public SchedulerBySeconds, public cStatus, public SmartPtrObject {
 public:
+   typedef DatabasePtr Ptr;
+   operator Ptr() { return Ptr(this); }
+   
    //public API
    static int getNumberOfDatabases() { return cDevice::NumDevices(); }
    static int getNumberOfValidDatabases();
       //this function will try to find a receiving device
       //if the primary device has no reception capabilities.
       //If no device is found, NULL will be returned.
-   static Database *getPrimaryDatabase();
+   static Database::Ptr getPrimaryDatabase();
       //these tow functions may return NULL if device has no reception capabilities
-   static Database *getDatabase(cDevice *dev);
-   static Database *getDatabase(int numDevice);
+   static Database::Ptr getDatabase(cDevice *dev);
+   static Database::Ptr getDatabase(int numDevice);
    
       //in DVB, nid-tid-sid uniquely identifies a channel.
       //VDR additionally uses the Source. However, channels
       //with different source but same IDs should be identical
       //(although I can't rule out broken configurations, channels or SI data)
-   static Database *getDatabaseForChannel(int nid, int tid, int sid, bool shallBeTunedTo, cChannel **channel=NULL);
-   static Database *getDatabaseForChannel(int source, int nid, int tid, int sid, bool shallBeTunedTo);
+   static Database::Ptr getDatabaseForChannel(int nid, int tid, int sid, bool shallBeTunedTo, cChannel **channel=NULL);
+   static Database::Ptr getDatabaseForChannel(int source, int nid, int tid, int sid, bool shallBeTunedTo);
       //to be used with Channels rwlocked
-   static Database *getDatabaseForChannel(cChannel *channel);
+   static Database::Ptr getDatabaseForChannel(cChannel *channel);
       //to be used with Channels rwlocked
-   static Database *getDatabaseTunedForChannel(cChannel *channel);
+   static Database::Ptr getDatabaseTunedForChannel(cChannel *channel);
       //to be used with Channels rwlocked
    static void findChannels(int nid, int tid, int sid, std::vector<cChannel *> &list);
    
@@ -161,7 +153,7 @@ public:
    
    class DatabaseLock : public cMutexLock {
    public:
-      DatabaseLock(Database *db) : cMutexLock(&db->mutex) {}
+      DatabaseLock(Database::Ptr db) : cMutexLock(&db->mutex) {}
    };
    friend class DatabaseLock;
    
@@ -249,6 +241,17 @@ private:
    static Database **databases;
    static bool *noReceptionDatabases;
    static int primaryIndex;
+};
+
+class DataSwitchListener {
+protected:
+   friend class Database;
+     //indicates the SI data (transport stream) was switched - the database is in TuningStatePat.
+   virtual void DataSwitch(Database::Ptr db) {};
+     //indicates the SI data (transport stream) is switching - the database is in TuningStateChannel.
+   virtual void DataSwitching(Database::Ptr db) {};
+     //indicated that the service changed, but not the transport stream.
+   virtual void ServiceChange(Database::Ptr db) {};
 };
 
 }

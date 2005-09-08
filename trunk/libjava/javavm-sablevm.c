@@ -8,6 +8,8 @@
  *                                                                         *
  ***************************************************************************/
 
+#include <list>
+
 #include <stdlib.h>
 #include <stdarg.h>
 #include <string.h>
@@ -41,7 +43,7 @@ protected:
    int attachedThreads;
    JavaVM *jvm;
    JNIEnv *jvmEnv;
-   PerThreadJNIEnvProvider provider;
+   PerThreadAutomagicJNIEnvProvider provider;
    
    void (*javaExitFunc)(jint);
    void (*javaAbortFunc)(void);
@@ -73,13 +75,13 @@ private:
                      MHPLIBDIR
 */
 
-//The boot class path needs to contain all classes an entry any this path depends on.
-//This means e.g. the ASM jar file cannot be included in the SYSTEM_CLASS_PATH
-//because central classes in MHPJARFILE depend on them.
+// The boot class path needs to contain all classes an entry of this path depends on.
+// This means e.g. the ASM jar file cannot be included in the SYSTEM_CLASS_PATH
+// because central classes in MHPJARFILE depend on them.
 
 #define BOOT_CLASS_PATH      MHPJARFILE ":"  \
-                             SABLEVM_LIB "/libclasspath.jar" \
-                             SABLEVM_LIB "/resources.jar" \
+                             SABLEVM_LIB "/libclasspath.jar" ":" \
+                             SABLEVM_LIB "/resources.jar" ":" \
                              GLOBAL_EXTRA_CLASSPATH
 #define SYSTEM_CLASS_PATH
 #define BOOT_LIBRARY_PATH    SABLEVM_NATIVE
@@ -107,6 +109,7 @@ cJavaVM::cJavaVM() {
    //doShutdown=false;
    //loadingAborted=false;
    state=Waiting;
+   error=false;
 }
 
 cJavaVM::~cJavaVM() {
@@ -119,14 +122,14 @@ cJavaVM::~cJavaVM() {
 //JavaInterface calls the method.
 
 void cJavaVM::CheckAttachThread() {
-   if (!provider.GetEnv()) {
+   if (!provider.GetEnvNoMagic()) {
       AttachCurrentThread();
    }
 }
 
 
 void cJavaVM::CheckDetachThread() {
-   if (!provider.GetEnv()) {
+   if (!provider.GetEnvNoMagic()) {
       if (DetachCurrentThread());
    }
 }
@@ -138,7 +141,7 @@ bool cJavaVM::AttachCurrentThread() {
       if (jvm->AttachCurrentThread((void **)&env, NULL) != JNI_OK)
          return false;
       attachedThreads++;
-      provider.SetEnvForCurrentThread(env);
+      provider.SetJavaEnv(env);
       return true;
    }
    return false;
@@ -149,7 +152,7 @@ bool cJavaVM::DetachCurrentThread() {
       if (jvm->DetachCurrentThread() != JNI_OK)
          return false;
       attachedThreads--;
-      provider.SetEnvForCurrentThread(0);
+      provider.SetJavaEnv(0);
       return true;
    }
    return false;
@@ -287,7 +290,7 @@ bool cJavaVM::DoStartVM() {
          fprintf( stderr, "Failed to create JVM\n" );
          error=true; //disable use of plugin for subsequent attempts
       } else {
-         provider.SetEnvForCurrentThread(jvmEnv); //main thread is attached by VM
+         provider.SetJavaEnv(jvmEnv); //main thread is attached by VM
          printf("JVM Created successfully\n");
          return true;
       }
@@ -352,7 +355,7 @@ const char *cJavaVM::ClassHome() {
 }*/
 
 
-class JavaInterfaceSableVM : public JavaInterface, private cJavaVM {
+class JavaInterfaceSableVM : public JavaInterface, private cJavaVM, public JNI::ShutdownManager {
 public:
    JavaInterfaceSableVM();
 protected:
@@ -366,14 +369,33 @@ protected:
    virtual void CheckDetachThread() { return cJavaVM::CheckDetachThread(); }
    virtual bool InitializeVM();
    virtual bool CheckVM() { return cJavaVM::CheckSystem(); }
-   static JavaInterfaceSableVM *asVM() { return ((JavaInterfaceSableVM*)s_self); }
+   static JavaInterfaceSableVM *asVM() { return ((JavaInterfaceSableVM*)JavaInterface::s_self); }
+   virtual void registerForDeletion(JNI::DeletableObject *obj);
+   virtual void removeForDeletion(JNI::DeletableObject *obj);
+private:
+   std::list<JNI::DeletableObject *> delObjs;
+   cMutex objsMutex;
 };
+
+void JavaInterfaceSableVM::registerForDeletion(JNI::DeletableObject *obj) {
+   cMutexLock lock(&objsMutex);
+   delObjs.push_back(obj);
+}
+
+void JavaInterfaceSableVM::removeForDeletion(JNI::DeletableObject *obj) {
+   cMutexLock lock(&objsMutex);
+   delObjs.remove(obj);
+}
 
 void JavaInterfaceSableVM::SyncShutdown() {
    //do this in the right order - when the VM is shut down, the methods cannot be released
    try {
-      delete methods;
-      methods=0;
+      cMutexLock lock(&objsMutex);
+      for (std::list<JNI::DeletableObject *>::iterator it = delObjs.begin(); it != delObjs.end(); ++it)
+         (*it)->Delete();
+      delObjs.clear();
+      //delete methods;
+      //methods=0;
       ShutdownVM(true);
    } catch (JavaStartException &e) {}
 }
@@ -383,7 +405,7 @@ void JavaInterfaceSableVM::jvmExit(jint exitCode) {
 }
 
 void JavaInterfaceSableVM::jvmAbort() {
-   if (s_self) {
+   if (JavaInterface::s_self) {
       switch (asVM()->state) {
       case Waiting:
       case Starting:

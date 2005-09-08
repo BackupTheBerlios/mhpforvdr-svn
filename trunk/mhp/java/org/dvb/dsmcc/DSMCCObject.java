@@ -5,6 +5,7 @@ import java.io.File;
 import vdr.mhp.io.PathConverter;
 import vdr.mhp.ApplicationManager;
 import org.dvb.application.MHPApplication;
+import vdr.mhp.lang.NativeData;
 
 /*A DSMCCObject is an object which belongs to a DSMCC ServiceDomain. As soon as a 
 ServiceDomain has been attached to the  le system hierarchy, DSMCCObject objects can be 
@@ -105,7 +106,7 @@ public void addObjectChangeEventListener(ObjectChangeEventListener listener) {
       return;
    }
    if (nativeData == 0)
-      nativeData=createListener(app.getNativeData(), (carouselFile.getPath()+'\0').getBytes());
+      nativeData=createListener(app.getNativeData(), carouselFile.getPath());
 }
 
 /*
@@ -120,7 +121,7 @@ public void removeObjectChangeEventListener(ObjectChangeEventListener listener) 
    }
 }
 
-private native long createListener(long nativeApp, byte[] path);
+private native long createListener(NativeData nativeApp, String path);
 private native void removeListener(long nativeData);
 
 /*

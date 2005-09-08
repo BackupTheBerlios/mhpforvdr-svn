@@ -28,7 +28,7 @@ enum LoadingState { LoadingStateError, LoadingStateWaiting, LoadingStateLoading,
 
 class ProgressIndicator {
 public:
-   virtual void ShowProgress(float progress, int currentSize, int totalSize) = 0;
+   virtual void ShowProgress(int currentSize, int totalSize) = 0;
    virtual void SetApplicationName(const std::string &appName) = 0;
    virtual void HideProgress() = 0;
 };

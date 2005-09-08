@@ -13,7 +13,7 @@
 
 namespace DvbSi {
 
-Filter::Filter(Database *db, bool attach) : database(db), attached(false)
+Filter::Filter(Database::Ptr db, bool attach) : database(db), attached(false)
 {
    if (attach)
       Attach();
@@ -32,6 +32,15 @@ void Filter::Attach() {
 void Filter::Detach() {
    //database checks for attached, no need here
    database->Detach(this); 
+}
+
+DatabasePtr Filter::getDatabase() {
+   return database;
+}
+
+RequestFilter::RequestFilter(DatabasePtr db, Request *r)
+  : Filter(db), request(r)
+{
 }
 
 }

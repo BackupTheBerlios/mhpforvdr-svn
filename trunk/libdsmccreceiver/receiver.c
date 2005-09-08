@@ -179,27 +179,48 @@ void ObjectCarousel::InterpretDII(Dsmcc::Section &section) {
    } //end of outer loop
 }
 
-float ObjectCarousel::getProgress(int *retCurrentSize, int *retTotalSize) {
+void ObjectCarousel::getProgress(bool *retComplete, uint *retTotalSize, uint *retCurrentSizeReceivedData, uint *retCurrentSizeCompleteBlocks, float *retPercentage) {
    if (stage < StageDII) {
-      if (retCurrentSize)
-         (*retCurrentSize)=0;
       if (retTotalSize)
          (*retTotalSize)=0;
-      return 0.0;
+      if (retCurrentSizeCompleteBlocks)
+         (*retCurrentSizeCompleteBlocks)=0;
+      if (retCurrentSizeReceivedData)
+         (*retCurrentSizeReceivedData)=0;
+      if (retPercentage)
+         (*retPercentage)=0.0;
+      if (retComplete)
+         (*retComplete)=false;
+      return;
    }
    
-   int totalSize=0, cachedSize=0;
+   int totalSize=0, cachedSize=0, cachedSizeBlock=0;
+   bool complete=true;
    for (std::list<ModuleData>::iterator iit=cache.begin(); iit != cache.end(); ++iit) {
       totalSize += (*iit).size;
-      if ((*iit).cached && !(*iit).isHibernated)
-         cachedSize += (*iit).size;
+      // With this code only data of blocks which are completely received is added
+      //if ((*iit).cached && !(*iit).isHibernated)
+        // cachedSize += (*iit).size;
+      // also add the data received for blocks that are not yet completely received,
+      // more fluent progress bar
+      if (!(*iit).isHibernated) {
+         cachedSize += (*iit).curp;
+         if ((*iit).cached)
+            cachedSizeBlock += (*iit).size;
+      }
+      complete = (complete && (*iit).cached && !(*iit).isHibernated);
    }
    
-   if (retCurrentSize)
-      (*retCurrentSize)=cachedSize;
    if (retTotalSize)
       (*retTotalSize)=totalSize;
-   return ((float)cachedSize) / ((float)totalSize);
+   if (retCurrentSizeCompleteBlocks)
+      (*retCurrentSizeCompleteBlocks)=cachedSizeBlock;
+   if (retCurrentSizeReceivedData)
+      (*retCurrentSizeReceivedData)=cachedSize;
+   if (retPercentage)
+      (*retPercentage)=((float)cachedSize) / ((float)totalSize);
+   if (retComplete)
+      (*retComplete)=complete;
 }
 
 void ObjectCarousel::ModuleData::Set(ModuleInfo &info, DII &dii) {
@@ -216,8 +237,7 @@ void ObjectCarousel::ModuleData::Set(ModuleInfo &info, DII &dii) {
    if (bstatus)
       delete[] bstatus;
    blocks.clear();
-   bstatus=new char[(num_blocks/8)+1];
-   memset(bstatus, 0, (num_blocks/8)+1);
+   bstatus=new Bitset(num_blocks);
    tag=info.modinfo.tap.assoc_tag;
    cached=false;
    curp=0;
@@ -228,13 +248,14 @@ void ObjectCarousel::ModuleData::Set(ModuleInfo &info, DII &dii) {
 void ObjectCarousel::ModuleData::AddData(DDB &ddb) {
    if (cached)
       return; //Already got complete module
-   if(bstatus && BLOCK_GOT(bstatus, ddb.block_number) == 0) { //block not yet received
+   if (bstatus->isSet(ddb.block_number)) { //block not yet received
       blocks.push_back(ddb);
       curp+=ddb.blockdata.getLength();
-      //printf("Received block number %d of module %d, size %d, curp now %ld, this %d\n", ddb.block_number, module_id, ddb.blockdata.getLength(), curp, this);
-      BLOCK_SET(bstatus, ddb.block_number);
+      //char bl[bstatus->getSize()+1];for (int i=0;i<bstatus->getSize();i++) bl[i]=(bstatus->isSet(i) ? '1':'0');bl[bstatus->getSize()]=0;
+      //printf("Received block number %d of module %d, size %d, curp now %ld, blocks %s\n", ddb.block_number, module_id, ddb.blockdata.getLength(), curp, bl);
+      bstatus->Set(ddb.block_number);
    }
-   if (curp>=size) {
+   if (bstatus->isComplete()) {
       //HERE begins the second stage, the parsing of BIOP messages
       HeapCharArray data(size);
       blocks.sort(); //DDB implement operator<, so this sorts according to block_number
@@ -347,7 +368,7 @@ void ObjectCarousel::ModuleData::ProcessModule(unsigned char *da, int len) {
 
 
 ObjectCarousel::ModuleData::~ModuleData() {
-   delete[] bstatus;
+   delete bstatus;
 }
 
 ObjectCarousel::ModuleData::ModuleData(ObjectCarousel *car) {

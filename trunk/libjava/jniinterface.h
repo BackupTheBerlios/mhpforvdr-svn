@@ -44,9 +44,19 @@ union ReturnType {
    double TypeDouble;
 };
 
+enum ExceptionHandling { ClearExceptions, DoNotClearExceptions };
+enum ThrowMode { ThrowModeTry, ThrowModeConsequent };
+enum PredefinedException {
+   JavaLangIllegalArgumentException,
+   JavaLangIllegalStateException,
+   JavaLangNullPointerException,
+   JavaLangRuntimeException,
+   JavaIoIOException
+};
+
 class JNIEnvProvider {
 public:
-   //to set JNIEnv when JNI API is used from a JNI function, called from Java code,
+   // to set JNIEnv when JNI API is used from a JNI function, called from Java code,
    //with the thread possibly created by Java (thread need not be attached to VM).
    static void SetJavaEnv(JNIEnv *env) { return s_self->setJavaEnv(env); }
    static JNIEnv *GetEnv() { return s_self->env(); }
@@ -59,32 +69,89 @@ private:
    static JNIEnvProvider *s_self;
 };
 
+class DeletableObject {
+public:
+   virtual ~DeletableObject();
+   // Called when VM is shut down. Shall be implemented by all subclasses which need
+   // to remove any sort of references/IDs with JNI calls. At destruction time, 
+   // the VM may be shut down and JNI no longer available.
+   // As well, this is called from destructor.
+   // This method shall be implemented so that it may be called multiple times,
+   // where only the first call has the specified effect, subsequent calls doing nothing.
+   virtual void Delete() {}
+protected:
+   // Causes Delete() to be called immediately before the VM is shut down
+   void RegisterForDeletion();
+   // Automatically called from destructor
+   void RemoveForDeletion();
+};
+
+class ShutdownManager {
+public:
+   static void RegisterForDeletion(DeletableObject *obj);
+   static void RemoveForDeletion(DeletableObject *obj);
+protected:
+   ShutdownManager() { s_self = this; }
+   virtual ~ShutdownManager() { s_self = 0; }
+   virtual void registerForDeletion(DeletableObject *obj) = 0;
+   virtual void removeForDeletion(DeletableObject *obj) = 0;
+private:
+   static ShutdownManager *s_self;
+};
+
 class BaseObject {
 public:
-   BaseObject() {}
-      //Returns a function signature, accepts enum Types.
-      //numArgs is the number of arguments of the Java function.
-      //'Class' requires the class name, 'Array' the type as a second specifier.
-      //This second specifier shall be a string given as the following argument
-      //and _not_ be counted by numArgs.
-      //If returnType is either 'Class' or 'Array', then the very last argument
-      //is the necessary second specifier. This argument shall _not_ be counted
-      //by numArgs.
-      //"buffer" must be sufficiently large.
-      //Arrays of class objects are not elegantly supported, the second specifier must be "Lorg/my/Example;
+   BaseObject();
+   virtual ~BaseObject();
+      // Returns a function signature, accepts enum Types.
+      // The returned array is allocated with new[] and must be delete[]'ed by the caller.
+      // First argument is the return type of the method.
+      // numArgs is the number of arguments of the Java function.
+      // The arguments of the method are then appended.
+      // 'Class' requires the class name, 'Array' the type as a second specifier.
+      // 'Array' requires a the class name as a third specifier if it is an array of objects.
+      // These class name specifiers shall be a string given as the following argument.
+      // The additional specifiers shall _not_ be counted by numArgs.
+      // If returnType is either 'Class' or 'Array', then the additionally required specifiers
+      // shall be given as the very last arguments. These arguments shall _not_ be counted
+      // by numArgs.
+      // Attention: Due to some magic in variadic function calls, if your argument list ends with a
+      // string literal, and this arguments is the only variadic argument, you must end the list with
+      // another arguments such as (char *)NULL! This arguments shall not be counted and will not be read.
       //
-      //Two Examples: public int doIt(int arg1, bool arg2);
-      //              getSignature(buf, JNI::Int, 2, JNI::Int, JNI::Boolean);
-      //              myInstanceMethod.SetMethod("org/my/Example", "doIt", buf);
+      // Examples:     public int doIt(int arg1, bool arg2);
+      //               const char *sig = getSignature(JNI::Int, 2, JNI::Int, JNI::Boolean);
+      //               myInstanceMethod.SetMethod("org/my/Example", "doIt", sig);
+      //               delete[] sig;
       //
-      //              public static String doThat(int arg1, java.util.Date arg2, int[] arg3)
-      //              getSignature(buf, JNI::Object, 3, JNI::Int, JNI::Object, 
-      //                           "java/util/Data", JNI::Array, JNI::Int, "java/lang/String");
-      //              myStaticMethod.SetMethod("org/my/Example", "doThat", buf);
-      //              myStaticMethod.CallMethod(myReturnType, JNI::Object);
-   static void getSignature(char *buffer, Types returnType, int numArgs, ...);
-   static bool checkException();
+      //               //There are convenience methods with the same semantics, see below
+      //               public static String doThat(int arg1, java.util.Date arg2, int[] arg3)
+      //               myStaticMethod.SetMethodWithArguments("org/my/Example", "doThat",
+      //                            JNI::Object, 3, JNI::Int, JNI::Object, 
+      //                            "java/util/Data", JNI::Array, JNI::Int, "java/lang/String"););
+      //               myStaticMethod.CallMethod(myReturnType, JNI::Object);
+      //
+      //               public String[] doSomethingWithArray(Object[] args)
+      //               const char *sig = getSignature(JNI::Array, 1, JNI::Array, JNI::Object, "java/lang/object",
+      //                                              JNI::Object, "java/lang/String")
+      //               myThirdMethod.SetMethod("org/my/Example", "doSomethingWithArray", sig);
+      //               delete[] sig;
+   static const char *getSignature(Types returnType, int numArgs, ...);
+   static const char *getSignature(Types returnType, int numArgs, va_list args);
+      //Get signature for a constructor. This is equvivalent to calling getSignature with returnType JNI::Void
+   static const char *getConstructorSignature(int numArgs, ...);
+   
+   static bool checkException(ExceptionHandling eh);
+   bool checkException();
+   
+   // Per default, exceptions (stacktrace written to output) are cleared after each call
+   // and only the return value indicates an error: ClearExceptions.
+   // If the handling is set to DoNotClearExceptions, ExceptionClear() is not called and an exception may be pending.
+   void SetExceptionHandling(ExceptionHandling eh) { exceptionHandling = eh; }
+private:
+   ExceptionHandling exceptionHandling;
 };
+
 
 class ClassRef : public BaseObject {
 public:
@@ -96,7 +163,7 @@ protected:
    jclass classRef;   
 };
 
-class GlobalObjectRef : public BaseObject {
+class GlobalObjectRef : public BaseObject, public DeletableObject {
 public:
    GlobalObjectRef();
    ~GlobalObjectRef();
@@ -104,44 +171,221 @@ public:
    jclass GetClass();
    //a valid local reference
    bool SetObject(jobject localRef);
-   void DeleteReference();
+   virtual void Delete();
 protected:
    jobject objectRef;
 };
 
-class GlobalClassRef : public ClassRef {
+class GlobalClassRef : public ClassRef, public DeletableObject {
 public:
    GlobalClassRef();
    ~GlobalClassRef();
    bool SetClass(const char* classname);
    bool SetClass(jclass localRef);
-   void DeleteReference();
+   virtual void Delete();
 };
 
-class InstanceMethod : public BaseObject {
+class Field : public BaseObject {
+public:
+   Field();
+   ~Field();
+   // For fields of primitive type
+   bool SetField(const char *classname, const char *fieldName, Types fieldType);
+   bool SetField(jclass clazz, const char *fieldName, Types fieldType);
+   // For object or array fields
+   bool SetField(const char *classname, const char *fieldName, Types fieldType, const char *type);
+   bool SetField(jclass clazz, const char *fieldName, Types fieldType, const char *type);
+   bool GetValue(jobject obj, ReturnType &ret);
+   bool SetValue(jobject obj, ReturnType value);
+protected:
+   bool SetField(const char *fieldName, Types fieldType);
+   bool SetField(const char *fieldName, Types fieldType, const char *signature);
+   bool SetField(const char *fieldName, const char *signature);
+   jfieldID field;
+   GlobalClassRef classRef;
+   Types fieldType;
+};
+
+class Method : public BaseObject, public DeletableObject {
+public:
+   Method();
+   // Calling these four methods is equivalent to obtaining the signature with getSignature
+   // and then calling one the two other methods.
+   // For the arguments returnType, numArgs, and the variable argument list
+   // see the documentation for getSignature above.
+   virtual bool SetMethodWithArguments(const char *classname, const char *methodName, Types returnType, int numArgs, ...);
+   virtual bool SetMethodWithArguments(jclass clazz, const char *methodName, Types returnType, int numArgs, ...);
+   virtual bool SetMethodWithArguments(const char *classname, const char *methodName, Types returnType, int numArgs, va_list args);
+   virtual bool SetMethodWithArguments(jclass clazz, const char *methodName, Types returnType, int numArgs, va_list args);
+   
+   virtual bool SetMethod(const char *classname, const char *methodName, Types returnType, const char *signature) = 0;
+   virtual bool SetMethod(jclass clazz, const char *methodName, Types returnType, const char *signature) = 0;
+   virtual void Delete();
+protected:
+   jmethodID method;
+   GlobalClassRef classRef;
+   Types returnType;
+};
+
+class InstanceMethod : public Method {
 public:
    InstanceMethod();
-   bool SetMethod(const char *classname, const char *methodName, const char *signature);
-   bool SetMethod(jclass clazz, const char *methodName, const char *signature);
+   virtual bool SetMethod(const char *classname, const char *methodName, Types returnType, const char *signature);
+   virtual bool SetMethod(jclass clazz, const char *methodName, Types returnType, const char *signature);
    //calls method set before, which has return type returnType
    //returnValue is valid only if function return true
-   bool CallMethod(jobject object, ReturnType &returnValue, Types returnType, ...);
+   bool CallMethod(jobject object, ReturnType &returnValue, ...);
+   bool CallMethod(jobject object, ReturnType &returnValue, va_list args);
+};
+
+class StaticMethod : public Method {
+public:
+   StaticMethod();
+   virtual bool SetMethod(const char *classname, const char *methodName, Types returnType, const char *signature);
+   virtual bool SetMethod(jclass clazz, const char *methodName, Types returnType, const char *signature);
+   //calls method set before, which has return type returnType
+   //returnValue is valid only if function return true
+   bool CallMethod(ReturnType &returnValue, ...);
+   bool CallMethod(ReturnType &returnValue, va_list args);
+};
+
+class Constructor : protected InstanceMethod {
+public:
+   Constructor();
+   bool SetConstructorWithArguments(const char *classname, int numArgs, ...);
+   bool SetConstructorWithArguments(jclass clazz, int numArgs, ...);
+   bool SetConstructor(const char *classname, const char *signature);
+   bool SetConstructor(jclass clazz, const char *signature);
+   //Creates a new object
+   bool NewObject(jobject &newObj, ...);
+   bool NewObject(jobject &newObj, va_list args);
+   //Make method from BaseObject available (protected inheritance)
+   void SetExceptionHandling(ExceptionHandling eh) { InstanceMethod::SetExceptionHandling(eh); }
+};
+
+class Exception : public BaseObject {
+public:
+   Exception();
+   bool SetClass(const char *classname);
+   // This method is well suited for use with a preinitialized Exception object
+   bool Throw(const char *errMsg);
+   static bool Throw(PredefinedException e, const char *errMsg);
+   
+   // Combines SetClass(classname) and then Throw(errMsg, mode) - with error checking!
+   // This call is well suited to be called when an error state is reached and the Exception variable
+   // has not yet been created/initialized.
+   // This call is not affected by a call to SetClass before.
+   // If ThrowMode is Consequent, in case of failure of loading an exception class a ClassNotFoundException and
+   // ultimately an internal error is sent. If mode is Try, just try to throw given class
+   // and nothing more. In any case, return value indicates whether the requested attempt was successful.
+   static bool Throw(const char *classname, const char *errMsg, ThrowMode mode = ThrowModeTry);
+   
+   //internal initialization
+   static bool Initialize();
 protected:
-   jmethodID method;
+   static Exception javaLangIllegalArgumentException;
+   static Exception javaLangIllegalStateException;
+   static Exception javaLangNullPointerException;
+   static Exception javaLangRuntimeException;
+   static Exception javaIoIOException;
    GlobalClassRef classRef;
 };
 
-class StaticMethod : public BaseObject {
+// A wrapper for certain String operations
+class String : public BaseObject {
 public:
-   StaticMethod();
-   bool SetMethod(const char *classname, const char *methodName, const char *signature);
-   bool SetMethod(jclass clazz, const char *methodName, const char *signature);
-   //calls method set before, which has return type returnType
-   //returnValue is valid only if function return true
-   bool CallMethod(ReturnType &returnValue, Types returnType, ...);
+   // From a C-style string in native encoding
+   String(const char *cstring);
+   // From a java.lang.String object
+   String(jstring javastring);
+   ~String();
+   // Convert to a java.lang.String object. Object returned is a local reference.
+   jstring toJavaString();
+   // Convert to UTF8 characters.
+   // Returned value is valid as long as this JNI::String object exists.
+   const char *toUTF8();
+   // Convert to C-Style characters in local encoding.
+   // Returned value is valid as long as this JNI::String object exists.
+   const char *toCString();
+   // Returns the number of Unicode characters in this string.
+   // Since in UTF8, a character may be represented by up to 3 bytes, this
+   // value will be different if the string contains characters not in
+   // the standard ASCII range from 0 to 127.
+   int getCharactersLength();
+   // Returns the number of bytes of the UTF8 representation of this String.
+   // This number will be larger than getCharacterLength() if the string
+   // contains characters not in the standard ASCII range from 0 to 127.
+   int getUTF8BytesLength();
+   
+   //internal initialization
+   static bool Initialize();
 protected:
-   jmethodID method;
-   GlobalClassRef classRef;
+   jstring javastring;
+   const char *cstring;
+   const char *utf8;
+   bool ownsCString;
+   static Constructor javaLangStringByteArray;
+   static InstanceMethod javaLangStringGetBytes;
+};
+
+// A utility to wrap native data (pointers) and stores them on Java side.
+// This code here is implementation independent, there must be an implementation
+// which sets itself with SetImplementation().
+class NativeData : public BaseObject {
+public:
+   class Implementation {
+   public:
+      virtual void Set(jobject obj, void *nativeData, bool isNull) = 0;
+      virtual void *Get(jobject obj) = 0;
+      virtual jobject Create() = 0;
+   };
+   static void SetImplementation(Implementation *impl);
+   operator jobject() { return obj; }
+protected:
+   NativeData(jobject data);
+   void Set(void *nativeData, bool isNull);
+   void *Get();
+   static jobject Create();
+   
+   static Implementation *impl;
+   jobject obj;
+};
+
+// Wraps simple pointers for storage on Java side
+template <typename T> class PointerNativeData : public NativeData {
+public:
+   PointerNativeData(jobject obj) : NativeData(obj) {}
+   PointerNativeData(T *p) : NativeData(Create()) { Set(p); }
+   void Set(T *p) { NativeData::Set((void *)p, p == NULL); }
+   T *Get() { return (T *)NativeData::Get(); }
+   PointerNativeData<T> &operator=(T *p)
+   {
+      Set(p);
+      return *this;
+   }
+   operator T *() { return Get(); }
+};
+
+// Wraps classes which are usually passed by reference and value.
+// Internally, such an object is created on the heap and stored as a pointer.
+// Memory management (e.g. reference counting classes) thus rely on being freed
+// from the Java side.
+template <typename T> class ReferenceNativeData : public NativeData {
+public:
+   ReferenceNativeData(jobject obj) : NativeData(obj) {}
+   ReferenceNativeData(T &r, bool isNull = false) : NativeData(Create()) { Set(r, isNull); }
+   void Set(T &ref, bool isNull = false)
+   {
+      T *p = new T(ref);
+      NativeData::Set((void *)p, isNull);
+   }
+   T &Get() { return *(T *)NativeData::Get(); }
+   ReferenceNativeData<T> &operator=(T &r)
+   {
+      Set(r);
+      return *this;
+   }
+   operator T &() { return Get(); }
 };
 
 }//end of namespace JNI
