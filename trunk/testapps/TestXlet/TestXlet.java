@@ -602,9 +602,9 @@ public class TestXlet implements Xlet {
       
       AppsDatabase db = AppsDatabase.getAppsDatabase();
       CurrentServiceFilter filter = new CurrentServiceFilter();
-      Enumeration currentApps = db.getAppsIDs(filter);
-      while (currentApps.hasNext()) {
-         AppID id = (AppID)currentApps.next();
+      Enumeration currentApps = db.getAppIDs(filter);
+      while (currentApps.hasMoreElements()) {
+         AppID id = (AppID)currentApps.nextElement();
          new OrgDvbAppTester(id).test();
       }
    }
