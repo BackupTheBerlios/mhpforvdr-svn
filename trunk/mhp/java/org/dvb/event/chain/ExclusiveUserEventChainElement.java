@@ -39,7 +39,7 @@ but only the requested event shall be received by the listener."
 */
 
 boolean includes(UserEvent e) {
-   return e.sameKey(e);
+   return event.sameKey(e);
 }
 
 

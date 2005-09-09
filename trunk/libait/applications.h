@@ -338,24 +338,26 @@ friend class cAIT;
 public:
    //Returns application for given identifiers, or NULL if not found.
    cApplication::Ptr findApplication(int aid, int oid, int type);
+
+   typedef std::list<cApplication::Ptr > ApplicationList;
    //Fills list with all applications. Returns false if list is empty.
-   bool findApplications(std::list<cApplication::Ptr > &addAppsToThisList);
+   bool findApplications(ApplicationList &addAppsToThisList);
    //Fills list with applications found on given tranport stream.
    //Returns true if information about that TS in known, or false if
    //no information (AIT) has yet been received on that TS.
    //If information is known, all applications signalled on the TS will be added to the list.
-   bool findApplicationsForTransportStream(std::list<cApplication::Ptr > &addAppsToThisList, int source, int nid, int tid);
+   bool findApplicationsForTransportStream(ApplicationList &addAppsToThisList, int source, int nid, int tid);
    //Fills list with applications found on given service.
    //Returns true if information about that service, or false if
    //no information (AIT) has yet been received for that service on its transport stream.
    //If information is known, all applications signalled on the TS will be added to the list.
-   bool findApplicationsForService(std::list<cApplication::Ptr > &addAppsToThisList, int source, int nid, int tid, int sid);
+   bool findApplicationsForService(ApplicationList &addAppsToThisList, int source, int nid, int tid, int sid);
    int Count() { return apps.size(); }
 protected:
    void addApplication(cApplication *newApp);
    void tagForDeletion(cTransportStream::ApplicationService *service, int type);
    void deleteTagged();
-   typedef std::list<cApplication::Ptr> AppList;
+   typedef ApplicationList AppList;
    AppList apps;
    cTransportStreams TransportStreams;
 };

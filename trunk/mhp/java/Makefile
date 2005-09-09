@@ -94,7 +94,7 @@ check-jmf:
 	 fi
    
 testcase:
-	$(JIKES) -classpath $(CLASSPATH) ../../testapps/SimpleXlet/SimpleXlet.java
+	$(JIKES) -classpath $(CLASSPATH) ../../testapps/TestXlet/TestXlet.java
 
 getjikes-for-topdir:
 	@echo

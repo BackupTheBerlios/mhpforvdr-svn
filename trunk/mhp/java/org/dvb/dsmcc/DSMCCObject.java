@@ -2,6 +2,7 @@
 package org.dvb.dsmcc;
 
 import java.io.File;
+import java.io.InterruptedIOException;
 import vdr.mhp.io.PathConverter;
 import vdr.mhp.ApplicationManager;
 import org.dvb.application.MHPApplication;
@@ -131,7 +132,7 @@ the loading is done or if an error has occurred: SuccessEvent, InvalidFormatEven
 MPEGDeliveryErrorEvent, ServerDeliveryErrorEvent, ServiceXFRErrorEvent, NotEntitledEvent Parameters: l - an 
 AsynchronousLoadingEventListener to receive events related to asynchronous loading. Throws: InvalidPathNameException - 
 the object can not be found. */
-public void asynchronousLoad(AsynchronousLoadingEventListener l) {
+public void asynchronousLoad(AsynchronousLoadingEventListener l) throws InvalidPathNameException {
    System.out.println("DSMCCObject.asynchronousLoad, can read? "+canRead());
    AsynchronousLoadingEvent e;
    if (canRead())
@@ -140,6 +141,7 @@ public void asynchronousLoad(AsynchronousLoadingEventListener l) {
       e=new InvalidPathnameEvent(this);
    //do this from a different thread?
    l.receiveEvent(e);
+   throw new InvalidPathNameException(this.toString());
 }
 
 /*
@@ -200,7 +202,7 @@ Asynchronous loading of the directory entry information. Calling this is equival
 asynchronousLoad on the parent directory of a DSMCCObject. Parameters: l - a listener which will be called when the 
 loading is done. Throws: InvalidPathNameException - if the object cannot be 
 found. */
-public void loadDirectoryEntry(AsynchronousLoadingEventListener l) {
+public void loadDirectoryEntry(AsynchronousLoadingEventListener l) throws InvalidPathNameException {
 }
 
 /*
@@ -251,7 +253,7 @@ stream. ServiceXFRException - the IOR of the object or one of its parent directo
 InvalidFormatException - an inconsistent DSMCC message has been received. MPEGDeliveryException - an error has occurred 
 while loading data from MPEG stream such as a timeout ServerDeliveryException - when an MHP terminal cannot communicate 
 with the server for  les delivered over a bi-directional IP connection. */
-public void synchronousLoad() throws InvalidPathNameException {
+public void synchronousLoad() throws InterruptedIOException, InvalidPathNameException, NotEntitledException, ServiceXFRException, InvalidFormatException, MPEGDeliveryException, ServerDeliveryException {
    System.out.println("DSMCCObject.synchronousLoad(), can read? "+canRead());
    if (!canRead())
       throw new InvalidPathNameException();
@@ -263,7 +265,7 @@ application/thread, the system can free all the resources allocated to this obje
 clients use this object (e.g. a  le input stream is opened on this object or if the corresponding stream or stream event 
 is being consumed) the system resources allocated to this object will not be freed. Throws: NotLoadedException - the 
 carousel object is not loaded. */
-public void unload() {
+public void unload() throws NotLoadedException {
    System.out.println("DSMCCObject.unload()");
 }
 

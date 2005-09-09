@@ -25,6 +25,7 @@ import org.dvb.application.AppID;
 import org.dvb.application.AppsDatabase;
 import org.dvb.application.AppProxy;
 import org.dvb.application.AppAttributes;
+import org.dvb.application.CurrentServiceFilter;
 
 import org.havi.ui.HDefaultTextLayoutManager;
 import org.havi.ui.HScene;
@@ -47,17 +48,15 @@ import java.io.RandomAccessFile;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.URL;
+import java.util.Enumeration;
 
-/**
-* Xlet used to debug Java stack
-*/
-public class SimpleXlet implements Xlet {
+public class TestXlet implements Xlet {
 
     XletContext context;
     HScene scene;
     
 
-    public SimpleXlet() {
+    public TestXlet() {
     }
 
     public void initXlet(XletContext xletContext) throws XletStateChangeException {
@@ -579,9 +578,11 @@ public class SimpleXlet implements Xlet {
          AppProxy proxy;
          AppAttributes att;
          OrgDvbAppTester(int oid, int aid) {
-            System.out.println("Testing application with OID "+oid+", AID "+aid);
-            AppID id = new org.dvb.application.AppID(oid, aid);
-            AppsDatabase db = org.dvb.application.AppsDatabase.getAppsDatabase();
+            this(new AppID(oid, aid));
+         }
+         OrgDvbAppTester(AppID id) {
+            System.out.println("Testing application with OID "+id.getOID()+", AID "+id.getAID());
+            AppsDatabase db = AppsDatabase.getAppsDatabase();
             proxy = db.getAppProxy(id);
             att = db.getAppAttributes(id);
          }
@@ -598,6 +599,14 @@ public class SimpleXlet implements Xlet {
       new OrgDvbAppTester(19, 100).test();
       // non-existant
       new OrgDvbAppTester(100, 100).test();
+      
+      AppsDatabase db = AppsDatabase.getAppsDatabase();
+      CurrentServiceFilter filter = new CurrentServiceFilter();
+      Enumeration currentApps = db.getAppsIDs(filter);
+      while (currentApps.hasNext()) {
+         AppID id = (AppID)currentApps.next();
+         new OrgDvbAppTester(id).test();
+      }
    }
    
    

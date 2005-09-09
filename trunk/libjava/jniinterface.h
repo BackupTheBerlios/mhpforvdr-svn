@@ -317,6 +317,9 @@ public:
    // contains characters not in the standard ASCII range from 0 to 127.
    int getUTF8BytesLength();
    
+   operator jstring() { return toJavaString(); }
+   // Do not provide operator const char*, is ambiguous
+   
    //internal initialization
    static bool Initialize();
 protected:
@@ -356,7 +359,7 @@ template <typename T> class PointerNativeData : public NativeData {
 public:
    PointerNativeData(jobject obj) : NativeData(obj) {}
    PointerNativeData(T *p) : NativeData(Create()) { Set(p); }
-   void Set(T *p) { NativeData::Set((void *)p, p == NULL); }
+   void Set(T *p) { NativeData::Set((void *)p, p == 0); }
    T *Get() { return (T *)NativeData::Get(); }
    PointerNativeData<T> &operator=(T *p)
    {

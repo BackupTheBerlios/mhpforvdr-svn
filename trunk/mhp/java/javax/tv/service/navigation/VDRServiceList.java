@@ -5,6 +5,7 @@ import java.util.LinkedList;
 import javax.tv.service.Service;
 import javax.tv.service.VDRService;
 import org.davic.net.dvb.DvbLocator;
+import vdr.mhp.lang.NativeData;
 
 /*
 
@@ -62,7 +63,7 @@ public static ServiceList getList(ServiceFilter filter) {
 LinkedList getVDRList() {
    LinkedList l=new LinkedList();
    if (acquireLock()) {
-      for (long chan=firstChannel(); chan != 0; chan=nextChannel(chan)) {
+      for (NativeData chan=firstChannel(); !chan.isNull(); chan=nextChannel(chan)) {
          l.add(VDRService.getServiceForNativeChannel(chan));
       }
       releaseLock();
@@ -71,8 +72,8 @@ LinkedList getVDRList() {
 }
 private native boolean acquireLock();
 private native void releaseLock();
-private native long firstChannel();
-private native long nextChannel(long previousChannel);
+private native NativeData firstChannel();
+private native NativeData nextChannel(NativeData previousChannel);
 
 
 

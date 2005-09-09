@@ -80,7 +80,7 @@ public boolean setVideoConfiguration(HVideoConfiguration hbc)
   HPermissionDeniedException -(HPermissionDeniedException )if the application does not 
   currently have the right to get the VideoSource object.
   */
-public java.lang.Object getVideoSource() {
+public java.lang.Object getVideoSource() throws java.lang.SecurityException, HPermissionDeniedException {
    return null;
 }
 
@@ -95,7 +95,7 @@ public java.lang.Object getVideoSource() {
   HPermissionDeniedException -(HPermissionDeniedException )if the application does not
   currently have the right to get the VideoPlayer object.
   */
-public java.lang.Object getVideoController() {
+public java.lang.Object getVideoController() throws java.lang.SecurityException, HPermissionDeniedException {
    return null;
 }
 

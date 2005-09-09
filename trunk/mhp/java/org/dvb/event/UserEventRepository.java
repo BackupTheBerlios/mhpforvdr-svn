@@ -22,7 +22,7 @@ EventManager.Adding or removing events from the repository after those method ca
 those events. */
 
 
-public class UserEventRepository extends java.lang.Object {
+public class UserEventRepository implements Cloneable {
 protected String RepositoryName;
 protected Vector events;
 
@@ -76,6 +76,15 @@ public void removeUserEvent(UserEvent event) {
       }
    }
    //nothing found, nothing to remove
+}
+
+/*
+      Returns the list of the user events that are in the repository.
+Returns:
+      an array which contains the user events that are in the repository.
+*/
+public UserEvent[] getUserEvent() {
+   return (UserEvent[])events.toArray(new UserEvent[events.size()]);
 }
 
 
@@ -154,6 +163,12 @@ public void removeAllNumericKeys() {
    removeKey(UserEvent.VK_7);
    removeKey(UserEvent.VK_8);
    removeKey(UserEvent.VK_9);
+}
+
+public Object clone() throws CloneNotSupportedException {
+   UserEventRepository r = (UserEventRepository)super.clone();
+   r.events = (Vector)events.clone();
+   return r;
 }
 
 

@@ -408,12 +408,12 @@ cApplication::Ptr cApplicationsDatabase::findApplication(int aid, int oid, int t
    return 0;
 }
 
-bool cApplicationsDatabase::findApplications(std::list<cApplication::Ptr > &addAppsToThisList) {
+bool cApplicationsDatabase::findApplications(ApplicationList &addAppsToThisList) {
    addAppsToThisList=apps;
    return apps.size();
 }
 
-bool cApplicationsDatabase::findApplicationsForTransportStream(std::list<cApplication::Ptr > &addAppsToThisList, int source, int nid, int tid) {
+bool cApplicationsDatabase::findApplicationsForTransportStream(ApplicationList &addAppsToThisList, int source, int nid, int tid) {
    cTransportStream *ts = TransportStreams.GetTransportStream(source, nid, tid);
    if (ts == 0)
       return false;
@@ -424,7 +424,7 @@ bool cApplicationsDatabase::findApplicationsForTransportStream(std::list<cApplic
    return true;
 }
 
-bool cApplicationsDatabase::findApplicationsForService(std::list<cApplication::Ptr > &addAppsToThisList, int source, int nid, int tid, int sid) {
+bool cApplicationsDatabase::findApplicationsForService(ApplicationList &addAppsToThisList, int source, int nid, int tid, int sid) {
    cTransportStream *ts = TransportStreams.GetTransportStream(source, nid, tid);
    if (ts == 0)
       return false;

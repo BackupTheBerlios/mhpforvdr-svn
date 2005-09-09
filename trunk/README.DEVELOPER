@@ -169,6 +169,9 @@ defined in the class file "XYApp.class" in the directory "XYApp" under the speci
 Example: "/usr/local/vdr/apps/XYApp/XYApp.class".
 Any files the application wants to use shall be located in this directory (other classes,
 configuration files, images, data, etc.).
+If in a given application layout the initial class has a different name or is located in a different
+directory, a symlink with the name specified above (XYApp.class) shall point to the initial class
+which will be launched instead of the symlink location.
 
 
 Compiling Java classes 
@@ -190,14 +193,34 @@ for download at www.etsi.org (http://pda.etsi.org/pda/queryform.asp).
 
 - The most important is quite obviously the MHP specification itself:
   * ETSI TS 102 812
-    I recommend the download of "ETSI TS 102 812 V1.1.1 (2001-11)" because this one
-    also includes the Havi standards as an annex, whereas in "ETSI TS 102 812 V1.2.1 (2003-06)"
-    they are stripped away (I think they are now available at www.havi.org)
+    There are several versions, and the files are labelled with a different
+    version than the specification they contain:
+    MHP 1.0.x:
+    MHP 1.0.3  -> "ETSI TS 101 812 V1.3.1 (2003-06)"
+    MHP 1.0.2  -> "ETSI TS 201 812 V1.2.1 (2002-06)"
+    
+    MHP 1.1.x:
+    MHP 1.1.1: -> "ETSI TS 102 812 V1.2.1 (2003-06)"
+    MHP 1.1.2: -> Currently still a draft, only available at www.mhp.org
+    
+    The most recent specification are more easily available at www.mhp.org.
+    The MHP 1.1.1 also includes the Havi standards as an annex.
+    If in this implementation a comment contains a page number, this will probably refer
+    to the MHP 1.1.1 file. However, the 1.0.3 file contains some recent additions.
     
 - SUN has compiled an extensive package with the necessary docs for the Java class libraries
   in the versions used by MHP and JavaTV. You also get the JNI (Java Native Interface)
   specification, which is used extensively in this implementation.
   * http://java.sun.com/products/specformhp/
+
+- The HAVI Level 2 UI APIs
+  * The specification is available at www.havi.org after giving your name and email address
+  * The necessary JavaDoc zip file is available there as well, though I cannot find a link
+    on their homepage.
+  => At the time of writing, the direct links are
+       http://www.havi.org/techinfo/docs/Chapter8-HAVi1.1-May15.pdf
+       http://www.havi.org/techinfo/docs/JavadocL2V1.1.zip
+     These links were obtained from InteractiveTVWeb.org as mentioned below.
   
 - Some definitions from the DAVIC standards are covered by MHP:
   * DAVIC 1.4.1 Specification Part 9, www.davic.org
@@ -224,6 +247,11 @@ for download at www.etsi.org (http://pda.etsi.org/pda/queryform.asp).
     Chapters 8 and 9 are of special interest.
   * Annex B of the MHP specification mentioned above.
     Fills the remaining gaps.
+    
+- www.interactivetvweb.org is the most valuable resource on the web.
+  It provides a set of tutorials were the usage of the APIs is explained,
+  which is even more important to the implementor.
+  There is also a nice collection of links to the specifications ( -> resources -> specifications)
   
   
   

@@ -2,6 +2,8 @@
 package org.dvb.application;
 
 import vdr.mhp.lang.NativeData;
+import java.util.Enumeration;
+import java.util.Vector;
 
 
 /*The AppsDatabase is an abstract view of the currently available applications.The entries 
@@ -23,6 +25,13 @@ public class AppsDatabase {
 
 static AppsDatabase self=null;
 
+static {
+   initStaticState();
+}
+
+private static native void initStaticState();
+private native int getSize(NativeData nativeData);
+private native void buildAppList(NativeData nativeDatabase, AppListBuilder builder);
 
 AppsDatabaseEventListener dbEvListener=null;
 NativeData nativeData; //a pointer to an ApplicationInfo::cApplicationsDatabase
@@ -84,7 +93,7 @@ applications signalled on the new service. Parameters: key -an application ID. R
 mapped in this dictionary or null if the key is not an application ID, or not mapped to any application currently 
 available. */
 public AppAttributes getAppAttributes(AppID key) {
-   return MHPApplication.GetApplication(key);
+   return getApplication(key);
 }
 
 /*
@@ -98,9 +107,8 @@ service selection may call this method in order to discover the attributes of th
 service. No AppAttribute shall be returned for externally authorized applications,even ones which are executing.This 
 method will return an empty Enumeration if there are no attributes. Parameters: filter -the  lter to applyReturns: an 
 enumeration of the applications attributes. */
-public java.util.Enumeration getAppAttributes(AppsDatabaseFilter filter) {
-   //IMPLEMENT
-   return null;
+public Enumeration getAppAttributes(AppsDatabaseFilter filter) {
+   return getApps(filter);
 }
 
 /*
@@ -111,9 +119,33 @@ subclasses then,the method shall return an empty Enumeration.No IDs shall be ret
 applications,even ones which are executing.This method will return an empty Enumeration if there are no matching 
 applications. Parameters: filter -the  lter to apply Returns: the applications available matching the  ltering 
 criteria */
-public java.util.Enumeration getAppIDs(AppsDatabaseFilter filter) {
-   //IMPLEMENT
-   return null;
+public Enumeration getAppIDs(AppsDatabaseFilter filter) {
+   return getApps(filter);
+}
+
+Enumeration getApps(AppsDatabaseFilter filter) {
+   AppListBuilder builder = new AppListBuilder(filter);
+   buildAppList(nativeData, builder);
+   return builder.getResult();
+}
+
+class AppListBuilder {
+   AppsDatabaseFilter filter;
+   Vector apps = new Vector();
+   
+   AppListBuilder(AppsDatabaseFilter filter) {
+      this.filter=filter;
+   }
+   
+   void nativeCallback(NativeData nativeApp) {
+      MHPApplication app = MHPApplication.GetApplication(nativeApp);
+      if (filter.accept(app))
+         apps.add(app);
+   }
+   
+   Enumeration getResult() {
+      return apps.elements();
+   }
 }
 
 /*
@@ -126,7 +158,16 @@ mapped in this dictionary; Throws: SecurityException -if the calling application
 application associated with the given ID as de  ned by the security policy of the 
 platform */
 public AppProxy getAppProxy(AppID key) {
-   return MHPApplication.GetApplication(key);
+   return getApplication(key);
+}
+
+MHPApplication getApplication(AppID appid) {
+   MHPApplication app;
+   // There is a chance this object is actually an MHPApplication, but it might be created by the user as well
+   if (appid instanceof MHPApplication)
+      return (MHPApplication)appid;
+   else
+      return MHPApplication.GetApplication(appid);
 }
 
 /*
@@ -149,10 +190,6 @@ available. */
 public int size() {
    return getSize(nativeData);
 }
-
-native int getSize(NativeData nativeData);
-//private native LockDatabase();
-//private native UnlockDatabase();
 
 
 }

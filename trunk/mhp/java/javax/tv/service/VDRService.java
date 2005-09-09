@@ -1,6 +1,10 @@
 
 package javax.tv.service;
 
+import org.dvb.application.MHPApplication;
+import org.dvb.application.AppAttributes;
+import vdr.mhp.lang.NativeData;
+
 /*
 
 The <code>Service</code> interface represents an abstract view on
@@ -19,59 +23,52 @@ The <code>Service</code> interface represents an abstract view on
 
 public class VDRService implements Service, ServiceNumber, org.dvb.si.TextualServiceIdentifierQuery {
 
-long nativeData;
+NativeData nativeData;
 
-VDRService(long nativeData) {
+VDRService(NativeData nativeData) {
    this.nativeData=nativeData;
 }
 
-//For local applications or unkown IDs, a null object is returned
-
 //internal API
-public static VDRService getServiceForMHPApplication(org.dvb.application.MHPApplication app) {
-   return getServiceForNativeChannel(app.getNativeChannel());
-}
-
-//internal API
-public static VDRService getServiceForNativeChannel(long nativeChannel) {
-   if (nativeChannel != 0)
+public static VDRService getServiceForNativeChannel(NativeData nativeChannel) {
+   if (!nativeChannel.isNull())
       return new VDRService(nativeChannel);
    return null;
 }
 
 //internal API
 public static VDRService getService(int source, int onid, int tid, int sid) {
-   long nD=getServiceForChannelId(source, onid, tid, sid);
-   if (nD != 0)
+   NativeData nD=getServiceForChannelId(source, onid, tid, sid);
+   if (!nD.isNull())
       return new VDRService(nD);
    else
       return null;
 }
-private static native long getServiceForChannelId(int source, int onid, int tid, int sid);
+private static native NativeData getServiceForChannelId(int source, int onid, int tid, int sid);
 
 //internal API
 public static VDRService getService(int onid, int tid, int sid) {
-   long nD=getServiceForNidTidSid(onid, tid, sid);
-   if (nD != 0)
+   NativeData nD=getServiceForNidTidSid(onid, tid, sid);
+   if (!nD.isNull())
       return new VDRService(nD);
    else
       return null;
 }
-private static native long getServiceForNidTidSid(int onid, int tid, int sid);
+private static native NativeData getServiceForNidTidSid(int onid, int tid, int sid);
 
 //internal API
 //returns object corresponding to VDR's cDevice::GetCurrentChannel()
 public static VDRService getCurrentService() {
-   long nativeCurrentChannel=getCurrentChannelNative();
-   if (nativeCurrentChannel==0)
+   NativeData nativeCurrentChannel=getCurrentChannelNative();
+   if (!nativeCurrentChannel.isNull())
       return new VDRService(nativeCurrentChannel);
    else 
       return null;
 }
-private static native long getCurrentChannelNative();
+private static native NativeData getCurrentChannelNative();
 
 //internal API
-public long getNativeData() {
+public NativeData getNativeData() {
    return nativeData;
 }
 
@@ -105,7 +102,7 @@ public int getServiceNumber () {
    return serviceNumber(nativeData);
 }
 
-private native int serviceNumber(long nativeData);
+private native int serviceNumber(NativeData nativeData);
 
 /*
  
@@ -122,10 +119,10 @@ private native int serviceNumber(long nativeData);
  */
 
 public java.lang.String getName () {
-   return new String(name(nativeData));
+   return name(nativeData);
 }
 
-private native byte[] name(long nativeData);
+private native String name(NativeData nativeData);
 
 //internal API
 
@@ -133,19 +130,19 @@ public int getOriginalNetworkId() {
    return onid(nativeData);
 }
 
-private native int onid(long nativeData);
+private native int onid(NativeData nativeData);
 
 public int getTransportStreamId() {
    return tid(nativeData);
 }
 
-private native int tid(long nativeData);
+private native int tid(NativeData nativeData);
 
 public int getServiceId() {
    return sid(nativeData);
 }
 
-private native int sid(long nativeData);
+private native int sid(NativeData nativeData);
 
 /*
  
@@ -180,7 +177,7 @@ public ServiceType  getServiceType () {
    //not a complete, but a sufficient implementation
    return isRadio(nativeData) ? ServiceType.DIGITAL_TV : ServiceType.DIGITAL_RADIO;
 }
-private native boolean isRadio(long nativeData);
+private native boolean isRadio(NativeData nativeData);
 
 
 /*
@@ -228,7 +225,7 @@ public javax.tv.locator.Locator  getLocator () {
 public boolean equals (java.lang.Object obj) {
    return   (obj instanceof VDRService)
          && ( 
-               ((VDRService)obj).nativeData==nativeData    ||
+               ((VDRService)obj).nativeData.equals(nativeData)    ||
                ((VDRService)obj).getLocator().equals(getLocator()) 
             );
 }

@@ -3,6 +3,7 @@
 #include <vdr/device.h>
 #include <libdvbsi/database.h>
 #include <libservice/servicecontext.h>
+#include <libjava/nativewrappertypes.h>
 
 extern "C" {
 
@@ -11,48 +12,48 @@ jbyteArray copyConstCharIntoByteArray(JNIEnv* env, const char *str);
 
 /*--- javax.tv.service.VDRService ---*/
 
-jbyteArray Java_javax_tv_service_VDRService_name(JNIEnv* env, jobject obj, jlong nativeData) {
-   return copyConstCharIntoByteArray(env, ((cChannel*)nativeData)->Name());
+jstring Java_javax_tv_service_VDRService_name(JNIEnv* env, jobject obj, jobject nativeData) {
+   return JNI::String(NativeChannelData(nativeData).Get()->Name());
 }
 
-jint Java_javax_tv_service_VDRService_onid(JNIEnv* env, jobject obj, jlong nativeData) {
-   return ((cChannel*)nativeData)->Nid();
+jint Java_javax_tv_service_VDRService_onid(JNIEnv* env, jobject obj, jobject nativeData) {
+   return NativeChannelData(nativeData).Get()->Nid();
 }
 
-jint Java_javax_tv_service_VDRService_tid(JNIEnv* env, jobject obj, jlong nativeData) {
-   return ((cChannel*)nativeData)->Tid();
+jint Java_javax_tv_service_VDRService_tid(JNIEnv* env, jobject obj, jobject nativeData) {
+   return NativeChannelData(nativeData).Get()->Tid();
 }
 
-jint Java_javax_tv_service_VDRService_sid(JNIEnv* env, jobject obj, jlong nativeData) {
-   return ((cChannel*)nativeData)->Sid();
+jint Java_javax_tv_service_VDRService_sid(JNIEnv* env, jobject obj, jobject nativeData) {
+   return NativeChannelData(nativeData).Get()->Sid();
 }
 
-jint Java_javax_tv_service_VDRService_serviceNumber(JNIEnv* env, jobject obj, jlong nativeData) {
-   return ((cChannel*)nativeData)->Number();
+jint Java_javax_tv_service_VDRService_serviceNumber(JNIEnv* env, jobject obj, jobject nativeData) {
+   return NativeChannelData(nativeData).Get()->Number();
 }
 
-jboolean Java_javax_tv_service_VDRService_isRadio(JNIEnv* env, jobject obj, jlong nativeData) {
+jboolean Java_javax_tv_service_VDRService_isRadio(JNIEnv* env, jobject obj, jobject nativeData) {
    //simply checks if video pid is 0
-   return ((cChannel*)nativeData)->Vpid()==0;
+   return NativeChannelData(nativeData).Get()->Vpid()==0;
 }
 
 //static
-jlong Java_javax_tv_service_VDRService_getCurrentChannelNative(JNIEnv* env, jclass clazz) {
-   return (jlong )Channels.GetByNumber(cDevice::CurrentChannel());
+jobject Java_javax_tv_service_VDRService_getCurrentChannelNative(JNIEnv* env, jclass clazz) {
+   return NativeChannelData(Channels.GetByNumber(cDevice::CurrentChannel()));
 }
 
-jlong Java_javax_tv_service_VDRService_getServiceForChannelId(JNIEnv* env, jclass clazz, jint source, jint onid, jint tid, jint sid) {
+jobject Java_javax_tv_service_VDRService_getServiceForChannelId(JNIEnv* env, jclass clazz, jint source, jint onid, jint tid, jint sid) {
    tChannelID chid(source, onid, tid, sid);
-   return (jlong )Channels.GetByChannelID(chid);
+   return NativeChannelData(Channels.GetByChannelID(chid));
 }
 
-jlong Java_javax_tv_service_VDRService_getServiceForNidTidSid(JNIEnv* env, jclass clazz, jint onid, jint tid, jint sid) {
+jobject Java_javax_tv_service_VDRService_getServiceForNidTidSid(JNIEnv* env, jclass clazz, jint onid, jint tid, jint sid) {
    //don't even think about using a VDR cList for cChannel *
    //that would destroy Channels :-)
    std::vector<cChannel *> list;
    DvbSi::Database::findChannels(onid, tid, sid, list);
    
-   return (jlong)list.front();
+   return NativeChannelData(list.front());
 }
 
 
@@ -66,12 +67,13 @@ void Java_javax_tv_service_navigation_VDRServiceList_releaseLock(JNIEnv* env, jo
    return Channels.Unlock();
 }
 
-jlong Java_javax_tv_service_navigation_VDRServiceList_firstChannel(JNIEnv* env, jobject obj) {
-   return (jlong)Channels.First();
+jobject Java_javax_tv_service_navigation_VDRServiceList_firstChannel(JNIEnv* env, jobject obj) {
+   return NativeChannelData(Channels.First());
 }
 
-jlong Java_javax_tv_service_navigation_VDRServiceList_nextChannel(JNIEnv* env, jobject obj, jlong previousChannel) {
-   return (jlong)((cChannel *)previousChannel)->Next();
+jobject Java_javax_tv_service_navigation_VDRServiceList_nextChannel(JNIEnv* env, jobject obj, jobject previousChannel) {
+   cChannel *previous=NativeChannelData(previousChannel);
+   return NativeChannelData((cChannel *)previous->Next());
 }
 
 
@@ -103,16 +105,16 @@ jboolean Java_javax_tv_service_selection_VDRServiceContext_isPresenting(JNIEnv* 
    return Service::Context::getContext()->isPresenting();
 }
 
-void Java_javax_tv_service_selection_VDRServiceContext_doSelect(JNIEnv* env, jobject obj, jlong nativeData) {
-   Service::Context::getContext()->SelectService((cChannel *)nativeData);
+void Java_javax_tv_service_selection_VDRServiceContext_doSelect(JNIEnv* env, jobject obj, jobject nativeData) {
+   Service::Context::getContext()->SelectService(NativeChannelData(nativeData));
 }
 
 void Java_javax_tv_service_selection_VDRServiceContext_doStop(JNIEnv* env, jobject obj) {
    Service::Context::getContext()->StopPresentation();
 }
 
-jlong Java_javax_tv_service_selection_VDRServiceContext_getNativeService(JNIEnv* env, jobject obj) {
-   return (jlong)Service::Context::getContext()->getService();
+jobject Java_javax_tv_service_selection_VDRServiceContext_getNativeService(JNIEnv* env, jobject obj) {
+   return NativeChannelData(Service::Context::getContext()->getService());
 }
 
 

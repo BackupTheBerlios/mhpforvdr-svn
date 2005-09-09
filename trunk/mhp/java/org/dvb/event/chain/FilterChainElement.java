@@ -1,5 +1,6 @@
 package org.dvb.event.chain;
 import org.dvb.event.UserEvent;
+import org.dvb.event.UserEventRepository;
 
 
 public abstract class FilterChainElement {
@@ -26,12 +27,19 @@ int getMask(int type) {
 }
 
 
-//actually dispatch the event according to the respective event subsystem
+// Actually dispatch the event according to the respective event subsystem
 abstract void dispatch(UserEvent e);
-//whether this event matches the filter criteria
+
+// Returns whether this event matches the filter criteria
 abstract boolean includes(UserEvent e);
-//whether this filter was registered by a client identified by object
+
+// Returns whether this filter was registered by a client identified by object
 abstract boolean belongsTo(Object o);
+
+// Add all events for which includes() is true to the given repository.
+// Return true if any event has been added.
+abstract boolean getEvents(UserEventRepository r);
+
 
 
 }

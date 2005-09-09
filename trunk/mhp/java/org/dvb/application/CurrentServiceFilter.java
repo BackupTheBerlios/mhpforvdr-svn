@@ -1,6 +1,9 @@
 
 package org.dvb.application;
 
+import javax.tv.service.Service;
+import javax.tv.service.VDRService;
+
 /*Instances of CurrentServiceFilter are used to set a  lter on the list of applications that 
 are retrieved from the AppsDatabase (See methods getAppsAttributes and getAppsIDs) For 
 this version of the speci  cation,only the CurrentServiceFilter class is de  ned A 
@@ -14,6 +17,7 @@ values. */
 
 public class CurrentServiceFilter extends AppsDatabaseFilter {
 
+Service currentService = VDRService.getCurrentService();
 /*
 public Constructor of the CurrentServiceFilter */
 public CurrentServiceFilter() {
@@ -24,7 +28,8 @@ Test if a speci  ed appid should be included in the Enumeration. Overrides: acce
 Parameters: appid -the speci  ed appid to test. Returns: true if the application with identi  er appid should be 
 listed,false otherwise. */
 public boolean accept(AppID appid) {
-   return true;
+   MHPApplication app = AppsDatabase.getAppsDatabase().getApplication(appid);
+   return app != null && currentService.equals(app.getService());
 }
 
 

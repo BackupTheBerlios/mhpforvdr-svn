@@ -1,5 +1,6 @@
 package org.dvb.event.chain;
 import org.dvb.event.UserEvent;
+import org.dvb.event.UserEventRepository;
 
 
 public class FilterChain {
@@ -66,14 +67,21 @@ public void removeLast() {
 }
 
 
-public void removeGroup(Object o) {
+public void removeGroup(Object o, UserEventRepository r) {
    FilterChainElement e = head;
    while (e != null) {
-      if (e.belongsTo(o))
-         e=remove(e);
-      else
-         e=e.next;
+      if (e.belongsTo(o)) {
+         e = remove(e);
+         if (r != null) {
+            e.getEvents(r);
+         }
+      } else
+         e = e.next;
    }
+}
+
+public void removeGroup(Object o) {
+   removeGroup(o, null);
 }
 
 public FilterChainElement findFirstFilter(UserEvent event) {

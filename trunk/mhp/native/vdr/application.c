@@ -12,6 +12,7 @@
 
 extern "C" {
 
+//TODO: Replace this with JNI::String whereever it is still used, then remove it.
 //tools
 jbyteArray copyConstCharIntoByteArray(JNIEnv* env, const char *str) {
    int len=strlen(str);
@@ -51,10 +52,8 @@ jboolean Java_org_dvb_application_MHPApplication_isServiceBound(JNIEnv* env, job
    return NativeApplicationData(nativeData).Get()->GetServiceBound();
 }
 
-jlong Java_org_dvb_application_MHPApplication_channel(JNIEnv* env, jobject obj, jobject nativeData) {
-   //TODO
-   //NativeChannelData chan(nativeChannel);
-   return (jlong)NativeApplicationData(nativeData).Get()->GetChannel();
+jobject Java_org_dvb_application_MHPApplication_channel(JNIEnv* env, jobject obj, jobject nativeData) {
+   return NativeChannelData(NativeApplicationData(nativeData).Get()->GetChannel());
 }
 
 jstring Java_org_dvb_application_MHPApplication_name(JNIEnv* env, jobject obj, jobject nativeData) {
@@ -132,6 +131,23 @@ jstring Java_org_dvb_application_DVBJApplication_parameter(JNIEnv* env, jobject 
 
 
 //AppsDatabase
+JNI::InstanceMethod appListCallback;
+
+void Java_org_dvb_application_AppsDatabase_initStaticState(JNIEnv* env, jclass clazz) {
+   appListCallback.SetExceptionHandling(JNI::DoNotClearExceptions);
+   appListCallback.SetMethodWithArguments("org/dvb/application/AppsDatabase$AppListBuilder", "nativeCallback", JNI::Void, 1, JNI::Object, "vdr/mhp/lang/NativeData", (char *)0);
+}
+
+void Java_org_dvb_application_AppsDatabase_buildAppList(JNIEnv* env, jobject obj, jobject nativeData, jobject builder) {
+   ApplicationInfo::cApplicationsDatabase *db=NativeDBData(nativeData);
+   ApplicationInfo::cApplicationsDatabase::ApplicationList appList;
+   db->findApplications(appList);
+   JNI::ReturnType returnValue;
+   for (ApplicationInfo::cApplicationsDatabase::ApplicationList::iterator it=appList.begin(); it != appList.end(); ++it) {
+      appListCallback.CallMethod(builder, returnValue, (jobject)NativeApplicationData(*it));
+   }
+}
+
 jint Java_org_dvb_application_AppsDatabase_getSize(JNIEnv* env, jobject obj, jobject nativeData) {
    return NativeDBData(nativeData).Get()->Count();
 }

@@ -4,7 +4,8 @@ package org.dvb.event;
 import org.davic.resources.*;
 import vdr.mhp.ApplicationManager;
 import org.dvb.event.chain.*;
-import org.havi.ui.HEventMulticaster;
+import java.util.LinkedList;
+import java.util.ListIterator;
 
 /*The event manager allows an application to receive events coming from the user.These events can be sent exclusively to 
 an application or can be shared between applications.The Event Manager allows also the application to ask for exclusive 
@@ -18,7 +19,7 @@ shared or exclusive. */
 public final class EventManager implements org.davic.resources.ResourceServer {
 
 static EventManager self = new EventManager();
-org.davic.resources.ResourceStatusListener listeners=null;
+LinkedList listeners = new LinkedList();
 
 FilterChain chain = new FilterChain();
 FilterChain exclusiveChain = new FilterChain();
@@ -33,7 +34,7 @@ access to some events. Speci  ed By: org.davic.resources.ResourceServer.addResou
 ourceStatusListener)in interface org.davic.resources.ResourceServer Parameters: listener -the resource status 
 listener. */
 public synchronized void addResourceStatusEventListener(org.davic.resources.ResourceStatusListener listener) { 
-   listeners=HEventMulticaster.add(listeners, listener);
+   listeners.add(listener);
 }
 
 
@@ -80,6 +81,7 @@ UserEventRepository userEvents, UserEventListener listener) {
    
    boolean allAcquired=true;
    RepositoryDescriptor descriptor=new RepositoryDescriptor(client, userEvents.RepositoryName);
+   UserEventRepository assignedEvents = new UserEventRepository("Unavailable Events");
    for (int i=0; i<userEvents.events.size(); i++) {
       UserEvent e=userEvents.get(i);
       FilterChainElement oldElem=exclusiveChain.findFirstFilter(e);
@@ -105,6 +107,7 @@ UserEventRepository userEvents, UserEventListener listener) {
       }
       //no filter registered yet - do that
       
+      assignedEvents.addUserEvent(e);
       FilterChainElement newElem;
       if (listener != null)
          newElem=new ExclusiveUserEventChainElement(e, listener, descriptor);
@@ -112,8 +115,8 @@ UserEventRepository userEvents, UserEventListener listener) {
          newElem=new ExclusiveAWTChainElement(e, descriptor);
       
       exclusiveChain.add(newElem);
-      sendResourceStatusEvent();
    }
+   sendResourceStatusEvent(assignedEvents, false);
    return allAcquired;
 }
 
@@ -132,9 +135,20 @@ public synchronized void addUserEventListener(UserEventListener listener, UserEv
    }
 }
 
-void sendResourceStatusEvent() {
-   if (listeners != null)
-      listeners.statusChanged(new ResourceStatusEvent(this));
+private void sendResourceStatusEvent(UserEventRepository r, boolean isAvailable) {
+   ListIterator it = listeners.listIterator(0);
+   while (it.hasNext()) {
+      // each listener shall receive its own independent repository
+      UserEventRepository eventRep = null;
+      try {
+         eventRep = (UserEventRepository)r.clone();
+      } catch (CloneNotSupportedException e) {}
+      ResourceStatusListener l = (ResourceStatusListener)it.next();
+      if (isAvailable)
+         l.statusChanged(new UserEventAvailableEvent(eventRep));
+      else
+         l.statusChanged(new UserEventUnavailableEvent(eventRep));
+   }
 }
 
 /*
@@ -150,7 +164,11 @@ The application should use this method to release its exclusive access to user e
 addExclusiveAccessToAWTEvent method. Parameters: client -the client that is no longer interested in events previously 
 registered. */
 public synchronized void removeExclusiveAccessToAWTEvent(org.davic.resources.ResourceClient client) {
-   exclusiveChain.removeGroup(client);
+   UserEventRepository assignedEvents = new UserEventRepository("Available Events");
+   exclusiveChain.removeGroup(client, assignedEvents);
+   // filter out those events to which exclusive access is reserved by the means of the addUserEventListener method
+   filterOut(exclusiveChain, assignedEvents);
+   sendResourceStatusEvent(assignedEvents, true);
 }
 
 
@@ -160,7 +178,20 @@ has asked for an exclusive access),the exclusive access is lost. Parameters: lis
 listener. */
 public synchronized void removeUserEventListener(UserEventListener listener) {
    chain.removeGroup(listener);
-   exclusiveChain.removeGroup(listener);
+
+   UserEventRepository assignedEvents = new UserEventRepository("Available Events");
+   exclusiveChain.removeGroup(listener, assignedEvents);
+   // filter out those events to which exclusive access is reserved by the means of the method addExclusiveAccessToAWTEvent
+   filterOut(exclusiveChain, assignedEvents);
+   sendResourceStatusEvent(assignedEvents, true);
+}
+
+private void filterOut(FilterChain chain, UserEventRepository events) {
+   for (int i=0; i<events.events.size(); i++) {
+      UserEvent e=events.get(i);
+      if (chain.findFirstFilter(e) != null)
+         events.removeUserEvent(e);
+   }
 }
 
 
@@ -169,7 +200,7 @@ Removes the speci  ed resource status listener. Speci  ed By: org.davic.resource
 ResourceStatusListener)in interface org.davic.resources.ResourceServer Parameters: listener -the listener to 
 remove. */
 public synchronized void removeResourceStatusEventListener(org.davic.resources.ResourceStatusListener listener) {
-   listeners=HEventMulticaster.remove(listeners, listener);
+   listeners.remove(listener);
 }
 
 /* Called from framework.

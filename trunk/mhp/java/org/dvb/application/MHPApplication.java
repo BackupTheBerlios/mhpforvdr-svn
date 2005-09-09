@@ -7,22 +7,23 @@ import javax.tv.xlet.*;
 import org.dvb.application.*;
 import vdr.mhp.ApplicationManager;
 import vdr.mhp.lang.NativeData;
+import javax.tv.service.Service;
+import javax.tv.service.VDRService;
 
 
 //TODO: implement creating AppStateChangeEvents (in DVBJApplication I think)
 
 public abstract class MHPApplication extends AppID implements AppProxy, AppAttributes {
 
-AppStateChangeEventListener AppSCEListener;
-int state;
+AppStateChangeEventListener AppSCEListener = null;
+int state = NOT_LOADED;
 static Hashtable apps = new Hashtable();
+VDRService service = null;
 
 NativeData nativeData;
 
 public MHPApplication(NativeData nativeData) {
    super(getOid(nativeData), getAid(nativeData));
-   AppSCEListener=null;
-   state=NOT_LOADED;
    this.nativeData=nativeData;
 }
 
@@ -70,18 +71,12 @@ public NativeData getNativeData() {
    return nativeData;
 }
 
-public long getNativeChannel() {
-   //TODO: port
-   /*
-   NativeData nativeChannel = NativeDataContainer.getNewNativeData();
-   channel(nativeData, nativeChannel);
-   return nativeChannel;
-   */
-   return channel(nativeData);
+public NativeData getNativeChannel() {
+    return channel(nativeData);
 }
 
 // private native NativeData channel(NativeData nativeData, NativeData nativeChannel);
-private native long channel(NativeData nativeData);
+private native NativeData channel(NativeData nativeData);
 
 
 /* Interface for ApplicationManager */
@@ -370,16 +365,22 @@ remote connection,the service returned shall be the currently selected service o
 application calling the method is running. Returns: the locator of the Service describing the 
 application. */
 public org.davic.net.Locator getServiceLocator() {
-   javax.tv.service.Service service = javax.tv.service.VDRService.getServiceForMHPApplication(this);
-   
-   //I hope I interpret the specification above correctly
-   if (service==null)
-      service = javax.tv.service.VDRService.getCurrentService();
-      
-   if (service==null)
-      return null;
    //all locators in this implementation are actually org.davic.net.dvb.DvbLocators
-   return (org.davic.net.Locator)service.getLocator();
+   return (org.davic.net.Locator)getService().getLocator();
+}
+
+// internal API
+// Follows specification of getServiceLocator() above
+// Shall not return null.
+public javax.tv.service.VDRService getService() {
+   if (service == null) {
+      NativeData channel = getNativeChannel();
+      if (channel.isNull())
+         service = VDRService.getServiceForNativeChannel(channel);
+      else
+         service = VDRService.getCurrentService();
+   }
+   return service;
 }
 
 

@@ -5,6 +5,7 @@ import javax.tv.service.Service;
 import javax.tv.service.VDRService;
 import javax.tv.service.VDRServiceMulticaster;
 import org.dvb.application.MHPApplication;
+import vdr.mhp.lang.NativeData;
 
 /*
 
@@ -84,9 +85,9 @@ static {
 
 private static native void initializeStatus();
 private native boolean isPresenting();
-private native void doSelect(long nativeData);
+private native void doSelect(NativeData nativeData);
 private native void doStop();
-private native long getNativeService();
+private native NativeData getNativeService();
 
 static VDRServiceContext context = null;
 

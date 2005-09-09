@@ -4,6 +4,7 @@ import org.dvb.application.MHPApplication;
 import vdr.mhp.ApplicationManager;
 import org.dvb.event.UserEvent;
 import org.dvb.event.RepositoryDescriptor;
+import org.dvb.event.UserEventRepository;
 import java.awt.MHPPlane;
 import java.awt.KeyboardFocusManager;
 import java.awt.Component;
@@ -60,6 +61,11 @@ boolean includes(UserEvent e) {
 boolean belongsTo(Object o) {
    return (o instanceof org.davic.resources.ResourceClient) 
             ?  ((org.davic.resources.ResourceClient)o)==descriptor.getClient() : false;
+}
+
+boolean getEvents(UserEventRepository r) {
+   r.addUserEvent(event);
+   return true;
 }
 
 void dispatchAWT(KeyEvent evt) {

@@ -1,6 +1,7 @@
 package org.dvb.event.chain;
 import org.dvb.event.UserEvent;
 import org.dvb.event.UserEventListener;
+import org.dvb.event.UserEventRepository;
 
 
 
@@ -23,6 +24,11 @@ boolean includes(UserEvent e) {
 
 boolean belongsTo(Object o) {
    return (o instanceof UserEventListener) ? ((UserEventListener)o)==listener : false;
+}
+
+boolean getEvents(UserEventRepository r) {
+   r.addUserEvent(event);
+   return true;
 }
 
 }

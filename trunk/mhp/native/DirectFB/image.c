@@ -262,8 +262,8 @@ Java_vdr_mhp_awt_MHPImage_imgGetHeight ( JNIEnv* env, jobject obj, jint nativeHa
 static JNI::InstanceMethod setPropertiesMethod;
 
 void Java_vdr_mhp_awt_DFBImageProvider_initStaticState(JNIEnv* env, jclass clazz) {
-   setPropertiesMethod.SetMethodWithArguments(clazz, "setProperties", JNI::Void, 3, JNI::Boolean, JNI::Int, JNI::Int);
    setPropertiesMethod.SetExceptionHandling(JNI::DoNotClearExceptions);
+   setPropertiesMethod.SetMethodWithArguments(clazz, "setProperties", JNI::Void, 3, JNI::Boolean, JNI::Int, JNI::Int);
 }
 
 static bool setProperties(IDirectFBImageProvider *provider, jobject obj) {
