@@ -375,7 +375,7 @@ public org.davic.net.Locator getServiceLocator() {
 public javax.tv.service.VDRService getService() {
    if (service == null) {
       NativeData channel = getNativeChannel();
-      if (channel.isNull())
+      if (!channel.isNull())
          service = VDRService.getServiceForNativeChannel(channel);
       else
          service = VDRService.getCurrentService();

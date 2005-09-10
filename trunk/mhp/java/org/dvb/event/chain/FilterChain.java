@@ -72,7 +72,7 @@ public void removeGroup(Object o, UserEventRepository r) {
    while (e != null) {
       if (e.belongsTo(o)) {
          e = remove(e);
-         if (r != null) {
+         if (r != null && e != null) {
             e.getEvents(r);
          }
       } else

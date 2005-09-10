@@ -21,5 +21,19 @@ public DripFeedPermission(java.lang.String name, java.lang.String actions) {
    super(name, actions);
 }
 
+/*
+Checks if the speci?ed permission is implied by this object.
+Since name and actions aren't used, the only check needed is whether p is also a
+DripFeedPermission.
+Overrides:
+    implies in class BasicPermission
+Parameters:
+    p - the permission to check against.
+Returns:
+    true if the passed permission is equal to or implied by this permission, false
+*/
+public boolean implies(java.security.Permission p) {
+   return p instanceof DripFeedPermission;
+}
 
 }
