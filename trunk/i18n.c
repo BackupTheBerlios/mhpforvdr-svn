@@ -426,12 +426,12 @@ const tI18nPhrase MhpI18nPhrases[] = {
   { "Loading %s", // English
     "Lade %s", // Deutsch
     "", // Slovenski
-    "", // Italiano
+    "%s in caricamento", // Italiano
     "", // Nederlands
     "", // Português
     "", // Français
     "", // Norsk
-    "", // suomi
+    "Ladataan %s", // suomi
     "", // Polski
     "", // Español
     "", // ÅëëçíéêÜ (Greek)
