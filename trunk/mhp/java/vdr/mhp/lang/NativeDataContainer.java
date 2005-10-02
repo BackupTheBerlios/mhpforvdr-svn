@@ -26,12 +26,16 @@ public static NativeData createNativeData() {
    return defaultContainer.newNativeData();
 }
 
+native void nativeFinalize(NativeData obj);
+
 class Data implements NativeData {
 
    // accessed from native code
    private long nativeData = 0;
    // accessed from native code
    private boolean dataIsNull = true;
+   // accessed from native code
+   private long dataDeleter = 0;
    
    public boolean isNull() {
       return dataIsNull;
@@ -40,6 +44,15 @@ class Data implements NativeData {
    public boolean equals(Object other) {
       return (other instanceof Data) &&
              ((Data) other).nativeData == nativeData;
+   }
+   
+   public void finalize() {
+      nativeFinalize(this);
+   }
+   
+   public int hashCode() {
+      // same as new Long(nativeData).hashCode()
+      return (int)(nativeData^(nativeData>>>32));
    }
 }
 

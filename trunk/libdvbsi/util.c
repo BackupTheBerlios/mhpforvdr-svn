@@ -137,11 +137,11 @@ void IdTracker::Set(int *id, bool copy) {
       ids=id;
 }
 
-ReadLock::ReadLock(class cRwLock *lock) : lock(lock) {
-   lock->Lock(false);
+ReadWriteLock::ReadWriteLock(class cRwLock *lock, bool Write) : lock(lock) {
+   lock->Lock(Write);
 }
 
-ReadLock::~ReadLock() {
+ReadWriteLock::~ReadWriteLock() {
    lock->Unlock();
 }
 

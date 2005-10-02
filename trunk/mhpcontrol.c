@@ -507,7 +507,7 @@ void ControlLoadingManager::CleanUp() {
 ControlLoadingManager::ControlLoadingManager() : hibernatedCount(0), loadingApp(0) {
    preloader = new CarouselPreloader();
    watch = new ChannelWatch(preloader);
-   selectionProvider = new ControlServiceSelectionProvider(watch);
+   //selectionProvider = new ControlServiceSelectionProvider(watch);
 }
 
 ControlLoadingManager::~ControlLoadingManager() {
@@ -516,7 +516,7 @@ ControlLoadingManager::~ControlLoadingManager() {
       delete it->second;
    }
    apps.clear();
-   delete selectionProvider;
+   //delete selectionProvider;
    delete watch;
    delete preloader;
 }
@@ -623,10 +623,10 @@ void ControlLoadingManager::ApplicationRemoved(ApplicationInfo::cApplication::Pt
    }
 }
 
-void ControlLoadingManager::ChannelSwitch(const cDevice *device, Service::TransportStreamID oldTs, Service::TransportStreamID newTs) {
+void ControlLoadingManager::ChannelSwitch(Service::Tuner *tuner, Service::TransportStreamID newTs) {
    cMutexLock lock(&mutex);
    for (AppMap::iterator it=apps.begin(); it != apps.end(); ++it) {
-      if (it->second->ChannelSwitchedAway(device, oldTs, newTs)) {
+      if (it->second->ChannelSwitchedAway(tuner, newTs)) {
          //it is cleaner to stop/hibernate first, then to retry loading if needed.
          Stop(it->second);
          if (it->second->IsForeground()) {
@@ -741,20 +741,10 @@ ChannelWatch::ChannelWatch(CarouselPreloader* preloader)
 {
 }
 
-void ChannelWatch::ChannelSwitch(const cDevice *Device, int ChannelNumber) {
-   if (Device && ChannelNumber) {
-      cChannel *chan=Channels.GetByNumber(ChannelNumber);
-      //we cannot access Applications' transport stream database because the channel switch is just about to happen,
-      //and if it is a new transponder the AIT is yet to be received.
-      //ApplicationInfo::cTransportStream *str=ApplicationInfo::Applications.findTransportStream(chan->Source(), chan->Nid(), chan->Tid());
-      Service::TransportStream str(chan);
-      printf("ChannelWatch: Switch to stream %d-%d-%d\n", str.GetSource(), str.GetNid(), str.GetTid());
-      Service::TransportStreamID oldTs=ts;
-      ts=str.GetTransportStreamID();
-      ControlLoadingManager::getManager()->ChannelSwitch(Device, oldTs, ts);
-      preloader->PreloadForTransportStream(oldTs, ts);
-   } else {
-   }
+void ChannelWatch::TransportStreamChange(Service::TransportStreamID ts, Service::SwitchSource source, Service::Tuner *tuner) {
+   printf("ChannelWatch: Switch to stream %d-%d-%d\n", ts.GetSource(), ts.GetNid(), ts.GetTid());
+   ((ControlLoadingManager *)LoadingManager::getManager())->ChannelSwitch(tuner, ts);
+   preloader->PreloadForTransportStream(ts);
 }
 
 
@@ -772,21 +762,19 @@ CarouselPreloader::CarouselPreloader()
   If all devices are monitored and a channel switch on any device causes a call of this
   method here, there must be a map Transport Stream -> TimedPreloader maintained here!!
 */
-void CarouselPreloader::PreloadForTransportStream(Service::TransportStreamID oldTs, Service::TransportStreamID newTs) {
-   if (newTs != oldTs) {
-      Remove(currentLoader);
-      delete currentLoader;
-      currentLoader=new TimedPreloader(newTs);
-      Add(currentLoader, false); //no initial execution
-   }
+void CarouselPreloader::PreloadForTransportStream(Service::TransportStreamID newTs) {
+   Remove(currentLoader);
+   delete currentLoader;
+   currentLoader=new TimedPreloader(newTs);
+   Add(currentLoader, false); //no initial execution
 }
 
-//Wait 30 seconds before starting prefetching.
-//This waiting period will be stopped as soon as the user switches to a different transponder.
+// Wait 30 seconds before starting prefetching.
+// This waiting period will be stopped as soon as the user switches to a different transponder.
 #define INITIAL_WAIT 30
-//Check status of loading app every 15 seconds.
+// Check status of loading app every 15 seconds.
 #define CHECK_PERIOD 15
-//Preload again to check for changes every ten minutes
+// Preload again to check for changes every ten minutes
 #define REPRELOAD_WAIT 10*60
 
 CarouselPreloader::TimedPreloader::TimedPreloader(Service::TransportStreamID newTs)
@@ -795,7 +783,7 @@ CarouselPreloader::TimedPreloader::TimedPreloader(Service::TransportStreamID new
 {
 }
 
-//No need for a destructor. ControlLoadingManager will take care for hibernation/detaching.
+// No need for a destructor. ControlLoadingManager will take care for hibernation/detaching.
 
 void CarouselPreloader::TimedPreloader::Execute() {
    printf("TimedPreloader::Execute, loading is %d\n", loading);
@@ -834,6 +822,7 @@ void CarouselPreloader::TimedPreloader::Execute() {
 
 /* --------- ControlServiceSelectionProvider ------------- */
 
+/*
 ControlServiceSelectionProvider::ControlServiceSelectionProvider(ChannelWatch *watch)
   : watch(watch)
 {
@@ -858,7 +847,7 @@ void ControlServiceSelectionProvider::StopPresentation() {
    printf("ControlServiceSelectionProvider::StopPresentation(): Doing nothing\n");
    Service::ServiceStatus::MsgServiceEvent(Service::ServiceStatus::MessageUserStop, Service::Service(Channels.GetByNumber(cDevice::CurrentChannel())));
 }
-
+*/
 
 
 /* --------- CarouselLoader ------------- */
@@ -898,6 +887,7 @@ LoadingState CarouselLoader::getState() {
             state=LoadingStateLoaded;
       }
    }
+   printf("CarouselLoader::getState: %d\n", state);
    return state;
 }
 
@@ -975,28 +965,33 @@ void CarouselLoader::WakeUp() {
 
 void CarouselLoader::StartObjectCarousel(Dsmcc::ObjectCarousel *hibernated) {
    ApplicationInfo::cTransportProtocolViaOC *tp=dynamic_cast<ApplicationInfo::cTransportProtocolViaOC*>(app->GetTransportProtocol());
-   //find device
-   filterDevice=cDevice::GetDevice(app->GetChannel(), 0);
-   if (!filterDevice) {
-      esyslog("Failed to find device for object carousel of application %s on channel %s", 
-               app->GetNumberOfNames() ? app->GetName(0)->name.c_str() : "<unknown>",
-               app->GetChannel() ? (const char*)app->GetChannel()->ToText() : "<null>");
-      //if this is foreground, an unavailable channel is an error.
-      //If this is background, however, an unavailable channel is a common situation
-      //if the carousel is hibernated and reeattached by background activities.
-      if (foreground && hibernated)
-         return; //dont change status
-      else
-         state=LoadingStateError;
-      return;
+   ApplicationInfo::cTransportStream::ApplicationService *appservice=app->GetApplicationService();
+   {
+      Service::ServiceManager::ServiceLock lock;
+      //find device
+      Service::Tuner *tuner=Service::ServiceManager::getManager()->getTuner(app->GetService()->getTunable());
+      if (!tuner) {
+         esyslog("Failed to find device for object carousel of application %s on channel %s", 
+                  app->GetNumberOfNames() ? app->GetName(0)->name.c_str() : "<unknown>",
+                  app->GetService() ? (const char*)app->GetService()->getChannelInformation()->getName() : "<null>");
+         //if this is foreground, an unavailable channel is an error.
+         //If this is background, however, an unavailable channel is a common situation
+         //if the carousel is hibernated and reeattached by background activities.
+         if (foreground && hibernated)
+            return; //dont change status
+         else
+            state=LoadingStateError;
+         return;
+      }
+      filterDevice=tuner->getDevice();
+      //identify service
+      Service::Service::Ptr service=appservice->GetService();
+      //create receiver
+      receiver=new cDsmccReceiver(service->getChannelInformation()->getName(), service->GetTransportStreamID());
    }
-   //identify service
-   ApplicationInfo::cTransportStream::ApplicationService *service=app->GetService();
-   //create receiver
-   receiver=new cDsmccReceiver(service->GetChannel()->Name(), service->GetTransportStream()->GetTransportStreamID());
    //add possible streams
    std::list<ApplicationInfo::cTransportStream::Component>::iterator it;
-   for (it=service->GetComponents()->begin(); it != service->GetComponents()->end(); ++it) {
+   for (it=appservice->GetComponents()->begin(); it != appservice->GetComponents()->end(); ++it) {
       receiver->AddStream( (*it).pid, (*it).componentTag );
       //printf("Adding assoc_tag %d\n", (*it).componentTag);
    }
@@ -1034,8 +1029,8 @@ ApplicationInfo::cApplication::ApplicationName *CarouselLoader::getName() {
       return 0;
 }
 
-bool CarouselLoader::ChannelSwitchedAway(const cDevice *device, Service::TransportStreamID oldTs, Service::TransportStreamID newTs) {
-   return filterDevice==device && oldTs != newTs;
+bool CarouselLoader::ChannelSwitchedAway(Service::Tuner *tuner, Service::TransportStreamID newTs) {
+   return filterDevice==tuner->getDevice();
 }
 
 

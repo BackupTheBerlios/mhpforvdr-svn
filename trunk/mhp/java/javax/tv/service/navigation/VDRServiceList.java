@@ -2,6 +2,7 @@
 package javax.tv.service.navigation;
 
 import java.util.LinkedList;
+import java.util.Iterator;
 import javax.tv.service.Service;
 import javax.tv.service.VDRService;
 import org.davic.net.dvb.DvbLocator;
@@ -26,55 +27,40 @@ public class VDRServiceList implements ServiceList {
 
 LinkedList list;
 
-VDRServiceList() {
-   this.list=getVDRList();
-}
+private native void listServices(ListBuilder builder);
 
-VDRServiceList(LinkedList list) {
-   this.list=(LinkedList)list.clone();
-}
-
-VDRServiceList(ServiceFilter filter) {
-   LinkedList from = getVDRList();
-   for (java.util.Iterator it=from.iterator(); it.hasNext(); ) {
-      Service s=(Service)it.next();
-      if (filter.accept(s))
-         list.add(s);
+class ListBuilder {
+   ServiceFilter filter;
+   ListBuilder(ServiceFilter filter) {
+      this.filter=filter;
+   }
+   void nextService(NativeData nativeData) {
+      Service service = VDRService.getService(nativeData);
+      nextService(service);
+   }
+   void nextService(Service service) {
+      if (filter==null || filter.accept(service))
+         list.add(service);
    }
 }
 
-VDRServiceList(ServiceFilter filter, LinkedList from) {
+VDRServiceList(ServiceFilter filter) {
    list = new LinkedList();
-   for (java.util.Iterator it=from.iterator(); it.hasNext(); ) {
-      Service s=(Service)it.next();
-      if (filter.accept(s))
-         list.add(s);
+   listServices(new ListBuilder(filter));
+}
+
+VDRServiceList(ServiceFilter filter, LinkedList source) {
+   list = new LinkedList();
+   ListBuilder builder = new ListBuilder(filter);
+   for (Iterator it = source.iterator(); it.hasNext(); ) {
+      builder.nextService((Service)it.next());
    }
 }
 
 //internal
 public static ServiceList getList(ServiceFilter filter) {
-   if (filter==null)
-      return new VDRServiceList();
-   else
-      return new VDRServiceList(filter);
+   return new VDRServiceList(filter);
 }
-
-LinkedList getVDRList() {
-   LinkedList l=new LinkedList();
-   if (acquireLock()) {
-      for (NativeData chan=firstChannel(); !chan.isNull(); chan=nextChannel(chan)) {
-         l.add(VDRService.getServiceForNativeChannel(chan));
-      }
-      releaseLock();
-   }
-   return l;
-}
-private native boolean acquireLock();
-private native void releaseLock();
-private native NativeData firstChannel();
-private native NativeData nextChannel(NativeData previousChannel);
-
 
 
 class NameComparator implements java.util.Comparator {
@@ -108,7 +94,7 @@ class NumberComparator implements java.util.Comparator {
  */
 
 public ServiceList  sortByName () {
-   VDRServiceList vsl=new VDRServiceList(list);
+   VDRServiceList vsl = new VDRServiceList(null, list);
    try {
       java.util.Collections.sort(vsl.list, new NameComparator());
    } catch (ClassCastException e) {
@@ -132,7 +118,7 @@ public ServiceList  sortByName () {
 
 public ServiceList  sortByNumber ()
              throws SortNotAvailableException {
-   VDRServiceList vsl=new VDRServiceList(list);
+   VDRServiceList vsl = new VDRServiceList(null, list);
    try {
       java.util.Collections.sort(vsl.list, new NumberComparator());
    } catch (ClassCastException e) {
@@ -179,10 +165,7 @@ public javax.tv.service.Service  findService ( javax.tv.locator.Locator locator)
  a duplicate of this list.  */
 
 public ServiceList  filterServices ( ServiceFilter filter) {
-   if (filter==null)
-      return new VDRServiceList();
-   else
-      return new VDRServiceList(filter, list);
+   return new VDRServiceList(filter, list);
 }
 
 
@@ -195,11 +178,13 @@ class VDRServiceListIterator implements ServiceIterator {
    }
 
    public void toBeginning() {
-      it=VDRServiceList.this.list.listIterator(0);
+      if (!list.isEmpty())
+         it = list.listIterator(0);
    }
    
    public void toEnd() {
-      it=VDRServiceList.this.list.listIterator(VDRServiceList.this.list.size()-1);
+      if (!list.isEmpty())
+         it = list.listIterator(list.size()-1);
    }
    
    public javax.tv.service.Service nextService() {
@@ -220,32 +205,6 @@ class VDRServiceListIterator implements ServiceIterator {
    
 }
 
-class EmptyServiceListIterator implements ServiceIterator {
-   
-   public void toBeginning() {
-   }
-   
-   public void toEnd() {
-   }
-   
-   public javax.tv.service.Service nextService() {
-      throw new java.util.NoSuchElementException();
-   }
-   
-   public javax.tv.service.Service previousService() {
-      throw new java.util.NoSuchElementException();
-   }
-   
-   public boolean hasNext() {
-      return false;
-   }
-   
-   public boolean hasPrevious() {
-      return false;
-   }
-   
-}
-
 /*
  
  Generates an iterator on the Service elements
@@ -257,10 +216,7 @@ class EmptyServiceListIterator implements ServiceIterator {
  */
 
 public ServiceIterator  createServiceIterator () {
-   if (list.size()==0)
-      return new EmptyServiceListIterator();
-   else
-      return new VDRServiceListIterator();
+   return new VDRServiceListIterator();
 }
 
 
@@ -274,7 +230,7 @@ public ServiceIterator  createServiceIterator () {
  
  */
 
-public boolean contains ( javax.tv.service.Service service) {
+public boolean contains (javax.tv.service.Service service) {
    return list.contains(service);
 }
 
@@ -290,7 +246,7 @@ public boolean contains ( javax.tv.service.Service service) {
  
  */
 
-public int indexOf ( javax.tv.service.Service service) {
+public int indexOf (javax.tv.service.Service service) {
    return list.indexOf(service);
 }
 
@@ -317,7 +273,7 @@ public int size () {
  
  */
 
-public javax.tv.service.Service  getService (int index) {
+public javax.tv.service.Service  getService (int index) throws IndexOutOfBoundsException {
    return (Service)list.get(index);
 }
 

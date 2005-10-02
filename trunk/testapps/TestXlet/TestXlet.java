@@ -39,6 +39,19 @@ import org.dvb.user.*;
 import org.dvb.io.ixc.IxcRegistry;
 import javax.tv.util.*;
 
+import javax.tv.service.SIManager;
+import javax.tv.service.Service;
+import javax.tv.service.SIRequestor;
+import javax.tv.service.SIRetrievable;
+import javax.tv.service.ServiceNumber;
+import javax.tv.service.navigation.ServiceList;
+import javax.tv.service.navigation.ServiceDetails;
+import javax.tv.service.ServiceNumber;
+import javax.tv.service.navigation.ServiceIterator;
+import javax.tv.service.guide.ProgramEvent;
+import javax.tv.service.guide.ProgramEventDescription;
+import javax.tv.service.guide.ProgramSchedule;
+
 import java.io.File;
 import java.io.FileWriter;
 import java.io.FileReader;
@@ -84,7 +97,7 @@ public class TestXlet implements Xlet {
         //testOrgDvbEvent();
         //testOrgDvbSi();
         //testOrgDavicDvbLocator();
-        //testJavaxTvService();
+        testJavaxTvService();
         //testUI();
         //testPreference();
         //testIXC();
@@ -98,7 +111,7 @@ public class TestXlet implements Xlet {
         //testUI_arcs();
         //testUI_KeyEvent();
         //testUI_Font();
-        testOrgDvbApplication();
+        //testOrgDvbApplication();
     }
     
     // helper method
@@ -794,27 +807,27 @@ public class TestXlet implements Xlet {
    void testJavaxTvService() {
       //Note: This test does not test all parts of the javax.tv.service.*.* API
       //Not covered: javax.tv.service.selection.*
-         class MyRequestor implements javax.tv.service.SIRequestor {
-            public void notifySuccess ( javax.tv.service.SIRetrievable [] result) {
+         class MyRequestor implements SIRequestor {
+            public void notifySuccess ( SIRetrievable [] result) {
                System.out.println("Received request success "+result.length);
                if (result.length > 0) {
-                  if (result[0] instanceof javax.tv.service.navigation.ServiceDetails) {
-                     javax.tv.service.navigation.ServiceDetails ser=(javax.tv.service.navigation.ServiceDetails)result[0];
+                  if (result[0] instanceof ServiceDetails) {
+                     ServiceDetails ser=(ServiceDetails)result[0];
                      System.out.println("Service Details "+ser.getLocator()+" "+ser.getServiceType());
                      System.out.println(ser.getLongName());
                      javax.tv.service.Service service=ser.getService();
-                     System.out.println("Stored service is "+((javax.tv.service.ServiceNumber)service).getServiceNumber()+service.getName());
-                     javax.tv.service.guide.ProgramSchedule schedule=ser.getProgramSchedule();
+                     System.out.println("Stored service is "+((ServiceNumber)service).getServiceNumber()+service.getName());
+                     ProgramSchedule schedule=ser.getProgramSchedule();
                      schedule.retrieveCurrentProgramEvent(this);
-                  } else if (result[0] instanceof javax.tv.service.guide.ProgramEvent) {
-                     javax.tv.service.guide.ProgramEvent event=(javax.tv.service.guide.ProgramEvent)result[0];
+                  } else if (result[0] instanceof ProgramEvent) {
+                     ProgramEvent event=(ProgramEvent)result[0];
                      System.out.println("Event: "+event.getLocator());
                      System.out.println("From "+event.getStartTime()+" to "+event.getEndTime());
                      event.retrieveDescription(this);
                      javax.tv.service.Service service=event.getService();
-                     System.out.println("Stored service is "+((javax.tv.service.ServiceNumber)service).getServiceNumber()+service.getName());
-                  } else if (result[0] instanceof javax.tv.service.guide.ProgramEventDescription) {
-                     System.out.println(((javax.tv.service.guide.ProgramEventDescription)result[0]).getProgramEventDescription());
+                     System.out.println("Stored service is "+((ServiceNumber)service).getServiceNumber()+service.getName());
+                  } else if (result[0] instanceof ProgramEventDescription) {
+                     System.out.println(((ProgramEventDescription)result[0]).getProgramEventDescription());
                   }
                }
             }
@@ -823,8 +836,8 @@ public class TestXlet implements Xlet {
             }
          }
 
-      javax.tv.service.SIManager man=javax.tv.service.SIManager.createInstance();
-      javax.tv.service.SIRequestor req=new MyRequestor();
+      SIManager man=SIManager.createInstance();
+      SIRequestor req=new MyRequestor();
       String[] s=man.getSupportedDimensions();
       if (s.length != 0) {
          try {
@@ -855,7 +868,7 @@ public class TestXlet implements Xlet {
          ex.printStackTrace();
       }
       
-      javax.tv.service.Service service=null;
+      Service service=null;
       try {
          service=man.getService(loc);
          System.out.println("Service is "+service);
@@ -865,7 +878,17 @@ public class TestXlet implements Xlet {
          ex.printStackTrace();
       }
       System.out.println("ARD is "+ ((service==null) ? "not available" :
-      "channel "+((javax.tv.service.ServiceNumber)service).getServiceNumber()+service.getName()+service.getLocator() ));
+      "channel "+((ServiceNumber)service).getServiceNumber()+" "+service.getName()+" "+service.getLocator() ));
+      
+      ServiceList list = man.filterServices(null);
+      System.out.println("ServiceList contains "+list.size()+" elements:");
+      
+      for (ServiceIterator it = list.createServiceIterator(); it.hasNext(); ) {
+         service = it.nextService();
+         if (service instanceof ServiceNumber)
+            System.out.print("Service number "+((ServiceNumber)service).getServiceNumber()+": ");
+         System.out.println(service.getName()+", "+service.getLocator());
+      }
    }
    
    

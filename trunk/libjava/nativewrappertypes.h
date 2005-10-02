@@ -10,16 +10,22 @@
 // It is not included in any other header files of libjava.
 
 #ifdef LIBAIT_APPLICATIONS_H
-typedef JNI::ReferenceNativeData<ApplicationInfo::cApplication::Ptr> NativeApplicationData;
+class ApplicationDeleter : public JNI::NativeData::ReferenceDeleter<ApplicationInfo::cApplication::Ptr> {
+   public: static ApplicationDeleter deleter;
+};
+typedef JNI::ReferenceDeleterNativeData<ApplicationInfo::cApplication::Ptr, ApplicationDeleter> NativeApplicationData;
 typedef JNI::PointerNativeData<ApplicationInfo::cApplicationsDatabase> NativeDBData;
 #endif
 
-#ifdef __CHANNELS_H
-typedef JNI::PointerNativeData<cChannel> NativeChannelData;
+#ifdef LIBSERVICE_SERVICE_H
+typedef JNI::PointerNativeData<Service::Service> NativeChannelData;
 #endif
 
 #ifdef DVBSI_DATABASE_H
-typedef JNI::ReferenceNativeData<DvbSi::Database::Ptr> NativeDvbsiDatabaseData;
+class DvbSiDatabaseDeleter : public JNI::NativeData::ReferenceDeleter<DvbSi::Database::Ptr> {
+   public: static DvbSiDatabaseDeleter deleter;
+};
+typedef JNI::ReferenceDeleterNativeData<DvbSi::Database::Ptr, DvbSiDatabaseDeleter> NativeDvbsiDatabaseData;
 #endif
 
 #endif

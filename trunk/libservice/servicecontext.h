@@ -20,6 +20,7 @@
 #include <libait/applications.h>
 
 #include "transportstream.h"
+#include "service.h"
 
 namespace Service {
 
@@ -30,16 +31,16 @@ namespace Service {
    //See documentation of identically named methods below.
 class ServiceSelectionProvider {
 public:
-   virtual void SelectService(cChannel *service) = 0;
+   virtual void SelectService(Service::Ptr service) = 0;
    virtual void StopPresentation() = 0;
 };
 
-class Context : public cStatus {
+class Context {
 public:
    static Context *getContext();
    //void getServices(std::list<Service> services);
    void getApplications(std::list<ApplicationInfo::cApplication::Ptr> &apps);
-   cChannel *getService();
+   Service::Ptr getService();
    bool isPresenting();
       //Tries to switch to given service - including tuning!
       //It is guaranteed that ServiceStatus is called subsequently.
@@ -53,29 +54,18 @@ public:
       //       a message why the selection failed followed by a message why that presentation terminated
       //If the presentation is terminated afterwards,
       //    a message why the presentation terminated
-   void SelectService(cChannel *service);
+   void SelectService(Service::Ptr service);
       //I am not sure what this is supposed to do.
       //It is guaranteed that ServiceStatus is called subsequently.
    void StopPresentation();
       //To be called once by the implementing higher layer
    void SetServiceSelectionProvider(ServiceSelectionProvider *p) { provider=p; }
 protected:
-   Context() {}
+   Context();
    virtual ~Context() {}
-   //from cStatus
-   virtual void ChannelSwitch(const cDevice *Device, int ChannelNumber);
-               // Indicates a channel switch on the given DVB device.
-               // If ChannelNumber is 0, this is before the channel is being switched,
-               // otherwise ChannelNumber is the number of the channel that has been switched to.
-   virtual void Replaying(const cControl *Control, const char *Name);
-               // The given player control has started replaying Name. Name is the name of the
-               // recording, without any directory path. In case of a player that can't provide
-               // a name, Name can be a string that identifies the player type (like, e.g., "DVD").
-               // If Name is NULL, the replay has ended. 
    ServiceSelectionProvider *provider;
 private:
    static Context *s_self;
-   cChannel *currentChannel;
    const cControl *currentControl;
 };
 
@@ -114,12 +104,12 @@ public:
          //request for service selection failed because tuning failed
       MessageTuningFailure
    };
-   static void MsgServiceEvent(Message event, Service service);
+   static void MsgServiceEvent(Message event, Service::Ptr service);
 protected:
       //service is either the selected service, the previously selected service which terminated,
       //or the service which failed to be selected. So it is not necessarily identical with
       //the Service returned by Context::getService().
-   virtual void ServiceEvent(Message event, Service service) {};
+   virtual void ServiceEvent(Message event, Service::Ptr service) {};
 private:
    static cList<ServiceStatus> list;
 };

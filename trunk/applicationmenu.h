@@ -16,6 +16,7 @@
 #include <vdr/osd.h>
 #include <vdr/tools.h>
 #include <libait/ait.h>
+#include <libservice/service.h>
 
 enum ReceptionState { StateCanBeReceived, StateNeedsTuning, StateCanTemporarilyNotBeReceived, StateCannotBeReceived };
 
@@ -28,7 +29,7 @@ protected:
 
 class MhpApplicationMenuItem : public cOsdItem {
 public:
-   MhpApplicationMenuItem(ApplicationInfo::cApplication::Ptr a);
+   MhpApplicationMenuItem(ApplicationInfo::cApplication::Ptr a, bool selectable = true);
    ApplicationInfo::cApplication::Ptr GetApplication() { return app; }
 private:
    ApplicationInfo::cApplication::Ptr app;
@@ -45,7 +46,7 @@ public:
 protected:
    virtual eOSState ProcessKey(eKeys Key);
    
-   ReceptionState GetReceptionState(cChannel *channel);
+   ReceptionState GetReceptionState(Service::Service::Ptr channel);
 };
 
 

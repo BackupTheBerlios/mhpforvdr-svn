@@ -53,7 +53,6 @@ public:
    virtual SmartPtr<Cache::Cache> getCache(ApplicationInfo::cApplication::Ptr a) = 0;
    
    virtual void ProgressInfo(ProgressIndicator *pi) = 0;
-   virtual void ChannelSwitch(const class cDevice *device, Service::TransportStreamID oldTs, Service::TransportStreamID newTs) = 0;
 protected:
    LoadingManager();
    static LoadingManager *s_self;

@@ -376,7 +376,7 @@ public javax.tv.service.VDRService getService() {
    if (service == null) {
       NativeData channel = getNativeChannel();
       if (!channel.isNull())
-         service = VDRService.getServiceForNativeChannel(channel);
+         service = VDRService.getService(channel);
       else
          service = VDRService.getCurrentService();
    }

@@ -56,7 +56,7 @@ public:
 class TransportStream {
 public:
    TransportStream(int source, int onid, int tid) : data(source, onid, tid) {}
-   TransportStream(cChannel *channel);
+   TransportStream(const cChannel *channel);
    
    TransportStreamID GetTransportStreamID() const { return data; }
    int GetSource() const { return data.source; }
@@ -81,10 +81,10 @@ private:
 //Two Service classes with support for subclasses of TransportStream
 
 //For use with TransportStream. Support for cChannel.
-class Service : protected TransportStream {
+class ServiceIDAdapter : protected TransportStream {
 public:
-   Service(int so, int n, int t, int sid) : TransportStream(so,n, t), sid(sid) {}
-   Service(cChannel *channel);
+   ServiceIDAdapter(int so, int n, int t, int sid) : TransportStream(so, n, t), sid(sid) {}
+   ServiceIDAdapter(const cChannel *channel);
    
    TransportStreamID GetTransportStreamID() const { return TransportStream::GetTransportStreamID(); }
    int GetSource() const { return TransportStream::GetSource(); }
@@ -93,9 +93,9 @@ public:
    int GetSid() const { return sid; }
    ServiceID GetServiceID() const { return ServiceID(GetTransportStreamID(), sid); }
    
-   bool operator==(const Service &other) const
+   bool operator==(const ServiceIDAdapter &other) const
       { return sid==other.sid && TransportStream::operator==(other); }
-   bool operator!=(const Service &other) const
+   bool operator!=(const ServiceIDAdapter &other) const
       { return !operator==(other); }
    bool operator==(const ServiceID &other) const
       { return other.equals(GetTransportStreamID(), sid); }
@@ -109,9 +109,9 @@ private:
 //For use with a class which is a subclass of TransportStream, but
 //without constrictions about its constructor
 template <class T>
-class ServiceAndTransportStream {
+class ServiceIDAndTransportStream {
 public:
-   ServiceAndTransportStream(T *ts, int sid) : ts(ts), sid(sid) {}
+   ServiceIDAndTransportStream(T *ts, int sid) : ts(ts), sid(sid) {}
    
    TransportStreamID GetTransportStreamID() const { return ts->GetTransportStreamID(); }
    int GetSource() const { return ts->GetSource(); }
@@ -120,9 +120,9 @@ public:
    int GetSid() const { return sid; }
    ServiceID GetServiceID() const { return ServiceID(GetTransportStreamID(), sid); }
    
-   bool operator==(const ServiceAndTransportStream<T> &other) const
+   bool operator==(const ServiceIDAndTransportStream<T> &other) const
       { return sid==other.sid && (*other.ts)==(*ts); }
-   bool operator!=(const ServiceAndTransportStream<T> &other) const
+   bool operator!=(const ServiceIDAndTransportStream<T> &other) const
       { return !operator==(other); }
    bool operator==(const ServiceID &other) const
       { return other.equals(ts->GetTransportStreamID(), sid); }
@@ -133,7 +133,6 @@ protected:
    T *ts;
    int sid;
 };
-
 
 }
 

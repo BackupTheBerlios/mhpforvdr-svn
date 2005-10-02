@@ -60,7 +60,7 @@ public:
       //to be used with Channels rwlocked
    static void findChannels(int nid, int tid, int sid, std::vector<cChannel *> &list);
    
-   cDevice *getDevice() { return device; };
+   //cDevice *getDevice() { return device; };
    int getCurrentSource();
    //listener is notified when a channel switch occured and the new NIT/PAT is available
    void addDataSwitchListener(DataSwitchListener *listener);
@@ -216,6 +216,7 @@ private:
    
    Database(cDevice *dev, DeliverySystem system);
    void InvalidatePat();
+   void Stop();
    
    std::list<DataSwitchListener *> dataSwitchListener;
    std::list<Filter *> activeFilters;
@@ -231,14 +232,15 @@ private:
    int tid;
    TuningState state;
    //bool nitValid;
-   cDevice *device;   
+   cDevice *device;
    DeliverySystem deliverySystem;
    
    static DeliverySystem getDeliverySystem(cDevice *candidate);
    static void checkInitialDatabaseSetup();
    
    static DispatchThread *dispatchThread;
-   static Database **databases;
+   typedef std::vector<Database::Ptr> DatabaseArray;
+   static DatabaseArray databases;
    static bool *noReceptionDatabases;
    static int primaryIndex;
 };

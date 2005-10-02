@@ -213,14 +213,18 @@ for download at www.etsi.org (http://pda.etsi.org/pda/queryform.asp).
   specification, which is used extensively in this implementation.
   * http://java.sun.com/products/specformhp/
 
+- JavaDoc and stubs for the org.dvb, org.davic and org.havi.ui hierarchy is available from
+    http://www.mhp.org/mhp_technology/mhp_1_0/
+
 - The HAVI Level 2 UI APIs
   * The specification is available at www.havi.org after giving your name and email address
-  * The necessary JavaDoc zip file is available there as well, though I cannot find a link
-    on their homepage.
-  => At the time of writing, the direct links are
+  * The required JavaDoc is included in the mhp.org package mentioned above.
+     (It is available from havi.org as well, though I cannot find a link
+      on their homepage.
+      => At the time of writing, the direct links are
        http://www.havi.org/techinfo/docs/Chapter8-HAVi1.1-May15.pdf
        http://www.havi.org/techinfo/docs/JavadocL2V1.1.zip
-     These links were obtained from InteractiveTVWeb.org as mentioned below.
+      These links were obtained from InteractiveTVWeb.org as mentioned below.)
   
 - Some definitions from the DAVIC standards are covered by MHP:
   * DAVIC 1.4.1 Specification Part 9, www.davic.org

@@ -29,7 +29,7 @@
 #include <libdvbsi/util.h>
 #include <libdsmccreceiver/receiver.h>
 #include <libdsmccreceiver/cache.h>
-#include <libservice/servicecontext.h>
+#include <libservice/service.h>
 
 #include "mhploading.h"
 
@@ -63,7 +63,7 @@ public:
     //reset to false at Stop() and Hibernate()
    void SetForeground() { foreground = true; }
    bool IsForeground() { return foreground; }
-   bool ChannelSwitchedAway(const cDevice *device, Service::TransportStreamID oldTs, Service::TransportStreamID newTs);
+   bool ChannelSwitchedAway(Service::Tuner *tuner, Service::TransportStreamID newTs);
 protected:
    void StartObjectCarousel(Dsmcc::ObjectCarousel *hibernated = 0);
    void StartLocalApp();
@@ -78,20 +78,19 @@ protected:
    bool foreground;
 };
 
-class ChannelWatch : public cStatus {
+class ChannelWatch : public Service::ServiceListener {
 public:
    ChannelWatch(CarouselPreloader* preloader);
-   Service::TransportStreamID getCurrentTransportStream() { return ts; }
+   virtual void TransportStreamChange(Service::TransportStreamID ts, Service::SwitchSource source, Service::Tuner *tuner);
+   //virtual void ServiceChange(Service::Service::Ptr service, Service::SwitchSource source);
 protected:
-  virtual void ChannelSwitch(const cDevice *Device, int ChannelNumber);
-  CarouselPreloader* preloader;
-  Service::TransportStreamID ts;
+   CarouselPreloader* preloader;
 };
 
 class CarouselPreloader : public DvbSi::SchedulerBySeconds {
 public:
    CarouselPreloader();
-   void PreloadForTransportStream(Service::TransportStreamID oldTs, Service::TransportStreamID newTs);
+   void PreloadForTransportStream(Service::TransportStreamID newTs);
 protected:
    class TimedPreloader : public DvbSi::TimedBySeconds {
    public:
@@ -109,6 +108,7 @@ private:
    Service::TransportStreamID ts;
 };
 
+/*
 class ControlServiceSelectionProvider : public Service::ServiceSelectionProvider {
 public:
    ControlServiceSelectionProvider(ChannelWatch *watch);
@@ -117,6 +117,7 @@ public:
 protected:
    ChannelWatch *watch;
 };
+*/
 
 class ControlLoadingManager : public LoadingManager, public ApplicationInfo::cApplicationStatus {
 public:
@@ -137,7 +138,7 @@ public:
    //Get the cache the given application is stored in, if it is being loaded
    virtual SmartPtr<Cache::Cache> getCache(ApplicationInfo::cApplication::Ptr a);
    
-   virtual void ChannelSwitch(const class cDevice *device, Service::TransportStreamID oldTs, Service::TransportStreamID newTs);
+   virtual void ChannelSwitch(Service::Tuner *tuner, Service::TransportStreamID newTs);
    virtual void ProgressInfo(ProgressIndicator *pi);
 protected:
    //ApplicationStatus interface
@@ -150,7 +151,7 @@ private:
    AppMap apps;
    ChannelWatch *watch;
    CarouselPreloader *preloader;
-   ControlServiceSelectionProvider *selectionProvider;
+   //ControlServiceSelectionProvider *selectionProvider;
    int hibernatedCount;
    cMutex mutex;
    CarouselLoader *loadingApp;

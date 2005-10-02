@@ -336,17 +336,27 @@ protected:
 // which sets itself with SetImplementation().
 class NativeData : public BaseObject {
 public:
+   class Deleter {
+   public:
+      virtual void Delete(void *nativeData) = 0;
+   };
+   template <class T> class ReferenceDeleter : public Deleter {
+      virtual void Delete(void *nativeData)
+        { delete (T *)nativeData; }
+   };
    class Implementation {
    public:
-      virtual void Set(jobject obj, void *nativeData, bool isNull) = 0;
+      virtual void Set(jobject obj, void *nativeData, bool isNull, Deleter *deleter) = 0;
       virtual void *Get(jobject obj) = 0;
       virtual jobject Create() = 0;
+      virtual void Finalize(jobject obj) = 0;
    };
    static void SetImplementation(Implementation *impl);
    operator jobject() { return obj; }
+   static void Finalize(jobject obj);
 protected:
    NativeData(jobject data);
-   void Set(void *nativeData, bool isNull);
+   void Set(void *nativeData, bool isNull, Deleter *deleter=0);
    void *Get();
    static jobject Create();
    
@@ -371,17 +381,11 @@ public:
 
 // Wraps classes which are usually passed by reference and value.
 // Internally, such an object is created on the heap and stored as a pointer.
-// Memory management (e.g. reference counting classes) thus rely on being freed
-// from the Java side.
 template <typename T> class ReferenceNativeData : public NativeData {
 public:
    ReferenceNativeData(jobject obj) : NativeData(obj) {}
    ReferenceNativeData(T &r, bool isNull = false) : NativeData(Create()) { Set(r, isNull); }
-   void Set(T &ref, bool isNull = false)
-   {
-      T *p = new T(ref);
-      NativeData::Set((void *)p, isNull);
-   }
+   void Set(T &ref, bool isNull = false) { Set(ref, isNull, 0); }
    T &Get() { return *(T *)NativeData::Get(); }
    ReferenceNativeData<T> &operator=(T &r)
    {
@@ -389,6 +393,23 @@ public:
       return *this;
    }
    operator T &() { return Get(); }
+protected:
+   void Set(T &ref, bool isNull, Deleter *deleter)
+   {
+      T *p = new T(ref);
+      NativeData::Set((void *)p, isNull, deleter);
+   }
+};
+
+// ReferenceNativeData which frees the memory on the heap, whereas it is leaked by
+// ReferenceNativeData. A template-parameter specific class needs to be passed
+// as a second template parameter, and this class shall have a public member "deleter"
+// which is a Deleter object specific for the first template parameter.
+template <typename T, class D> class ReferenceDeleterNativeData : public ReferenceNativeData<T> {
+public:
+   ReferenceDeleterNativeData(jobject obj) : ReferenceNativeData<T>(obj) {}
+   ReferenceDeleterNativeData(T &r, bool isNull = false) : ReferenceNativeData<T>(r, isNull) {}
+   void Set(T &ref, bool isNull = false) { Set(ref, isNull, D::deleter); }
 };
 
 }//end of namespace JNI

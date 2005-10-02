@@ -18,7 +18,7 @@
 #include <vdr/channels.h>
 #include <vdr/thread.h>
 #include <libdsmccreceiver/cache.h>
-#include <libservice/transportstream.h>
+#include <libservice/service.h>
 #include <libdsmcc/util.h>
 
 #include <mhp/implementation.h>
@@ -54,9 +54,9 @@ public:
       int carouselId;
    };
       
-   class ApplicationService : public Service::ServiceAndTransportStream<ApplicationInfo::cTransportStream> {
+   class ApplicationService : public Service::ServiceIDAndTransportStream<ApplicationInfo::cTransportStream> {
    public:
-      ApplicationService(cTransportStream *t, int Sid) : Service::ServiceAndTransportStream<cTransportStream>(t, Sid), pmtVersion(-1) {}
+      ApplicationService(cTransportStream *t, int Sid) : Service::ServiceIDAndTransportStream<cTransportStream>(t, Sid), pmtVersion(-1) {}
       void Reset();
       
       //int GetSid() { return sid; }
@@ -70,8 +70,10 @@ public:
       int GetCarouselIdForPid(int pid);   
       int pmtVersion;
       
-      cChannel *GetChannel() 
-         { return Channels.GetByChannelID(tChannelID(ts->GetSource(), ts->GetNid(), ts->GetTid(), sid)); }
+      //cChannel *GetChannel() 
+        // { return Channels.GetByChannelID(tChannelID(ts->GetSource(), ts->GetNid(), ts->GetTid(), sid)); }
+      Service::Service::Ptr GetService()
+         { return Service::ServiceManager::getManager()->findService(GetServiceID()); }
          
       std::list<Component> *GetComponents() { return &components; }
       std::list<Carousel> *GetCarousels() { return &carousels; }
@@ -91,16 +93,18 @@ public:
    TransportStreamID GetID() { return id; }*/
    
    //Returns either service found in service list or a newly created ApplicationService object
-   ApplicationService *GetService(int sid);
-   cChannel *GetChannel(ApplicationService *s)
-      { return s->GetChannel(); }
+   ApplicationService *GetApplicationService(int sid);
+   //cChannel *GetChannel(ApplicationService *s)
+     // { return s->GetChannel(); }
+   Service::Service::Ptr GetService(ApplicationService *s)
+      { return s->GetService(); }
    //Returns service found in service list or NULL if not found
-   ApplicationService *findService(int sid);
+   ApplicationService *FindApplicationService(int sid);
    
    int GetPidForComponentTag(int serviceId, int componentTag);   
    int GetCarouselIdForPid(int pid);   
    ApplicationService *GetServiceForAitPid(int aitPid);
-   cChannel *GetChannelForAitPid(int aitPid);
+   //cChannel *GetChannelForAitPid(int aitPid);
    
    void Lock() { mutex.Lock(); }
    void Unlock() { mutex.Unlock(); }
@@ -276,8 +280,8 @@ public:
    cTransportProtocol *GetTransportProtocol();
    ProfileVersion *GetProfileVersion(int index);
    int GetNumOfProfileVersions();
-   cTransportStream::ApplicationService *GetService();
-   cChannel *GetChannel();
+   cTransportStream::ApplicationService *GetApplicationService();
+   Service::Service::Ptr GetService();
    
 protected:
    void SetAid(int aid);

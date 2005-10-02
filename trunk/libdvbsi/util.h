@@ -95,12 +95,22 @@ private:
    int size;
 };
 
-class ReadLock {
+class ReadWriteLock {
 public:
-   ReadLock(class cRwLock *lock);
-   ~ReadLock();
+   ReadWriteLock(class cRwLock *lock, bool Write);
+   ~ReadWriteLock();
 private:
    class cRwLock *lock;
+};
+
+class ReadLock : public ReadWriteLock {
+public:
+   ReadLock(class cRwLock *lock) : ReadWriteLock(lock, false) {}
+};
+
+class WriteLock : public ReadWriteLock {
+public:
+   WriteLock(class cRwLock *lock) : ReadWriteLock(lock, true) {}
 };
 
 

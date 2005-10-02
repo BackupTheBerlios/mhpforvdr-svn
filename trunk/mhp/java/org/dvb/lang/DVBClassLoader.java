@@ -30,6 +30,7 @@ import org.dvb.application.AppsControlPermission;
 import org.dvb.media.DripFeedPermission;
 import org.dvb.net.ca.CAPermission;
 import org.dvb.user.UserPreferencePermission;
+import javax.tv.service.ReadPermission;
 
 import org.objectweb.asm.FieldVisitor;
 import org.objectweb.asm.ClassAdapter;
@@ -166,6 +167,7 @@ protected PermissionCollection getPermissions(CodeSource source)
    collection.add(new ServiceContextPermission("*", "own"));
    collection.add(new SelectPermission("*", "own"));
    collection.add(new UserPreferencePermission("*"));
+   collection.add(new ReadPermission("*", null)); // TODO: honor ReadPermission in javax.tv.service.VDRService
    //no RuntimePermission
    //TODO: appropriate SecurityPermissions
    //TODO: more refined FilePermission

@@ -18,7 +18,7 @@ LIBS +=
 
 ### The object files (add further files here):
 
-OBJS = servicecontext.o
+OBJS = servicecontext.o service.o
 
 ### Implicit rules:
 

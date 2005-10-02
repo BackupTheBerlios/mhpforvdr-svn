@@ -14,6 +14,7 @@
 #include <dlfcn.h> 
  
 #include <libait/ait.h>
+#include <libdvbsi/database.h>
 #include "javainterface.h"
 #include "nativewrappertypes.h"
 
@@ -151,12 +152,14 @@ JavaInterface::~JavaInterface() {
 class VdrMhpLangNativeDataImplementation : public JNI::NativeData::Implementation {
    public:
       virtual ~VdrMhpLangNativeDataImplementation() {}
-      virtual void Set(jobject obj, void *data, bool isNull) {
+      virtual void Set(jobject obj, void *data, bool isNull, JNI::NativeData::Deleter *deleter) {
          JNI::ReturnType value;
          value.TypeLong = (int64_t)(intptr_t)data;
          nativeData.SetValue(obj, value);
          value.TypeBoolean = isNull ? JNI_TRUE : JNI_FALSE;
          dataIsNull.SetValue(obj, value);
+         value.TypeLong = (int64_t)(intptr_t)deleter;
+         dataDeleter.SetValue(obj, value);
       }
       virtual void *Get(jobject obj) {
          JNI::ReturnType value;
@@ -167,6 +170,13 @@ class VdrMhpLangNativeDataImplementation : public JNI::NativeData::Implementatio
          JNI::ReturnType ret;
          create.CallMethod(ret);
          return ret.TypeObject;
+      }
+      virtual void Finalize(jobject obj) {
+         JNI::ReturnType value;
+         dataDeleter.GetValue(obj, value);
+         JNI::NativeData::Deleter *deleter = (JNI::NativeData::Deleter *)(void *)(intptr_t)(int64_t)value.TypeLong;
+         if (deleter)
+            deleter->Delete(Get(obj));
       }
       static bool Initialize() {
          VdrMhpLangNativeDataImplementation *i=new VdrMhpLangNativeDataImplementation();
@@ -183,13 +193,18 @@ class VdrMhpLangNativeDataImplementation : public JNI::NativeData::Implementatio
                containerClass.SetClass("vdr/mhp/lang/NativeDataContainer") &&
                nativeData.SetField(clazz, "nativeData", JNI::Long) &&
                dataIsNull.SetField(clazz, "dataIsNull", JNI::Boolean) &&
+               dataDeleter.SetField(clazz, "dataDeleter", JNI::Long) &&
                create.SetMethodWithArguments(containerClass, "createNativeData", JNI::Object, 0, "vdr/mhp/lang/NativeData", (char *)NULL)
                 );
       }
       JNI::Field nativeData;
       JNI::Field dataIsNull;
+      JNI::Field dataDeleter;
       JNI::StaticMethod create;
 };
+
+ApplicationDeleter ApplicationDeleter::deleter;
+DvbSiDatabaseDeleter DvbSiDatabaseDeleter::deleter;
 
 //Calls StartVM and initializes JNI structures to access ApplicationManager
 bool JavaInterface::StartJava() {
@@ -1054,8 +1069,8 @@ NativeData::NativeData(jobject data)
 {
 }
 
-void NativeData::Set(void *nativeData, bool isNull) {
-   impl->Set(obj, nativeData, isNull);
+void NativeData::Set(void *nativeData, bool isNull, NativeData::Deleter *deleter) {
+   impl->Set(obj, nativeData, isNull, deleter);
 }
 
 void *NativeData::Get() {
@@ -1064,6 +1079,10 @@ void *NativeData::Get() {
 
 jobject NativeData::Create() {
    return impl->Create();
+}
+
+void NativeData::Finalize(jobject obj) {
+   impl->Finalize(obj);
 }
 
 NativeData::Implementation *NativeData::impl = 0;

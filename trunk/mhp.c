@@ -242,6 +242,7 @@ bool cPluginMhp::Start(void)
    
    JavaInterface::InitializeSystem();
    
+   Service::ServiceManager::getManager()->Initialize();
    //Cannot call this in Initialize(), it may use VDR structures like devices
    printf("Init output\n");
    MhpOutput::Administration::Init(outputSystem);
@@ -261,6 +262,7 @@ void cPluginMhp::Stop(void) {
   Mhp::LoadingManager::getManager()->CleanUp();
   Mhp::RunningManager::getManager()->CleanUp();
   MhpOutput::Administration::CleanUp();
+  Service::ServiceManager::getManager()->CleanUp();
 }
 
 void cPluginMhp::Housekeeping(void)

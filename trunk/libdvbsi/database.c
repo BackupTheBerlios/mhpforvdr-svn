@@ -16,14 +16,14 @@
 
 namespace DvbSi {
 
-Database **Database::databases=0;
+Database::DatabaseArray Database::databases;
 Database::DispatchThread *Database::dispatchThread=new Database::DispatchThread();
 bool *Database::noReceptionDatabases=0;
 int Database::primaryIndex = -1;
 
 int Database::getNumberOfValidDatabases() {
    int count=getNumberOfDatabases();
-   for (int i=0;i<MAXDEVICES;i++)
+   for (uint i=0;i<databases.size();i++)
       if (noReceptionDatabases[i])
          count--;
    return count;
@@ -110,7 +110,7 @@ Database::Ptr Database::getDatabaseForChannel(int nid, int tid, int sid, bool sh
    return db;
 }
 
-Database::Ptr Database::Database::getDatabaseForChannel(int source, int nid, int tid, int sid, bool shallBeTunedTo) {
+Database::Ptr Database::getDatabaseForChannel(int source, int nid, int tid, int sid, bool shallBeTunedTo) {
    cChannel *channel=0;
    ReadLock rwlock(&Channels);
       
@@ -123,24 +123,24 @@ Database::Ptr Database::Database::getDatabaseForChannel(int source, int nid, int
 }
 
       //to be used with Channels rwlocked
-Database::Ptr Database::Database::getDatabaseForChannel(cChannel *channel) {
+Database::Ptr Database::getDatabaseForChannel(cChannel *channel) {
    if (channel) {
       //first try primary database
       Database::Ptr db=getPrimaryDatabase();
-      if (db->getDevice()->ProvidesTransponder(channel))
+      if (db->device && db->device->ProvidesTransponder(channel))
          return db;
       
       //then try created databases
       for (int i=0;i<cDevice::NumDevices();i++) {
          if ( (db=databases[i]) )
-            if (db->getDevice()->ProvidesTransponder(channel))
+            if (db->device && db->device->ProvidesTransponder(channel))
                return db;
       }
       
       //then try all possibilities
       for (int i=0;i<cDevice::NumDevices();i++) {
          if ( (db=getDatabase(i)) )
-            if (db->getDevice()->ProvidesTransponder(channel))
+            if (db->device && db->device->ProvidesTransponder(channel))
                return db;
       }
    }
@@ -148,25 +148,25 @@ Database::Ptr Database::Database::getDatabaseForChannel(cChannel *channel) {
 }
 
       //to be used with Channels rwlocked
-Database::Ptr Database::Database::getDatabaseTunedForChannel(cChannel *channel) {
+Database::Ptr Database::getDatabaseTunedForChannel(cChannel *channel) {
    bool needsDetachReceivers;
    if (channel) {
       //first try primary database
       Database::Ptr db=getPrimaryDatabase();
-      if (db->getDevice()->ProvidesChannel(channel, Setup.PrimaryLimit, &needsDetachReceivers) && !needsDetachReceivers)
+      if (db->device && db->device->ProvidesChannel(channel, Setup.PrimaryLimit, &needsDetachReceivers) && !needsDetachReceivers)
          return db;
       
       //then try created databases
       for (int i=0;i<cDevice::NumDevices();i++) {
          if ( (db=databases[i]) )
-            if (db->getDevice()->ProvidesChannel(channel, Setup.PrimaryLimit, &needsDetachReceivers) && !needsDetachReceivers)
+            if (db->device && db->device->ProvidesChannel(channel, Setup.PrimaryLimit, &needsDetachReceivers) && !needsDetachReceivers)
                return db;
       }
       
       //then try all possibilities
       for (int i=0;i<cDevice::NumDevices();i++) {
          if ( (db=getDatabase(i)) )
-            if (db->getDevice()->ProvidesChannel(channel, Setup.PrimaryLimit, &needsDetachReceivers) && !needsDetachReceivers)
+            if (db->device && db->device->ProvidesChannel(channel, Setup.PrimaryLimit, &needsDetachReceivers) && !needsDetachReceivers)
                return db;
       }
    }
@@ -189,20 +189,12 @@ void Database::findChannels(int nid, int tid, int sid, std::vector<cChannel *> &
 
 int Database::getCurrentSource() {
    ReadLock rwlock(&Channels);
-   return Channels.GetByNumber(device->CurrentChannel())->Source();
+   if (device)
+      return Channels.GetByNumber(device->CurrentChannel())->Source();
+   else
+      return 0;
 }
 
-
-void Database::CleanUp() {
-   delete dispatchThread;
-   dispatchThread=0;
-   if (databases) {
-      for (int i=0;i<MAXDEVICES;i++)
-         delete databases[i];
-      delete databases;
-      databases=0;
-   }
-}
 
 bool Database::retrievePat(SI::PAT &Pat) {
    if (HasState(TuningStatePat)) {
@@ -349,6 +341,17 @@ ScheduleEventRequest *Database::retrieveScheduledEvents(Listener *listener,
 
 
 
+void Database::CleanUp() {
+   delete dispatchThread;
+   dispatchThread=0;
+   for (uint i=0;i<databases.size();i++) {
+      if (databases[i]) {
+         databases[i]->Stop();
+         databases[i]=0;
+      }
+   }
+}
+
 Database::Database(cDevice *dev, DeliverySystem system) 
   : patFilter(this), nid(-1), tid(-1), state(TuningStateUnknown), device(dev), deliverySystem(system)
 {
@@ -362,22 +365,30 @@ Database::Database(cDevice *dev, DeliverySystem system)
 }
 
 Database::~Database() {
-   //printf("Deleting database\n");
+   printf("Deleting database\n");
+   Stop();
+}
+
+void Database::Stop() {
+   printf("Stopping database\n");
+   if (!device)
+      return;
+
    {
       cMutexLock lock(&listMutex);
-      /*
       for (std::list<Filter *>::iterator it=activeFilters.begin(); it != activeFilters.end(); ++it) {
          Detach(*it); //do not delete a filter, they do not belong to us
       }
       activeFilters.clear();
-      */
       dataSwitchListener.clear();
    }
+   // disable database
+   device=0;
 }
 
 //called by Filter->Attach()
 void Database::Attach(Filter *filter) {
-   if (filter->attached)
+   if (filter->attached || !device)
       return;
    filter->attached=true;
    {
@@ -398,7 +409,9 @@ void Database::Detach(Filter *filter) {
       //printf("Removing active Filter %p\n", filter);
       activeFilters.remove(filter);
    }
-   device->Detach(filter);
+   printf("Device is %p\n", device);
+   if (device)
+      device->Detach(filter);
    //printf("Removed active Filter %p\n", filter);
 }
 
@@ -504,12 +517,11 @@ Database::DeliverySystem Database::getDeliverySystem(cDevice *candidate) {
 
 
 void Database::checkInitialDatabaseSetup() {
-   if (!databases) {
+   if (!databases.size()) {
       //initial setup
-      databases=new Database*[MAXDEVICES];
-      noReceptionDatabases=new bool[MAXDEVICES];
-      for (int i=0;i<MAXDEVICES;i++) {
-         databases[i]=0;
+      databases.insert(databases.begin(), MAXDEVICES, Database::Ptr(0));
+      noReceptionDatabases=new bool[databases.size()];
+      for (uint i=0;i<databases.size();i++) {
          noReceptionDatabases[i]=false;
       }
    }

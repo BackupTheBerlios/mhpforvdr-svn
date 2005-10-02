@@ -50,7 +50,7 @@ void cApplicationMonitor::Result(DvbSi::Request *r) {
       tags[2]=SI::StreamIdentifierDescriptorTag;
       for (DvbSi::PMTServicesRequest::iterator it=((DvbSi::PMTServicesRequest *)request)->list.begin(); it != ((DvbSi::PMTServicesRequest *)request)->list.end(); ++it) {
          pmt=(*it);
-         cTransportStream::ApplicationService *service=ts->GetService(pmt.getServiceId());
+         cTransportStream::ApplicationService *service=ts->GetApplicationService(pmt.getServiceId());
          //printf("Having Service %d\n", pmt.getServiceId());
          if (service->pmtVersion==pmt.getVersionNumber())
             continue;
@@ -178,7 +178,7 @@ void cAIT::ProcessAIT(int aitPid) {
    
    cTransportStream::ApplicationService *service=ts->GetServiceForAitPid(aitPid);
    
-   if (!service->GetChannel())
+   if (!service->GetService())
       return; //may happen if VDR does not know channel
    
       
@@ -296,10 +296,11 @@ void cAIT::ProcessAIT(int aitPid) {
          //parsed all descriptors. Now add application only to the
          //list if a usable TransportProtocol has been found
          //(i.e. the app can be received)
-      if (!foundTransportProtocol)
+      if (!foundTransportProtocol) {
+         printf("Read AIT of application %s type %d ccode %d aid %d oid %d, deleting app because no suitable transport protocol was found\n", a->GetName(0) ? a->GetName(0)->name.c_str() : "noname", a->GetApplicationType(), a->GetControlCode(), a->GetAid(), a->GetOid());
          delete a;
-      else {
-         printf("Read AIT of application %s type %d ccode %d aid %d oid %d\n", a->GetName(0) ? a->GetName(0)->name.c_str() : "noname", a->GetApplicationType(), a->GetControlCode(), a->GetAid(), a->GetOid());
+      } else {
+         printf("Read AIT of application %s type %d ccode %d aid %d oid %d, adding to database\n", a->GetName(0) ? a->GetName(0)->name.c_str() : "noname", a->GetApplicationType(), a->GetControlCode(), a->GetAid(), a->GetOid());
          database->addApplication(a);
       }
    } //end of application loop

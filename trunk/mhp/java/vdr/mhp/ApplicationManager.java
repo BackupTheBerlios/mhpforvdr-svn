@@ -58,6 +58,7 @@ ApplicationManager() {
       applicationThreadGroup=new ApplicationThreadGroup("ApplicationGroup");
       taskThread=new ApplicationTaskThread(applicationThreadGroup);
       securityManager=new MHPSecurityManager(Thread.currentThread().getThreadGroup());
+      SettingsPolicy.setPolicy(new VDRSettingsPolicy());
       
       System.setSecurityManager(securityManager);
    } catch (Exception e) {

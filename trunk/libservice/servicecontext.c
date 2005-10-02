@@ -20,18 +20,6 @@
 
 namespace Service {
 
-TransportStream::TransportStream(cChannel *channel) {
-   data.source=channel->Source();
-   data.onid=channel->Nid();
-   data.tid=channel->Tid();
-}
-
-Service::Service(cChannel *channel)
-  : TransportStream(channel)
-{
-   sid=channel->Sid();
-}
-
 Context *Context::s_self = 0;
 
 Context *Context::getContext() {
@@ -40,14 +28,18 @@ Context *Context::getContext() {
    return s_self;
 }
 
-void Context::getApplications(std::list<ApplicationInfo::cApplication::Ptr> &apps) {
-   if (currentChannel)
-      ApplicationInfo::Applications.findApplicationsForTransportStream(apps, currentChannel->Source(), currentChannel->Nid(), currentChannel->Tid());
+Context::Context() {
 }
 
-cChannel *Context::getService() {
-   //may be null
-   return currentChannel;
+void Context::getApplications(std::list<ApplicationInfo::cApplication::Ptr> &apps) {
+   Service::Ptr currentChannel=getService();
+   if (currentChannel)
+      ApplicationInfo::Applications.findApplicationsForTransportStream(apps, currentChannel->GetSource(), currentChannel->GetNid(), currentChannel->GetTid());
+}
+
+Service::Ptr Context::getService() {
+   ServiceManager::ServiceLock lock;
+   return ServiceManager::getManager()->getPrimaryDecoder()->getCurrentService();
 }
 
 bool Context::isPresenting() {
@@ -77,33 +69,13 @@ bool Context::isPresenting() {
       //       a message why the selection failed followed by a message why that presentation terminated
       //If the presentation is terminated afterwards,
       //    a message why the presentation terminated
-void Context::SelectService(cChannel *service) {
+void Context::SelectService(Service::Ptr service) {
    provider->SelectService(service);
 }
       //I am not sure what this is supposed to do.
       //It is guaranteed that ServiceStatus is called subsequently.
 void Context::StopPresentation() {
    provider->StopPresentation();
-}
-
-void Context::ChannelSwitch(const cDevice *Device, int ChannelNumber) {
-   if (Device == cDevice::PrimaryDevice()) {
-      if (ChannelNumber == 0)
-         currentChannel=0;
-      else
-         currentChannel=Channels.GetByNumber(ChannelNumber);
-   }
-}
-
-void Context::Replaying(const cControl *Control, const char *Name) {
-   /*
-   //Only normal recordings are announce by this way!
-   //So, if currentControl is 0, this does not mean cControl::Control() is null!
-   if (Name==NULL)
-      currentControl=0;
-   else
-      currentControl=Control;
-   */
 }
 
 cList<ServiceStatus> ServiceStatus::list;
@@ -116,7 +88,7 @@ ServiceStatus::~ServiceStatus() {
    list.Del(this, false);
 }
 
-void ServiceStatus::MsgServiceEvent(Message event, Service service) {
+void ServiceStatus::MsgServiceEvent(Message event, Service::Ptr service) {
    for (ServiceStatus *ss = list.First(); ss; ss = list.Next(ss))
       ss->ServiceEvent(event, service);
 }

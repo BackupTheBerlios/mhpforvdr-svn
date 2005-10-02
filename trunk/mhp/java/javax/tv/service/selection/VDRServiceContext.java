@@ -336,7 +336,7 @@ public Service  getService () throws IllegalStateException {
    case PRESENTATION_PENDING:
       break;
    case PRESENTING:
-      return VDRService.getServiceForNativeChannel(getNativeService());
+      return VDRService.getService(getNativeService());
    case DESTROYED:
       throw new IllegalStateException();
    }

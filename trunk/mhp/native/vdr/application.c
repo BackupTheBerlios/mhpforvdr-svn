@@ -53,7 +53,7 @@ jboolean Java_org_dvb_application_MHPApplication_isServiceBound(JNIEnv* env, job
 }
 
 jobject Java_org_dvb_application_MHPApplication_channel(JNIEnv* env, jobject obj, jobject nativeData) {
-   return NativeChannelData(NativeApplicationData(nativeData).Get()->GetChannel());
+   return NativeChannelData(NativeApplicationData(nativeData).Get()->GetService());
 }
 
 jstring Java_org_dvb_application_MHPApplication_name(JNIEnv* env, jobject obj, jobject nativeData) {

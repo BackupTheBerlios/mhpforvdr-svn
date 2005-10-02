@@ -209,6 +209,7 @@ void ObjectCarousel::getProgress(bool *retComplete, uint *retTotalSize, uint *re
             cachedSizeBlock += (*iit).size;
       }
       complete = (complete && (*iit).cached && !(*iit).isHibernated);
+      //printf("Module %d, cached %d, hib %d, curp %d, size %d, cachedSize %d, cachedSizeBlock %d\n", iit->module_id, iit->cached, iit->isHibernated, iit->curp, iit->size, cachedSize, cachedSizeBlock);
    }
    
    if (retTotalSize)
@@ -248,11 +249,11 @@ void ObjectCarousel::ModuleData::Set(ModuleInfo &info, DII &dii) {
 void ObjectCarousel::ModuleData::AddData(DDB &ddb) {
    if (cached)
       return; //Already got complete module
-   if (bstatus->isSet(ddb.block_number)) { //block not yet received
+   if (!bstatus->isSet(ddb.block_number)) { //block not yet received
       blocks.push_back(ddb);
       curp+=ddb.blockdata.getLength();
       //char bl[bstatus->getSize()+1];for (int i=0;i<bstatus->getSize();i++) bl[i]=(bstatus->isSet(i) ? '1':'0');bl[bstatus->getSize()]=0;
-      //printf("Received block number %d of module %d, size %d, curp now %ld, blocks %s\n", ddb.block_number, module_id, ddb.blockdata.getLength(), curp, bl);
+      printf("Received block number %d of module %d, size %d, curp now %ld\n", ddb.block_number, module_id, ddb.blockdata.getLength(), curp);
       bstatus->Set(ddb.block_number);
    }
    if (bstatus->isComplete()) {

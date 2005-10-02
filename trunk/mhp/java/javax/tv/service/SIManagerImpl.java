@@ -157,9 +157,7 @@ public RatingDimension  getRatingDimension (java.lang.String name)
  */
 
 public Transport [] getTransports () {
-   Transport[] t=new Transport[1];
-   t[0]=defaultTransport;
-   return t;
+   return new Transport [] { defaultTransport };
 }
 
 

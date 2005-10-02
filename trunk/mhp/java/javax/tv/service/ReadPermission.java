@@ -18,11 +18,11 @@ public final class ReadPermission extends java.security.Permission implements ja
  
  */
 
-private Locator locator;
+String locator;
 
 public ReadPermission ( Locator locator){
    super("ReadPermission");
-   this.locator=locator;
+   this.locator=locator.toExternalForm();
 }
 
 
@@ -41,22 +41,41 @@ public ReadPermission ( Locator locator){
 public ReadPermission (java.lang.String locator,
            java.lang.String actions){
    super("ReadPermission");
+   this.locator=locator;
+   /*
    try {
    this.locator=javax.tv.locator.LocatorFactory.getInstance().createLocator(locator);
    } catch (javax.tv.locator.MalformedLocatorException ex) {
       ex.printStackTrace();
       this.locator=null;
    }
+   */
 }
 
 
 /*
  
  Checks if this ReadPermission object "implies" the specified
- permission. */
+ permission. 
+More specifically, this method returns true if: 
+p is an instance of ReadPermission, and 
+p's locator's external form matches this object's locator string, or this object's locator string is "*". 
+Overrides:
+implies in class java.security.Permission
+Parameters:
+p - The permission to check against.
+Returns:
+true if the specified permission is implied by this object, false if not.
+*/
 
 public boolean implies (java.security.Permission p){
-   return true;
+   if (p instanceof ReadPermission) {
+      if (locator.equals("*"))
+         return true;
+      else
+         return locator.equals(((ReadPermission)p).locator);
+   }
+   return false;
 }
 
 
@@ -77,7 +96,7 @@ public boolean implies (java.security.Permission p){
  */
 
 public boolean equals (java.lang.Object other){
-   return other==this;
+   return (other instanceof ReadPermission) && locator.equals(((ReadPermission)p).locator);
 }
 
 

@@ -21,9 +21,9 @@ cTransportStream::cTransportStream(int s, int n, int t)
 {
 }
 
-cTransportStream::ApplicationService *cTransportStream::GetService(int sid) {
+cTransportStream::ApplicationService *cTransportStream::GetApplicationService(int sid) {
    cMutexLock lock(&mutex);
-   ApplicationService *s=findService(sid);
+   ApplicationService *s=FindApplicationService(sid);
    if (!s) {
       s=new ApplicationService(this, sid);
       services.push_back(s);
@@ -31,7 +31,7 @@ cTransportStream::ApplicationService *cTransportStream::GetService(int sid) {
    return s;
 }
 
-cTransportStream::ApplicationService *cTransportStream::findService(int sid) {
+cTransportStream::ApplicationService *cTransportStream::FindApplicationService(int sid) {
    for (std::list<ApplicationService *>::iterator it=services.begin(); it != services.end(); ++it) {
       if ( (*it)->sid==sid )
          return (*it);
@@ -83,7 +83,7 @@ void cTransportStream::ApplicationService::Reset() {
 
 int cTransportStream::GetPidForComponentTag(int serviceId, int componentTag) {
    cMutexLock lock(&mutex);
-   ApplicationService *s=findService(serviceId);
+   ApplicationService *s=FindApplicationService(serviceId);
    return s ? s->GetPidForComponentTag(componentTag) : 0;
 }
    
@@ -99,6 +99,7 @@ int cTransportStream::GetCarouselIdForPid(int pid) {
    return 0;
 }
 
+/*
 cChannel *cTransportStream::GetChannelForAitPid(int aitPid) {
    ApplicationService *s=GetServiceForAitPid(aitPid);
    if (!s)
@@ -108,6 +109,7 @@ cChannel *cTransportStream::GetChannelForAitPid(int aitPid) {
       esyslog("Did not find channel for application PID %d", aitPid); //programming mistake
    return c;
 }
+*/
 
 cTransportStream::ApplicationService *cTransportStream::GetServiceForAitPid(int aitPid) {
    cMutexLock lock(&mutex);
@@ -275,11 +277,11 @@ int cApplication::GetNumOfProfileVersions() {
    return profileVersions.Count();
 } 
 
-cChannel *cApplication::GetChannel() {
-   return service ? service->GetChannel() : 0;
+Service::Service::Ptr cApplication::GetService() {
+   return service ? service->GetService() : 0;
 }
 
-cTransportStream::ApplicationService *cApplication::GetService() {
+cTransportStream::ApplicationService *cApplication::GetApplicationService() {
    return service;
 }
 
@@ -418,7 +420,7 @@ bool cApplicationsDatabase::findApplicationsForTransportStream(ApplicationList &
    if (ts == 0)
       return false;
    for (AppList::iterator it=apps.begin(); it != apps.end(); ++it) {
-      if ((*it)->GetService()->GetTransportStream() == ts)
+      if ((*it)->GetApplicationService()->GetTransportStream() == ts)
          addAppsToThisList.push_back(*it);
    }
    return true;
@@ -428,12 +430,12 @@ bool cApplicationsDatabase::findApplicationsForService(ApplicationList &addAppsT
    cTransportStream *ts = TransportStreams.GetTransportStream(source, nid, tid);
    if (ts == 0)
       return false;
-   cTransportStream::ApplicationService *service = ts->findService(sid);
+   cTransportStream::ApplicationService *service = ts->FindApplicationService(sid);
    if (service == 0)
       return false;
 
    for (AppList::iterator it=apps.begin(); it != apps.end(); ++it) {
-      if ((*it)->GetService() == service)
+      if ((*it)->GetApplicationService() == service)
          addAppsToThisList.push_back(*it);
    }
    return true;
@@ -454,17 +456,20 @@ void cApplicationsDatabase::addApplication(cApplication *newApp) {
 
 void cApplicationsDatabase::tagForDeletion(cTransportStream::ApplicationService *s, int type) {
    for (AppList::iterator it=apps.begin(); it != apps.end(); ++it) {
-      if ((*it)->GetService() == s && (*it)->GetApplicationType() == type)
+      if ((*it)->GetApplicationService() == s && (*it)->GetApplicationType() == type)
          (*it)->tagged=true;
    }
 }
 
 void cApplicationsDatabase::deleteTagged() {
-   for (AppList::iterator it=apps.begin(); it != apps.end(); ++it) {
+   for (AppList::iterator it=apps.begin(); it != apps.end(); ) {
       if ((*it)->tagged) {
+         cApplication::Ptr app(*it);
          it=apps.erase(it);
-         cApplicationStatus::MsgApplicationRemoved(*it);
-      }
+         printf("Removing outdated application %s from list\n", app->GetName(0) ? app->GetName(0)->name.c_str() : "noname");
+         cApplicationStatus::MsgApplicationRemoved(app);
+      } else
+         ++it;
    }
 }
 

@@ -31,7 +31,7 @@ cLocalApplication::cLocalApplication(char *name, char *basePath, char *initialCl
    AddName("deu", name); //TODO: change "deu" to real VDR language
 }
 
-MhpApplicationMenuItem::MhpApplicationMenuItem(ApplicationInfo::cApplication::Ptr a) : app(a) {
+MhpApplicationMenuItem::MhpApplicationMenuItem(ApplicationInfo::cApplication::Ptr a, bool selectable) : app(a) {
    char *buffer = NULL;
    
    const char *name;
@@ -43,10 +43,12 @@ MhpApplicationMenuItem::MhpApplicationMenuItem(ApplicationInfo::cApplication::Pt
    if (app->GetTransportProtocol()->GetProtocol() == ApplicationInfo::cTransportProtocol::Local)
       asprintf(&buffer, "%s", name);
    else {
-      cChannel *chan=app->GetChannel();
-      asprintf(&buffer, "%s - %s", chan ? chan->Name() : tr("Unknown channel"), name);
+      Service::Service::Ptr service=app->GetService();
+      asprintf(&buffer, "%s - %s", service ? service->getChannelInformation()->getName() : tr("Unknown channel"), name);
    }
    
+   printf("Setting text %s\n", buffer);
+   SetSelectable(selectable);
    SetText(buffer,false);
 }
 
@@ -60,29 +62,34 @@ MhpApplicationMenuLabel::MhpApplicationMenuLabel(const char *text) {
 MhpApplicationMenu::MhpApplicationMenu(std::list<ApplicationInfo::cApplication::Ptr> *l) : cOsdMenu(tr("MHP Applications")) {
    std::list<ApplicationInfo::cApplication::Ptr> apps;
    if (ApplicationInfo::Applications.findApplications(apps)) {
+      printf("MhpApplicationMenu: %d apps\n", apps.size());
       bool labelSet=false;
-      for (std::list<ApplicationInfo::cApplication::Ptr>::iterator it=apps.begin(); it != apps.end(); ++it) {
-         if (GetReceptionState((*it)->GetChannel()) == StateCanBeReceived)
+      for (std::list<ApplicationInfo::cApplication::Ptr>::iterator it=apps.begin(); it != apps.end(); ) {
+         printf("ReceptionState is %d\n", GetReceptionState((*it)->GetService()));
+         if (GetReceptionState((*it)->GetService()) == StateCanBeReceived) {
             Add(new MhpApplicationMenuItem(*it));
+            it=apps.erase(it);
+         } else
+            ++it;
       }
-      for (std::list<ApplicationInfo::cApplication::Ptr>::iterator it=apps.begin(); it != apps.end(); ++it) {
-         if (GetReceptionState((*it)->GetChannel()) == StateNeedsTuning) {
+      for (std::list<ApplicationInfo::cApplication::Ptr>::iterator it=apps.begin(); it != apps.end(); ) {
+         if (GetReceptionState((*it)->GetService()) == StateNeedsTuning) {
             if (!labelSet) {
                Add(new MhpApplicationMenuLabel(tr("Tuning required:")));
                labelSet=true;
             }
             Add(new MhpApplicationMenuItem(*it));
-         }
+            it=apps.erase(it);
+         } else
+            ++it;
       }
       labelSet=false;
-      for (std::list<ApplicationInfo::cApplication::Ptr>::iterator it=l->begin(); it != l->end(); ++it) {
-         if (GetReceptionState((*it)->GetChannel()) == StateCanTemporarilyNotBeReceived) {
-            if (!labelSet) {
-               Add(new MhpApplicationMenuLabel(tr("Currently not available:")));
-               labelSet=true;
-            }
-            Add(new MhpApplicationMenuItem(*it));
+      for (std::list<ApplicationInfo::cApplication::Ptr>::iterator it=apps.begin(); it != apps.end(); ++it) {
+         if (!labelSet) {
+            Add(new MhpApplicationMenuLabel(tr("Currently not available:")));
+            labelSet=true;
          }
+         Add(new MhpApplicationMenuItem(*it, false));
       }
    } else {
       Add(new MhpApplicationMenuLabel(tr("No MHP applications available")));
@@ -107,15 +114,13 @@ eOSState MhpApplicationMenu::ProcessKey(eKeys Key) {
             if (appitem->GetApplication()->GetTransportProtocol()->GetProtocol() == ApplicationInfo::cTransportProtocol::Local) {
                Mhp::RunningManager::getManager()->Start(appitem->GetApplication());
             } else {
-               if (GetReceptionState(appitem->GetApplication()->GetChannel())<=StateNeedsTuning) {
-                  cDevice *dev=cDevice::GetDevice(appitem->GetApplication()->GetChannel(), 0);
-                  if (!dev) {
-                     //Interface->Error(tr("Cannot receive application!"));
-                     //Interface->Flush();
+               if (GetReceptionState(appitem->GetApplication()->GetService())<=StateNeedsTuning) {
+                  Service::Tunable *tunable=appitem->GetApplication()->GetService()->getTunable();
+                  Service::Tuner *tuner=Service::ServiceManager::getManager()->getTuner(tunable);
+                  if (!tuner || !tuner->Tune(tunable)) {
                      Skins.Message(mtError, tr("Cannot receive application!"));
                      return osContinue;
                   }
-                  dev->SwitchChannel(appitem->GetApplication()->GetChannel(), false);
                   Mhp::RunningManager::getManager()->Start(appitem->GetApplication());
                   return osEnd;
                }
@@ -133,7 +138,8 @@ eOSState MhpApplicationMenu::ProcessKey(eKeys Key) {
   return state;
 }
 
-ReceptionState MhpApplicationMenu::GetReceptionState(cChannel *channel) {
+ReceptionState MhpApplicationMenu::GetReceptionState(Service::Service::Ptr service) {
+   const cChannel *channel=service->getTunable()->getTunableChannel();
    if (!channel)
       return StateCannotBeReceived;
    

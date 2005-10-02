@@ -1,6 +1,7 @@
 
 package javax.tv.service;
 
+import java.util.HashMap;
 import org.dvb.application.MHPApplication;
 import org.dvb.application.AppAttributes;
 import vdr.mhp.lang.NativeData;
@@ -24,48 +25,49 @@ The <code>Service</code> interface represents an abstract view on
 public class VDRService implements Service, ServiceNumber, org.dvb.si.TextualServiceIdentifierQuery {
 
 NativeData nativeData;
+static HashMap hashmap = new HashMap();
 
-VDRService(NativeData nativeData) {
+private VDRService(NativeData nativeData) {
    this.nativeData=nativeData;
 }
 
 //internal API
-public static VDRService getServiceForNativeChannel(NativeData nativeChannel) {
-   if (!nativeChannel.isNull())
-      return new VDRService(nativeChannel);
+// Returns a VDRService objects for given native channel, or NULL if nativeChannel is null.
+public static VDRService getService(NativeData nativeChannel) {
+   //There may be several 1000 channels, so limiting the number of Service objects is a good idea.
+   if (!nativeChannel.isNull()) {
+      synchronized(hashmap) {
+         // The NativeData object will contain a hashCode() method that depends on the native data
+         // rather than the Java Object's hashCode.
+         VDRService service = (VDRService)hashmap.get(nativeChannel);
+         if (service == null) {
+            service = new VDRService(nativeChannel);
+            hashmap.put(nativeChannel, service);
+         }
+         return service;
+      }
+   }
    return null;
 }
 
 //internal API
 public static VDRService getService(int source, int onid, int tid, int sid) {
-   NativeData nD=getServiceForChannelId(source, onid, tid, sid);
-   if (!nD.isNull())
-      return new VDRService(nD);
-   else
-      return null;
+   return getService(getServiceForChannelId(source, onid, tid, sid));
 }
 private static native NativeData getServiceForChannelId(int source, int onid, int tid, int sid);
 
 //internal API
 public static VDRService getService(int onid, int tid, int sid) {
-   NativeData nD=getServiceForNidTidSid(onid, tid, sid);
-   if (!nD.isNull())
-      return new VDRService(nD);
-   else
-      return null;
+   return getService(getServiceForNidTidSid(onid, tid, sid));
 }
 private static native NativeData getServiceForNidTidSid(int onid, int tid, int sid);
 
 //internal API
 //returns object corresponding to VDR's cDevice::GetCurrentChannel()
 public static VDRService getCurrentService() {
-   NativeData nativeCurrentChannel=getCurrentChannelNative();
-   if (!nativeCurrentChannel.isNull())
-      return new VDRService(nativeCurrentChannel);
-   else 
-      return null;
+   return getService(getCurrentServiceNative());
 }
-private static native NativeData getCurrentChannelNative();
+private static native NativeData getCurrentServiceNative();
 
 //internal API
 public NativeData getNativeData() {
