@@ -42,8 +42,7 @@ application is interested in all descriptors. If someDescriptorTags is null, the
 descriptors. All values that are out of the valid range for descriptor tags (i.e. 0...255) are ignored, except for the 
 special meaning of -1 as the only element in the array. Returns: An SIRequest object Throws: SIIllegalArgumentException 
 - thrown if the retrieveMode is invalid */
-public SIRequest retrieveSIServices(short retrieveMode, java.lang.Object appData, SIRetrievalListener listener, short[] 
-someDescriptorTags);
+public SIRequest retrieveSIServices(short retrieveMode, java.lang.Object appData, SIRetrievalListener listener, short[] someDescriptorTags) throws SIIllegalArgumentException;
 
 
 

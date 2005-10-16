@@ -13,10 +13,8 @@
 
 namespace DvbSi {
 
-Filter::Filter(Database::Ptr db, bool attach) : database(db), attached(false)
+Filter::Filter(Database::Ptr db) : database(db), attached(false)
 {
-   if (attach)
-      Attach();
 }
 
 Filter::~Filter() {
@@ -38,9 +36,11 @@ DatabasePtr Filter::getDatabase() {
    return database;
 }
 
+/*
 RequestFilter::RequestFilter(DatabasePtr db, Request *r)
   : Filter(db), request(r)
 {
 }
+*/
 
 }

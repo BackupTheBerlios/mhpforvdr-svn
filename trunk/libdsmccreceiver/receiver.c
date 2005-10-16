@@ -506,7 +506,6 @@ DsmccStream& DsmccStream::operator=(const DsmccStream &source) {
 
 cDsmccReceiver::cDsmccReceiver(const char *channel, Service::TransportStreamID tsid) {
    running=false;
-   filterOn=false;
    name = channel ? channel : "Unknown";
    ts=tsid;
 }
@@ -521,40 +520,33 @@ cDsmccReceiver::~cDsmccReceiver() {
       delete (*it);
 }
 
-void cDsmccReceiver::SetStatus(bool On) {
-   cFilter::SetStatus(On);
-
-   if (On) {
-      //Filter is activated. There might previously have been a channel switch:
-      //If we are on the same transponder, restore all streams.
-      //Otherwise, higher levels should take appropriate action (Hibernation, Deletion)
-      #if VDRVERSNUM <= 10327
-      #error "Unfortunately, VDR versions up to 1.3.27 contain a bug that prevents this code from working properly. Please use VDR version 1.3.28 or later."
-      #endif
+void cDsmccReceiver::AddFilterData() {
       const cChannel *newChan=cFilter::Channel();
-      filterOn=ts.equals(newChan->Source(), newChan->Nid(), newChan->Tid());
-      printf("cDsmccReceiver::SetStatus, filterOn is %d, ts is %d-%d-%d, new is %d-%d-%d\n", filterOn, ts.GetSource(), ts.GetNid(), ts.GetTid(), newChan->Source(), newChan->Nid(), newChan->Tid());
-      if (filterOn) {
-         streamListMutex.Lock();
-         for (DsmccStreamList::iterator sit=streams.begin(); sit!=streams.end(); ++sit) {
-            if (sit->status==DsmccStream::ActivatedNotReceiving)
-               ActivateStream(&(*sit));
-         }
-         streamListMutex.Unlock();
-      }
-   } else {
-      filterOn=false;
-      //SetStatus will remove all filters when On=false.
-      //Sync internal list to this situation
-      printf("cDsmccReceiver::SetStatus, filterOn is false\n");
-      streamListMutex.Lock();
-      for (DsmccStreamList::iterator sit=streams.begin(); sit!=streams.end(); ++sit) {
-         if (sit->status==DsmccStream::Receiving)
-            SuspendStream(&(*sit));
-      }
-      streamListMutex.Unlock();
+      printf("cDsmccReceiver::AddFilterData, ts is %d-%d-%d, new is %d-%d-%d\n", getFilterTransportStreamID().GetSource(), getFilterTransportStreamID().GetNid(), getFilterTransportStreamID().GetTid(), newChan->Source(), newChan->Nid(), newChan->Tid());
+   // If there was previously a channel switch: We are on the same transponder, restore all streams.
+   cMutexLock lock(&streamListMutex);
+   for (DsmccStreamList::iterator sit=streams.begin(); sit!=streams.end(); ++sit) {
+      if (sit->status==DsmccStream::ActivatedNotReceiving)
+         ActivateStream(&(*sit));
    }
 }
+
+void cDsmccReceiver::RemoveFilterData() {
+   printf("cDsmccReceiver::RemoveFilterData\n");
+   //SetStatus will remove all filters when On=false.
+   //Sync internal list to this situation
+   cMutexLock lock(&streamListMutex);
+   for (DsmccStreamList::iterator sit=streams.begin(); sit!=streams.end(); ++sit) {
+      if (sit->status==DsmccStream::Receiving)
+         SuspendStream(&(*sit));
+   }
+}
+
+void cDsmccReceiver::OtherTransportStream(Service::TransportStreamID ts) {
+   //Higher levels should take appropriate action (Hibernation, Deletion)
+   DeactivateFilter();
+}
+
 
 Dsmcc::ObjectCarousel *cDsmccReceiver::AddCarousel(unsigned long id) {
    cMutexLock lock(&carouselMutex);
@@ -710,7 +702,7 @@ void cDsmccReceiver::ActivateStream(DsmccStream *str) {
    switch (str->status) {
    case DsmccStream::NotReceiving:
    case DsmccStream::ActivatedNotReceiving:
-      if (!filterOn) {
+      if (!getFilterStatus()) {
          str->status=DsmccStream::ActivatedNotReceiving;
          return;
       }

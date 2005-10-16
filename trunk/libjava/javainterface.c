@@ -599,8 +599,10 @@ bool Field::SetField(const char *fieldName, const char *signature) {
 
 bool Field::GetValue(jobject obj, ReturnType &ret) {
    ret.TypeLong=0;
-   if (!field)
-      return false;
+   if (!field) {
+      Exception::Throw(JavaLangIllegalStateException, "JNI::Field::GetValue called while field object is uninitialized, call SetField before");
+      return checkException();
+   }
 
    switch(fieldType) {
       case Void:
@@ -638,8 +640,10 @@ bool Field::GetValue(jobject obj, ReturnType &ret) {
 }
 
 bool Field::SetValue(jobject obj, ReturnType value) {
-   if (!field)
-      return false;
+   if (!field) {
+      Exception::Throw(JavaLangIllegalStateException, "JNI::Field::SetValue called while field object is uninitialized, call SetField before");
+      return checkException();
+   }
 
    switch(fieldType) {
       case Void:
@@ -747,8 +751,10 @@ bool StaticMethod::CallMethod(ReturnType &ret, ...) {
 
 bool StaticMethod::CallMethod(ReturnType &ret, va_list ap) {
    ret.TypeLong=0;
-   if (!method)
-      return false;
+   if (!method) {
+      Exception::Throw(JavaLangIllegalStateException, "JNI::StaticMethod::CallMethod called while method object is uninitialized, call SetMethod before");
+      return checkException();
+   }
 
    switch(returnType) {
       case Void:
@@ -821,8 +827,10 @@ bool InstanceMethod::CallMethod(jobject object, ReturnType &ret, ...) {
 
 bool InstanceMethod::CallMethod(jobject object, ReturnType &ret, va_list ap) {
    ret.TypeLong=0;
-   if (!method)
-      return false;
+   if (!method) {
+      Exception::Throw(JavaLangIllegalStateException, "JNI::InstanceMethod::CallMethod called while method object is uninitialized, call SetMethod before");
+      return checkException();
+   }
 
    switch(returnType) {
       case Void:

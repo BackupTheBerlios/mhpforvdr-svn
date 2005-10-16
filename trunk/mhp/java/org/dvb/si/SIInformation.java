@@ -87,8 +87,7 @@ listener when the request completes. The application can use this objects for in
 application does not need any application data, the parameter can be null. listener - SIRetrievalListener that will 
 receive the event informing about the completion of the request.Returns: An SIRequest object Throws: 
 SIIllegalArgumentException - thrown if the retrieveMode is invalid */
-public SIRequest retrieveDescriptors(short retrieveMode, java.lang.Object appData, SIRetrievalListener 
-listener);
+public SIRequest retrieveDescriptors(short retrieveMode, java.lang.Object appData, SIRetrievalListener listener) throws SIIllegalArgumentException;
 
 
 /*
@@ -111,8 +110,7 @@ request. someDescriptorTags - - Descriptor tag values of descriptors that are us
 descriptors included in the SI table item corresponding to this SIInformation object. If the array contains -1 as its 
 one and only element, all descriptors related to this object are retrieved. Returns: An SIRequest object Throws: 
 SIIllegalArgumentException - thrown if the retrieveMode is invalid */
-public SIRequest retrieveDescriptors(short retrieveMode, java.lang.Object appData, SIRetrievalListener listener, short[] 
-someDescriptorTags);
+public SIRequest retrieveDescriptors(short retrieveMode, java.lang.Object appData, SIRetrievalListener listener, short[] someDescriptorTags) throws SIIllegalArgumentException;
 
 
 

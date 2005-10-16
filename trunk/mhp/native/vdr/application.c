@@ -12,8 +12,8 @@
 
 extern "C" {
 
-//TODO: Replace this with JNI::String whereever it is still used, then remove it.
-//tools
+/*
+Deprecated, replace by JNI::String
 jbyteArray copyConstCharIntoByteArray(JNIEnv* env, const char *str) {
    int len=strlen(str);
    jbyteArray ar=env->NewByteArray(len);
@@ -22,6 +22,7 @@ jbyteArray copyConstCharIntoByteArray(JNIEnv* env, const char *str) {
       env->SetByteArrayRegion(ar, 0, len, (jbyte*)str);
    return ar;
 }
+*/
 
 
 /*
@@ -144,7 +145,8 @@ void Java_org_dvb_application_AppsDatabase_buildAppList(JNIEnv* env, jobject obj
    db->findApplications(appList);
    JNI::ReturnType returnValue;
    for (ApplicationInfo::cApplicationsDatabase::ApplicationList::iterator it=appList.begin(); it != appList.end(); ++it) {
-      appListCallback.CallMethod(builder, returnValue, (jobject)NativeApplicationData(*it));
+      if (!appListCallback.CallMethod(builder, returnValue, (jobject)NativeApplicationData(*it)))
+         return;
    }
 }
 

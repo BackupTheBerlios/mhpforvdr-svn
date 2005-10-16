@@ -96,7 +96,7 @@ public boolean implies (java.security.Permission p){
  */
 
 public boolean equals (java.lang.Object other){
-   return (other instanceof ReadPermission) && locator.equals(((ReadPermission)p).locator);
+   return (other instanceof ReadPermission) && locator.equals(((ReadPermission)other).locator);
 }
 
 

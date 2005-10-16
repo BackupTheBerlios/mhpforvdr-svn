@@ -216,7 +216,7 @@ public abstract SIRequest  retrieveProgramEvent ( Locator locator,
 
 public abstract ServiceList  filterServices ( ServiceFilter filter);
 
-
+/*
 static class RequestDeliverThread extends Thread {
 
 SIRequestor requestor;
@@ -267,6 +267,27 @@ public static SIRequest deliverRequest(SIRequestor requestor, SIRequestFailureTy
    RequestDeliverThread thread=new RequestDeliverThread(requestor, reason);
    thread.start();
    return new TrivialRequest();
+}
+
+*/
+
+static SIRequest trivialRequest = new SIRequest()
+   { public boolean cancel() { return false; } };
+
+
+public static SIRequest deliverRequest(SIRequestor requestor, SIRetrievable[] result) {
+   requestor.notifySuccess(result);
+   return trivialRequest;
+}
+
+public static SIRequest deliverRequest(SIRequestor requestor, SIRetrievable result) {
+   requestor.notifySuccess(new SIRetrievable [] { result });
+   return trivialRequest;
+}
+
+public static SIRequest deliverRequest(SIRequestor requestor, SIRequestFailureType reason) {
+   requestor.notifyFailure(reason);
+   return trivialRequest;
 }
 
 

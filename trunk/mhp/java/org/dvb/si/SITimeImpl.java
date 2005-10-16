@@ -1,11 +1,12 @@
 package org.dvb.si;
 
+import vdr.mhp.lang.NativeData;
 
 public class SITimeImpl extends SICommonObject implements SITime {
 
 //nativeData is a pointer to a SI::TDT or SI::TOT
 
-SITimeImpl (SIDatabaseRequest request, long nativeData) {
+SITimeImpl (SIDatabaseRequest request, NativeData nativeData) {
    super(request, nativeData);
 }
 
@@ -15,7 +16,7 @@ table. */
 public java.util.Date getUTCTime() {
    return new java.util.Date(getUTCTime(nativeData)*1000);
 }
-private native int getUTCTime(long nativeData);
+private native int getUTCTime(NativeData nativeData);
 
 /*
 Return true when the information contained in the object that implements this interface was  ltered from an 'actual' 
@@ -28,7 +29,7 @@ public boolean fromActual() {
 public short[] getDescriptorTags() {
    return descriptorTags(nativeData);
 }
-private native short[] descriptorTags(long nativeData);
+private native short[] descriptorTags(NativeData nativeData);
 
 /*
 This method de nes extra semantics for the SIInformation.retrieveDescriptors method (second prototype). If the NIT 
@@ -41,7 +42,8 @@ An object supplied by the application. This object will be delivered to the list
 application can use this objects for internal communication purposes. If the application does not need any application 
 data, the parameter can be null. listener - SIRetrievalListener that will receive the event informing about the 
 completion of the request. */
-public SIRequest retrieveDescriptors(short retrieveMode, java.lang.Object appData, SIRetrievalListener listener, short[] someDescriptorTags) {
+public SIRequest retrieveDescriptors(short retrieveMode, java.lang.Object appData, SIRetrievalListener listener, short[] someDescriptorTags) throws SIIllegalArgumentException {
+   SIDatabase.checkRetrieveMode(retrieveMode);
    return SIDatabaseRequest.DescriptorRequestTime(this, someDescriptorTags, appData, listener, request.db, retrieveMode);
 }
 

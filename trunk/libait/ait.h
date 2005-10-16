@@ -32,7 +32,7 @@ namespace ApplicationInfo {
 
 #define MAXAITENTRIES 20
 
-class cApplicationMonitor : public DvbSi::Listener, public DvbSi::Filter, public DvbSi::DataSwitchListener {
+class cApplicationMonitor : public DvbSi::Listener, public DvbSi::DataSwitchListener {
 public:
    static void InitializeAllDevices();
    cApplicationMonitor(DvbSi::Database::Ptr d);
@@ -41,12 +41,21 @@ public:
    virtual void DataSwitch(DvbSi::Database::Ptr db);
 protected:
    cTransportStream *ts;
+   DvbSi::Database::Ptr db;
    DvbSi::PMTServicesRequest *request;
-   virtual void Process(u_short Pid, u_char Tid, const u_char *Data, int Length);
-   bool AitVersionChanged(int PmtPid, int Version);
-private:
-   int aitVersion[MAXAITENTRIES];
-   int numAitEntries;
+   class AitFilter : public DvbSi::Filter {
+      public:
+         AitFilter(DvbSi::Database::Ptr db, cTransportStream *ts);
+         void Add(u_short Pid);
+      protected:
+         virtual void Process(u_short Pid, u_char Tid, const u_char *Data, int Length);
+      private:
+         bool AitVersionChanged(int PmtPid, int Version);
+         cTransportStream *ts;
+         int aitVersion[MAXAITENTRIES];
+         int numAitEntries;
+   };
+   AitFilter *filter;
    //virtual int  PMTInnerLoopDescriptor(struct Descriptor *d, struct Pid *pi, struct PidInfo *p, int currentSource, int currentTransponder);
    //virtual void AITSection(unsigned char *buffer, int aitPid, int currentSource, int currentTransponder);
    //virtual void PATDescriptor(struct Program *pr, int currentSource, int currentTransponder);

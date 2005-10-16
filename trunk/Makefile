@@ -228,7 +228,7 @@ plugin-clean:
    
 testapps-install:
 	@install -d $(BASEDIR)/apps
-	@echo Copying content of ./testapps to $(BASEDIR)/apps
+	@echo Copying ./testapps/ to $(BASEDIR)/apps
 	@( cd testapps; \
 	  find -not -path "*.svn*" -and -not -type d -and -not -name "*.java" -exec cp -a --parents "{}" $(BASEDIR)/apps \; \
 	)

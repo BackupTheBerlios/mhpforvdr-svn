@@ -25,13 +25,14 @@
 namespace Service {
 
 // A lightweight cChannel wrapper
-class ChIDService : public Service, public Tunable, public ElementaryStreams, public ChannelInformation {
+class ChIDService : public Service, public Tunable, public ElementaryStreams, public ChannelInformation, public CaInformation {
 public:
    typedef ChIDService *Ptr;
    ChIDService(const cChannel *chan);
    virtual Tunable *getTunable() { return this; }
    virtual ChannelInformation *getChannelInformation() { return this; }
    virtual ElementaryStreams *getElementaryStreams() { return this; }
+   virtual CaInformation *getCaInformation() { return this; }
 
    // ElementaryStreams
    virtual int getVideoPid();
@@ -42,15 +43,21 @@ public:
 
    // ChannelInformation
    virtual const char *getName(void) { return getChannel()->Name(); }
-   virtual const char *getShortName(bool OrName = false) { return getChannel()->ShortName(); }
+   virtual const char *getShortName(bool OrName = false) { return getChannel()->ShortName(OrName); }
    virtual const char *getProvider(void) { return getChannel()->Provider(); }
    virtual const char *getPortalName(void) { return getChannel()->PortalName(); }
+
+   // CaInformation
+   virtual void getCaIDs(CaIDList &list);
+   virtual bool isFreeToAir();
 
    // ChannelListElement
    virtual int getChannelNumber() { return getChannel()->Number(); }
 
    // Tunable
    virtual const cChannel *getTunableChannel() { return getChannel(); }
+   virtual DeliverySystem getDeliverySystem();
+
    std::list<ChIDService::Ptr>::iterator managerIterator;
 protected:
    const cChannel *getChannel();
@@ -64,7 +71,9 @@ public:
 
    virtual bool Tune(Tunable *tune);
    virtual bool IsTunedTo(Tunable *tune);
+   virtual bool Provides(Tunable *tune);
    virtual cDevice *getDevice() { return device; }
+   virtual TransportStreamID getCurrentTransportStream();
    virtual DeliverySystem getDeliverySystem() { return system; }
 
    virtual bool SetService(Service::Ptr service);
@@ -125,7 +134,8 @@ public:
    virtual PrimaryDecoder *getPrimaryDecoder() { return primary; }
    virtual Service::Ptr findService(Tunable *tunable, ServiceID id, ElementaryStreams *streams);
    virtual Service::Ptr findService(ServiceID id);
-   virtual bool findService(int nid, int tid, int sid, std::list<Service::Ptr> services);
+   virtual bool findServices(int nid, int tid, int sid, std::list<Service::Ptr> services);
+   virtual Service::Ptr findService(int nid, int tid, int sid);
    virtual Tunable *findTunable(TransportStreamID id);
    virtual bool getTuners(std::list<Tuner *> &tuners);
    virtual Tuner *getFirstTuner();

@@ -1,13 +1,15 @@
 
 package org.dvb.si;
 
+import vdr.mhp.lang.NativeData;
+
 abstract class SICommonObject implements SIInformation {
 
 SIDatabaseRequest request;
 //a subclass specific pointer
-long nativeData = 0;
+NativeData nativeData = null;
 
-SICommonObject(SIDatabaseRequest request, long nativeData) {
+SICommonObject(SIDatabaseRequest request, NativeData nativeData) {
    this.request=request;
    this.nativeData=nativeData;
 }
@@ -17,13 +19,13 @@ protected void finalize() throws java.lang.Throwable {
    cleanUp(nativeData);
 }
 
-protected void cleanUp(long nativeData) {
+protected void cleanUp(NativeData nativeData) {
    //this default implementation deletes nativeData
    //as a SI::Object, which works for SITimeImpl, SITransportStreamImpl,
    //PMTServiceImpl, PMTElementaryStreamImpl, SIEventImpl, SIServiceImpl
    cleanUpSiObject(nativeData);
 }
-private native void cleanUpSiObject(long nativeData);
+private native void cleanUpSiObject(NativeData nativeData);
 
 /*
 Return the time when the information contained in the object that implements this interface was last updated. Returns: 
@@ -69,8 +71,7 @@ application can use this objects for internal communication purposes. If the app
 data, the parameter can be null. listener - SIRetrievalListener that will receive the event informing about the 
 completion of the request. Returns: An SIRequest object Throws: SIIllegalArgumentException - thrown if the retrieveMode 
 is invalid */
-public SIRequest retrieveDescriptors(short retrieveMode, java.lang.Object appData, SIRetrievalListener 
-listener) {
+public SIRequest retrieveDescriptors(short retrieveMode, java.lang.Object appData, SIRetrievalListener listener) throws SIIllegalArgumentException {
    return retrieveDescriptors(retrieveMode, appData, listener, null);
 }
 

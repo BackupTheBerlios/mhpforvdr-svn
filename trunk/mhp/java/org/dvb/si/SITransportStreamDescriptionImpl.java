@@ -1,18 +1,19 @@
 package org.dvb.si;
 
+import vdr.mhp.lang.NativeData;
 
 public class SITransportStreamDescriptionImpl extends SICommonObject {
 
 //nativeData is a pointer to a std::list<TSDT>
 
-SITransportStreamDescriptionImpl (SIDatabaseRequest request, long nativeData) {
+SITransportStreamDescriptionImpl (SIDatabaseRequest request, NativeData nativeData) {
    super(request, nativeData);
 }
 
-protected void cleanUp(long nativeData) {
+protected void cleanUp(NativeData nativeData) {
    cleanUpStdList(nativeData);
 }
-private native void cleanUpStdList(long nativeData);
+private native void cleanUpStdList(NativeData nativeData);
 
 /*
 Return true when the information contained in the object that implements this interface was  ltered from an 'actual' 
@@ -25,7 +26,7 @@ public boolean fromActual() {
 public short[] getDescriptorTags() {
    return descriptorTags(nativeData);
 }
-private native short[] descriptorTags(long nativeData);
+private native short[] descriptorTags(NativeData nativeData);
 
 
 /*

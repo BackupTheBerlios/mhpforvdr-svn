@@ -99,11 +99,11 @@ void SchedulerBySeconds::Action() {
    }
 }
 
-IdTracker::~IdTracker() {
+ListIdTracker::~ListIdTracker() {
    delete ids;
 }
 
-bool IdTracker::isIncluded(int id) {
+bool ListIdTracker::isIncluded(int id) {
    if (size==-1)
       return true;
    if (!ids)
@@ -115,20 +115,7 @@ bool IdTracker::isIncluded(int id) {
    return false;
 }
 
-void IdTracker::IncludeAll() {
-   delete ids;
-   ids=0;
-   size=-1;
-}
-
-void IdTracker::Set(int id) {
-   delete ids;
-   ids=new int[1];
-   size=1;
-   ids[0]=id;
-}
-
-void IdTracker::Set(int *id, bool copy) {
+void ListIdTracker::Set(int *id, bool copy) {
    delete ids;
    if (copy) {
       ids=new int[size];

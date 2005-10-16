@@ -25,6 +25,7 @@ public:
    int tid;
    //The variables are publicly accessible, but provide accessor methods as well
    int GetSource() const { return source; }
+   // Returns the original network ID, although it is not named GetONid()
    int GetNid() const { return onid; }
    int GetTid() const { return tid; }
    bool operator==(const TransportStreamID &other) const

@@ -1,6 +1,9 @@
 package org.dvb.si;
 
 import vdr.mhp.lang.NativeData;
+import java.util.LinkedList;
+import javax.tv.service.navigation.DeliverySystemType;
+import org.davic.net.dvb.DvbLocator;
 
 
 
@@ -12,7 +15,7 @@ public class SIDatabase {
 
 NativeData nativeData;
 
-protected SIDatabase(NativeData nativeData) {
+SIDatabase(NativeData nativeData) {
    this.nativeData=nativeData;
 }
 
@@ -22,6 +25,28 @@ NativeData getNativeData() {
 
 static SIDatabase[] databases = null;
 
+private static native NativeData databaseForChannel(int nid, int tid, int sid);
+private static native void initializeList(DatabaseListBuilder builder);
+private native int deliverySystemType(NativeData nativeData);
+
+public static void Initialize() {
+   DatabaseListBuilder builder = new DatabaseListBuilder();
+   initializeList(builder);
+   databases = builder.getArray();
+}
+
+
+static class DatabaseListBuilder {
+   LinkedList list = new LinkedList();
+   void nextDatabase(NativeData nativeData) {
+      list.add(new SIDatabase(nativeData));
+   }
+   SIDatabase[] getArray() {
+      SIDatabase[] array = new SIDatabase[list.size()];
+      return (SIDatabase[])list.toArray(array);
+   }
+}
+
 /*
 Return an array of SIDatabase objects (one object per network interface). In a system with one network interface, the 
 length of this array will be one. The network interface of each SIDatabase is used as data source for all new data 
@@ -29,18 +54,8 @@ accessed by this SIDatabase or SIInformation instances obtained from it.This is 
 the DVB-SI API. The returned SIDatabase objects provide the access point to the DVB-SI information. Returns: An array of 
 SIDatabase objects, one per network interface. */
 public static SIDatabase[] getSIDatabase() {
-   if (databases == null) {
-      checkDatabases();
-      int num=numDatabases();
-      databases=new SIDatabase[num];
-      for (int i=0; i<num; i++)
-         databases[i]=new SIDatabase(databasePointer(i));
-   }
    return databases;
 }
-private static native int numDatabases();
-private static native void checkDatabases();
-private static native NativeData databasePointer(int index);
 
 public static SIDatabase getDatabaseForChannel(int nid, int tid, int sid) {
    NativeData nD=databaseForChannel(nid, tid, sid);
@@ -53,7 +68,25 @@ public static SIDatabase getDatabaseForChannel(int nid, int tid, int sid) {
          return databases[i];
    return null;
 }
-private static native NativeData databaseForChannel(int nid, int tid, int sid);
+
+// for the sake of javax.tv.service.transport.DVBTransport
+public DeliverySystemType getDeliverySystemType() {
+      // constants from libservice/service.h
+      switch(deliverySystemType(nativeData)) {
+      case 1:  return DeliverySystemType.SATELLITE;
+      case 2:  return DeliverySystemType.CABLE;
+      case 3:  return DeliverySystemType.TERRESTRIAL;
+      default: return DeliverySystemType.UNKNOWN;
+      }
+}
+
+static void checkRetrieveMode(short mode) throws SIIllegalArgumentException {
+   if (! (mode == SIInformation.FROM_CACHE_OR_STREAM
+       || mode == SIInformation.FROM_STREAM_ONLY
+       || mode == SIInformation.FROM_CACHE_ONLY
+      )  )
+      throw new SIIllegalArgumentException("Invalid retrieve mode "+mode);
+}
 
 
 /*static class SIIteratorOnCollection implements SIIterator {
@@ -133,6 +166,7 @@ information will be monitored.Throws: SIIllegalArgumentException - thrown if the
 range) See Also: SIMonitoringListener, SIMonitoringEvent */
 public void addBouquetMonitoringListener(SIMonitoringListener listener, int 
 bouquetId) {
+   System.out.println("org.dvb.si.SIDatabase addBouquetMonitoringListener: implement me");
 }
 
 /*
@@ -155,6 +189,7 @@ the monitoring Throws: SIIllegalArgumentException - thrown if the identi ers are
 SIMonitoringListener, SIMonitoringEvent */
 public void addEventPresentFollowingMonitoringListener(SIMonitoringListener listener, int originalNetworkId, int 
 transportStreamId, int serviceId) {
+   System.out.println("org.dvb.si.SIDatabase addEventPresentFollowingMonitoringListener: implement me");
 }
 
 /*
@@ -172,6 +207,7 @@ retrieved some SI information from the stream, then these listeners are noti ed 
 change. */
 public void addEventScheduleMonitoringListener(SIMonitoringListener listener, int originalNetworkId, int 
 transportStreamId, int serviceId, java.util.Date startTime, java.util.Date endTime) {
+   System.out.println("org.dvb.si.SIDatabase addEventScheduleMonitoringListener: implement me");
 }
 
 /*
@@ -190,6 +226,7 @@ information will be monitored. Throws: SIIllegalArgumentException - thrown if th
 range) See Also: SIMonitoringListener, SIMonitoringEvent */
 public void addNetworkMonitoringListener(SIMonitoringListener listener, int 
 networkId) {
+   System.out.println("org.dvb.si.SIDatabase addNetworkMonitoringListener: implement me");
 }
 
 /*
@@ -204,6 +241,7 @@ implementation detects a change, e.g. because a resident Navigator or an MHP app
 information from the stream, then these listeners are noti ed of the change. */
 public void addPMTServiceMonitoringListener(SIMonitoringListener listener, int originalNetworkId, int transportStreamId, 
 int serviceId) {
+   System.out.println("org.dvb.si.SIDatabase addPMTServiceMonitoringListener: implement me");
 }
 
 /*
@@ -225,6 +263,7 @@ monitoring. Throws: SIIllegalArgumentException - thrown if the identi ers are in
 SIMonitoringListener, SIMonitoringEvent */
 public void addServiceMonitoringListener(SIMonitoringListener listener, int originalNetworkId, int 
 transportStreamId) {
+   System.out.println("org.dvb.si.SIDatabase addServiceMonitoringListener: implement me");
 }
 
 /*
@@ -236,6 +275,7 @@ information has been requested to be monitored Throws: SIIllegalArgumentExceptio
 (e.g. out of range) See Also: SIMonitoringListener, SIMonitoringEvent */
 public void removeBouquetMonitoringListener(SIMonitoringListener listener, int 
 bouquetId) {
+   System.out.println("org.dvb.si.SIDatabase removeBouquetMonitoringListener: implement me");
 }
 
 /*
@@ -249,6 +289,7 @@ the monitoring. serviceId - service identi er specifying the scope of the monito
 SIMonitoringEvent */
 public void removeEventPresentFollowingMonitoringListener(SIMonitoringListener listener, int originalNetworkId, int 
 transportStreamId, int serviceId) {
+   System.out.println("org.dvb.si.SIDatabase removeEventPresentFollowingMonitoringListener: implement me");
 }
 
 /*
@@ -262,6 +303,7 @@ the monitoring. serviceId - service identi er specifying the scope of the monito
 SIMonitoringEvent */
 public void removeEventScheduleMonitoringListener(SIMonitoringListener listener, int originalNetworkId, int 
 transportStreamId, int serviceId) {
+   System.out.println("org.dvb.si.SIDatabase removeEventScheduleMonitoringListener: implement me");
 }
 
 /*
@@ -273,6 +315,7 @@ longer to be monitored by the listener Throws: SIIllegalArgumentException - thro
 out of range) See Also: SIMonitoringListener, SIMonitoringEvent */
 public void removeNetworkMonitoringListener(SIMonitoringListener listener, int 
 networkId) {
+   System.out.println("org.dvb.si.SIDatabase removeNetworkMonitoringListener: implement me");
 }
 
 /*
@@ -286,6 +329,7 @@ if the identi ers are invalid (e.g. out of range) See Also: SIMonitoringListener
 removeServiceMonitoringListener(SIMonitoringListener listener, int originalNetwor */
 public void removePMTServiceMonitoringListener(SIMonitoringListener listener, int originalNetworkId, int 
 transportStreamId, int serviceId) {
+   System.out.println(": implement me");
 }
 
 /*
@@ -298,6 +342,7 @@ Throws: SIIllegalArgumentException - thrown if the identi ers are invalid (e.g. 
 SIMonitoringListener, SIMonitoringEvent */
 public void removeServiceMonitoringListener(SIMonitoringListener listener, int originalNetworkId, int 
 transportStreamId) {
+   System.out.println(": implement me");
 }
 
 
@@ -328,7 +373,8 @@ application is not interested in descriptors. All values that are out of the val
 0...255) are ignored, except for the special meaning of -1 as the only element in the array. Returns: An SIRequest 
 object Throws: SIIllegalArgumentException - thrown if the retrieveMode is invalid */
 public SIRequest retrieveActualSINetwork(short retrieveMode, java.lang.Object appData, SIRetrievalListener listener, 
-short[] someDescriptorTags) {
+short[] someDescriptorTags) throws SIIllegalArgumentException {
+   checkRetrieveMode(retrieveMode);
    return SIDatabaseRequest.ActualNetworkRequest(appData, listener, this, retrieveMode);
 }
 
@@ -350,7 +396,8 @@ tags (i.e. 0...255) are ignored, except for the special meaning of -1 as the onl
 SIRequest object Throws: SIIllegalArgumentException - thrown if the retrieveMode is invalid See Also: SIRequest, 
 SIRetrievalListener, SIService, DescriptorTag */
 public SIRequest retrieveActualSIServices(short retrieveMode, java.lang.Object appData, SIRetrievalListener listener, 
-short[] someDescriptorTags) {
+short[] someDescriptorTags) throws SIIllegalArgumentException {
+   checkRetrieveMode(retrieveMode);
    return SIDatabaseRequest.ActualServicesRequest(appData, listener, this, retrieveMode);
 }
 
@@ -372,7 +419,8 @@ tags (i.e. 0...255) are ignored, except for the special meaning of -1 as the onl
 SIRequest object Throws: SIIllegalArgumentException - thrown if the retrieveMode is 
 invalid */
 public SIRequest retrieveActualSITransportStream(short retrieveMode, java.lang.Object appData, SIRetrievalListener 
-listener, short[] someDescriptorTags) {
+listener, short[] someDescriptorTags) throws SIIllegalArgumentException {
+   checkRetrieveMode(retrieveMode);
    return SIDatabaseRequest.ActualTransportStreamRequest(appData, listener, this, retrieveMode);
 }
 
@@ -396,11 +444,14 @@ special meaning of -1 as the only element in the array. Returns: An SIRequest ob
 - thrown if the retrieveMode is invalid or if the locator is invalid and does not identify one or more service 
 components */
 public SIRequest retrievePMTElementaryStreams(short retrieveMode, java.lang.Object appData, SIRetrievalListener 
-listener, org.davic.net.dvb.DvbLocator dvbLocator, short[] someDescriptorTags) {
-   return SIDatabaseRequest.PMTElementaryStreamsRequest(appData, listener, this, retrieveMode, dvbLocator.getServiceId(), dvbLocator.getComponentTags());
+listener, DvbLocator dvbLocator, short[] someDescriptorTags) throws SIIllegalArgumentException {
+   checkRetrieveMode(retrieveMode);
+   if (!dvbLocator.provides(DvbLocator.COMPONENTS))
+      throw new SIIllegalArgumentException("Locator does not specify service components");
+   return SIDatabaseRequest.PMTElementaryStreamsRequest(appData, listener, this, retrieveMode, dvbLocator.getOriginalNetworkId(), dvbLocator.getTransportStreamId(), dvbLocator.getServiceId(), dvbLocator.getComponentTags());
 }
 
-/*
+/*COMPONENTS
 Retrieve PMT elementary stream information associated with components of a service from the actual transport stream of 
 this SIDatabase object. The elementary streams can be speci ed by theiridenti cation. When -1 is speci ed for 
 componentTag then elementary streams shall be retrieved regardless of their component tag. The SIIterator that is 
@@ -421,10 +472,10 @@ range for descriptor tags (i.e. 0...255) are ignored, except for the special mea
 array. Returns: An SIRequest object Throws: SIIllegalArgumentException - thrown if the retrieveMode is invalid or the 
 numeric identi ers are out of range */
 public SIRequest retrievePMTElementaryStreams(short retrieveMode, java.lang.Object appData, SIRetrievalListener 
-listener, int serviceId, int componentTag, short[] someDescriptorTags) {
-   int[] ctag=new int[1];
-   ctag[0]=componentTag;
-   return SIDatabaseRequest.PMTElementaryStreamsRequest(appData, listener, this, retrieveMode, serviceId, ctag);
+listener, int serviceId, int componentTag, short[] someDescriptorTags) throws SIIllegalArgumentException {
+   checkRetrieveMode(retrieveMode);
+   int[] ctag = new int [] { componentTag };
+   return SIDatabaseRequest.PMTElementaryStreamsRequest(appData, listener, this, retrieveMode, -1, -1, serviceId, ctag);
 }
 
 /*
@@ -446,8 +497,9 @@ ignored, except for the special meaning of -1 as the only element in the array. 
 SIIllegalArgumentException - thrown if the retrieveMode is invalid or the locator is invalid and does not identify a 
 service */
 public SIRequest retrievePMTService(short retrieveMode, java.lang.Object appData, SIRetrievalListener listener, 
-org.davic.net.dvb.DvbLocator dvbLocator, short[] someDescriptorTags) {
-   return SIDatabaseRequest.PMTServicesRequest(appData, listener, this, retrieveMode, dvbLocator.getServiceId());
+DvbLocator dvbLocator, short[] someDescriptorTags) throws SIIllegalArgumentException {
+   checkRetrieveMode(retrieveMode);
+   return SIDatabaseRequest.PMTServicesRequest(appData, listener, this, retrieveMode, dvbLocator.getOriginalNetworkId(), dvbLocator.getTransportStreamId(), dvbLocator.getServiceId());
 }
 
 /*
@@ -469,8 +521,9 @@ descriptors. All values that are out of the valid range for descriptor tags (i.e
 special meaning of -1 as the only element in the array. Returns: An SIRequest object Throws:SIIllegalArgumentException - 
 thrown if the retrieveMode is invalid or the numeric identi ers are out of range */
 public SIRequest retrievePMTServices(short retrieveMode, java.lang.Object appData, SIRetrievalListener listener, int 
-serviceId, short[] someDescriptorTags) {
-   return SIDatabaseRequest.PMTServicesRequest(appData, listener, this, retrieveMode, serviceId);
+serviceId, short[] someDescriptorTags) throws SIIllegalArgumentException {
+   checkRetrieveMode(retrieveMode);
+   return SIDatabaseRequest.PMTServicesRequest(appData, listener, this, retrieveMode, -1, -1, serviceId);
 }
 
 /*
@@ -492,7 +545,8 @@ the valid range for descriptor tags (i.e. 0...255) are ignored, except for the s
 in the array. Returns: An SIRequest object Throws: SIIllegalArgumentException - thrown if the retrieveMode is invalid or 
 the numeric identi ers are out of range */
 public SIRequest retrieveSIBouquets(short retrieveMode, java.lang.Object appData, SIRetrievalListener listener, int 
-bouquetId, short[] someDescriptorTags) {
+bouquetId, short[] someDescriptorTags) throws SIIllegalArgumentException {
+   checkRetrieveMode(retrieveMode);
    return SIDatabaseRequest.BouquetsRequest(appData, listener, this, retrieveMode, bouquetId);
 }
 
@@ -515,7 +569,8 @@ for descriptor tags (i.e. 0...255) are ignored, except for the special meaning o
 Returns: An SIRequest object Throws: SIIllegalArgumentException - thrown if the retrieveMode is invalid or the numeric 
 identi ers are out of range */
 public SIRequest retrieveSINetworks(short retrieveMode, java.lang.Object appData, SIRetrievalListener listener, int 
-networkId, short[] someDescriptorTags) {
+networkId, short[] someDescriptorTags) throws SIIllegalArgumentException {
+   checkRetrieveMode(retrieveMode);
    return SIDatabaseRequest.NetworksRequest(appData, listener, this, retrieveMode, networkId);
 }
 
@@ -538,7 +593,10 @@ ignored, except for the special meaning of -1 as the only element in the array. 
 SIIllegalArgumentException - thrown if the retrieveMode is invalid or the locator is invalid and does not identify a 
 service */
 public SIRequest retrieveSIService(short retrieveMode, java.lang.Object appData, SIRetrievalListener listener, 
-org.davic.net.dvb.DvbLocator dvbLocator, short[] someDescriptorTags) {
+DvbLocator dvbLocator, short[] someDescriptorTags) throws SIIllegalArgumentException {
+   checkRetrieveMode(retrieveMode);
+   if (!dvbLocator.provides(DvbLocator.SERVICE))
+      throw new SIIllegalArgumentException("Locator does not specifiy a service");
    return SIDatabaseRequest.ServicesRequest(appData, listener, this, retrieveMode, dvbLocator.getOriginalNetworkId(), dvbLocator.getTransportStreamId(), dvbLocator.getServiceId());
 }
 
@@ -564,7 +622,8 @@ out of the valid range for descriptor tags (i.e. 0...255) are ignored, except fo
 element in the array. Returns: An SIRequest object Throws:SIIllegalArgumentException - thrown if the retrieveMode is 
 invalid or the numeric identi ers are out of range */
 public SIRequest retrieveSIServices(short retrieveMode, java.lang.Object appData, SIRetrievalListener listener, int 
-originalNetworkId, int transportStreamId, int serviceId, short[] someDescriptorTags) {
+originalNetworkId, int transportStreamId, int serviceId, short[] someDescriptorTags) throws SIIllegalArgumentException {
+   checkRetrieveMode(retrieveMode);
    return SIDatabaseRequest.ServicesRequest(appData, listener, this, retrieveMode, originalNetworkId, transportStreamId, serviceId);
 }
 
@@ -581,7 +640,8 @@ parameter can be null. listener - SIRetrievalListener that will receive the even
 request.Returns: An SIRequest object Throws: SIIllegalArgumentException - thrown if the retrieveMode is 
 invalid */
 public SIRequest retrieveSITimeFromTDT(short retrieveMode, java.lang.Object appData, SIRetrievalListener 
-listener) {
+listener) throws SIIllegalArgumentException {
+   checkRetrieveMode(retrieveMode);
    return SIDatabaseRequest.TDTRequest(appData, listener, this, retrieveMode);
 }
 
@@ -602,7 +662,8 @@ descriptors. All values that are out of the valid range for descriptor tags (i.e
 special meaning of -1 as the only element in the array. Returns: An SIRequest object Throws: SIIllegalArgumentException 
 - thrown if the retrieveMode is invalid */
 public SIRequest retrieveSITimeFromTOT(short retrieveMode, java.lang.Object appData, SIRetrievalListener listener, 
-short[] someDescriptorTags) {
+short[] someDescriptorTags) throws SIIllegalArgumentException {
+   checkRetrieveMode(retrieveMode);
    return SIDatabaseRequest.TDTRequest(appData, listener, this, retrieveMode);
 }
 
@@ -623,7 +684,8 @@ descriptors. All values that are out of the valid range for descriptor tags (i.e
 special meaning of -1 as the only element in the array. Returns: An SIRequest object Throws: SIIllegalArgumentException 
 - thrown if the retrieveMode is invalid */
 public SIRequest retrieveSITransportStreamDescription(short retrieveMode, java.lang.Object appData, SIRetrievalListener 
-listener, short[] someDescriptorTags) {
+listener, short[] someDescriptorTags) throws SIIllegalArgumentException {
+   checkRetrieveMode(retrieveMode);
    return SIDatabaseRequest.TransportStreamDescriptionRequest(appData, listener, this, retrieveMode);
 }
 

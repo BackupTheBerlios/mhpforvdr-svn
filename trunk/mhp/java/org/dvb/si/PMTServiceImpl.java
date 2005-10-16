@@ -1,11 +1,12 @@
 package org.dvb.si;
 
+import vdr.mhp.lang.NativeData;
 
 public class PMTServiceImpl extends SICommonObject implements PMTService {
 
 //nativeData is a pointer to a PMT
 
-PMTServiceImpl (SIDatabaseRequest request, long nativeData) {
+PMTServiceImpl (SIDatabaseRequest request, NativeData nativeData) {
    super(request, nativeData);
 }
 
@@ -14,12 +15,11 @@ Return true when the information contained in the object that implements this in
 table or from a table with no 'actual/other' distinction. Returns: true if the information comes from an 'actual' table 
 or from a table with no 'actual/other' distiction, otherwise returns false */
 public boolean fromActual() {
-   //TODO
    return true;
 }
 
 /*
-Gets a DvbLocator that identi es this service Returns: The DvbLocator of this 
+Gets a DvbLocator that identifies this service Returns: The DvbLocator of this 
 service */
 public org.davic.net.dvb.DvbLocator getDvbLocator() {
    try {
@@ -33,7 +33,7 @@ public org.davic.net.dvb.DvbLocator getDvbLocator() {
 public short[] getDescriptorTags() {
    return descriptorTags(nativeData);
 }
-private native short[] descriptorTags(long nativeData);
+private native short[] descriptorTags(NativeData nativeData);
 
 
 /*
@@ -49,7 +49,7 @@ Get the PCR pid. Returns: The PCR pid. */
 public int getPcrPid() {
    return getPcrPid(nativeData);
 }
-private native int getPcrPid(long nativeData);
+private native int getPcrPid(NativeData nativeData);
 
 
 /*
@@ -57,7 +57,7 @@ Get the service identi cation. Returns: The service identi cation identi er. */
 public int getServiceID() {
    return getServiceID(nativeData);
 }
-private native int getServiceID(long nativeData);
+private native int getServiceID(NativeData nativeData);
 
 
 /*
@@ -84,10 +84,10 @@ descriptors. If somePMTDescriptorTags is null, the application is not interested
 values are ignored. Returns: An SIRequest object Throws: SIIllegalArgumentException - thrown if the retrieveMode is 
 invalid See Also: SIRequest, SIRetrievalListener, PMTElementaryStream */
 public SIRequest retrievePMTElementaryStreams(short retrieveMode, java.lang.Object appData, SIRetrievalListener 
-listener, short[] somePMTDescriptorTags) {
-   int[] allComps=new int[1];
-   allComps[0]=-1;
-   return SIDatabaseRequest.PMTElementaryStreamsRequest(appData, listener, request.db, retrieveMode, getServiceID(), allComps);   
+      listener, short[] somePMTDescriptorTags) throws SIIllegalArgumentException {
+   SIDatabase.checkRetrieveMode(retrieveMode);
+   int[] allComps=new int [] { -1 };
+   return SIDatabaseRequest.PMTElementaryStreamsRequest(appData, listener, request.db, retrieveMode, getOriginalNetworkID(), getTransportStreamID(), getServiceID(), allComps);   
 }
 
 
@@ -102,7 +102,8 @@ An object supplied by the application. This object will be delivered to the list
 application can use this objects for internal communication purposes. If the application does not need any application 
 data, the parameter can be null. listener - SIRetrievalListener that will receive the event informing about the 
 completion of the request. */
-public SIRequest retrieveDescriptors(short retrieveMode, java.lang.Object appData, SIRetrievalListener listener, short[] someDescriptorTags) {
+public SIRequest retrieveDescriptors(short retrieveMode, java.lang.Object appData, SIRetrievalListener listener, short[] someDescriptorTags) throws SIIllegalArgumentException {
+   SIDatabase.checkRetrieveMode(retrieveMode);
    return SIDatabaseRequest.DescriptorRequestPMTService(this, someDescriptorTags, appData, listener, request.db, retrieveMode);
 }
 

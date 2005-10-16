@@ -45,12 +45,12 @@ final static String CountryCode = "Country Code";
 final static String DefaultFontSize = "Default Font Size";*/
 
 private UserPreferenceManager() {
-   file=new String(getSettingsFilePath());
+   file=getSettingsFilePath();
    initSettings();
 }
 
-private native byte[] getSettingsFilePath();
-private native byte[] getVDRLanguage();
+private native String getSettingsFilePath();
+private native String getVDRLanguage();
 
 //For simplicity, we use Java serialization instead of a good old
 //plain-ASCII settings file. Change this if you feel like it and have time.
@@ -79,7 +79,7 @@ private void initSettings() {
 
 private void insertDefaults() {
    GeneralPreference pref = new GeneralPreference(GeneralPreference.UserLanguage);
-   pref.add(new String(getVDRLanguage()));
+   pref.add(getVDRLanguage());
    settings.add(pref);
    pref = new GeneralPreference(GeneralPreference.DefaultFontSize);
    pref.add(Integer.toString(26));

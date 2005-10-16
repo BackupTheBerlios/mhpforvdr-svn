@@ -1,6 +1,7 @@
 
 package org.dvb.si;
 
+import vdr.mhp.lang.NativeData;
 
 /*This class represents a descriptor within a sub-table. A descriptor consist of three  
 elds: a tag, a contentLength and the content. The tag uniquely identi es the descriptor 
@@ -11,10 +12,10 @@ content is descriptor type dependent. */
 public class Descriptor {
 
 SIDatabaseRequest request;
-long nativeData = 0;
+NativeData nativeData = null;
 //nativeData is a pointer to a SI::Descriptor
 
-Descriptor(SIDatabaseRequest request, long nativeData) {
+Descriptor(SIDatabaseRequest request, NativeData nativeData) {
    this.request=request;
    this.nativeData=nativeData;
 }
@@ -28,7 +29,7 @@ public byte getByteAt(int index) throws IndexOutOfBoundsException {
       throw new IndexOutOfBoundsException("Invalid index for descriptor data");
    return getData(nativeData, index);
 }
-private native byte getData(long nativeData, int index);
+private native byte getData(NativeData nativeData, int index);
 
 /*
 Get a copy of the content of this descriptor (everything after the length  eld). Returns: a copy of the content of the 
@@ -36,7 +37,7 @@ descriptor */
 public byte[] getContent() {
    return getDataArray(nativeData);
 }
-private native byte[] getDataArray(long nativeData);
+private native byte[] getDataArray(NativeData nativeData);
 
 /*
 ETSI This method returns the length of the descriptor content as coded in the length  eld of this descriptor. 495 ETSI 
@@ -44,7 +45,7 @@ TS 102 812 V1.1.1 (2001-11) Returns: The length of the descriptor content. */
 public short getContentLength() {
    return getLength(nativeData);
 }
-private native short getLength(long nativeData);
+private native short getLength(NativeData nativeData);
 
 /*
 Get the descriptor tag Returns: The descriptor tag (the most common values are de ned in the DescriptorTag interface) 
@@ -52,7 +53,7 @@ See Also: DescriptorTag */
 public short getTag() {
    return getTag(nativeData);
 }
-private native short getTag(long nativeData);
+private native short getTag(NativeData nativeData);
 
 
 }

@@ -27,6 +27,11 @@ public class VDRServiceList implements ServiceList {
 
 LinkedList list;
 
+static {
+   initStaticState();
+}
+
+private native static void initStaticState();
 private native void listServices(ListBuilder builder);
 
 class ListBuilder {
@@ -44,7 +49,7 @@ class ListBuilder {
    }
 }
 
-VDRServiceList(ServiceFilter filter) {
+public VDRServiceList(ServiceFilter filter) {
    list = new LinkedList();
    listServices(new ListBuilder(filter));
 }
@@ -56,12 +61,6 @@ VDRServiceList(ServiceFilter filter, LinkedList source) {
       builder.nextService((Service)it.next());
    }
 }
-
-//internal
-public static ServiceList getList(ServiceFilter filter) {
-   return new VDRServiceList(filter);
-}
-
 
 class NameComparator implements java.util.Comparator {
    public boolean equals(Object o) {
@@ -178,13 +177,14 @@ class VDRServiceListIterator implements ServiceIterator {
    }
 
    public void toBeginning() {
-      if (!list.isEmpty())
-         it = list.listIterator(0);
+      it = list.listIterator();
    }
    
    public void toEnd() {
       if (!list.isEmpty())
          it = list.listIterator(list.size()-1);
+      else
+         it = list.listIterator();
    }
    
    public javax.tv.service.Service nextService() {

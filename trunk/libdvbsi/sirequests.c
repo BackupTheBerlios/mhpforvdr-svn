@@ -9,6 +9,7 @@
  ***************************************************************************/
 
 #include <libsi/descriptor.h>
+#include <vdr/config.h>
 
 #include "sirequests.h"
 #include "database.h"
@@ -20,14 +21,24 @@ namespace DvbSi {
 /*** Filter Requests ***/
 
 
-PMTServicesRequest::PMTServicesRequest(Database::Ptr db, Listener *listener, IdTracker *tr, RetrieveMode mode, void *ad)
- : TableFilterRequest<PMT>(db, tr, listener, ad),
+PMTServicesRequest::PMTServicesRequest(Database::Ptr db, Listener *listener, int originalNetworkId, int transportStreamId, IdTracker *sid, RetrieveMode mode, void *ad)
+ : TableFilterRequest<PMT>(db, sid, listener, ad),
    currentPid(0)
 {
    //mode is currently ignored
-   SI::PAT pat;
-   if (database->retrievePat(pat))
-      addNext(pat);
+   // if both are -1, the "actual" stream is meant.
+   // If Onid is specified, a specific transport stream may be meant. Tid may be -1.
+   if ( (originalNetworkId == -1 && transportStreamId == -1) ||
+               (originalNetworkId == database->getOriginalNetworkId() 
+             && ( transportStreamId == -1 || transportStreamId == database->getTransportStreamId()) )
+      ) {
+      SI::PAT pat;
+      if (database->retrievePat(pat))
+         addNext(pat);
+   } else {
+      result=ResultCodeObjectNotInTable;
+      Detach();
+   }
 }
 
 void PMTServicesRequest::Process(u_short Pid, u_char Tid, const u_char *Data, int Length) {
@@ -65,7 +76,7 @@ bool PMTServicesRequest::addNext(SI::PAT &pat) {
          Del(currentPid, SI::TableIdPMT);
       }
       if (!assoc.isNITPid()) {
-         if (tracker->isIncluded(assoc.getServiceId())) {
+         if (!tracker || tracker->isIncluded(assoc.getServiceId())) {
             currentPid=assoc.getPid();
             //printf("PMTFilter Adding %d %d\n", currentPid, SI::TableIdPMT);
             Add(currentPid, SI::TableIdPMT);
@@ -78,9 +89,13 @@ bool PMTServicesRequest::addNext(SI::PAT &pat) {
 }
 
 
-NetworksRequest::NetworksRequest(Database::Ptr db, Listener *listener, IdTracker *tr, RetrieveMode mode, void *appData)
-  : TableFilterTrackerRequest<NIT>(db, tr, listener, appData)
+NetworksRequest::NetworksRequest(Database::Ptr db, Listener *listener, IdTracker *nids, RetrieveMode mode, void *appData)
+  : TableFilterTrackerRequest<NIT>(db, nids, listener, appData)
 {
+   // Here, nids refers to the network IDs, not the original network IDs!
+   // Since currently the network id (in contrast to the ONID) of the current TS
+   // is not available from the Database, we do not know in advance (as with the SDT request below)
+   // whether the TableIdNIT_other tables are necessary.
    ChangeInterval(FILTER_TIMEOUT_NIT);
    Add(0x10, SI::TableIdNIT);
    Add(0x10, SI::TableIdNIT_other);
@@ -91,8 +106,27 @@ void NetworksRequest::Process(u_short Pid, u_char Tid, const u_char *Data, int L
       NIT nit(Data);
       if (!nit.CheckCRCAndParse())
          return;
-      
-      printf("Having NIT %d %d %d %d\n", nit.getTableId(), nit.getTableIdExtension(), nit.getSectionNumber(), nit.getLastSectionNumber());
+
+      //printf("Having NIT %d %d %d %d\n", nit.getTableId(), nit.getTableIdExtension(), nit.getSectionNumber(), nit.getLastSectionNumber());
+      finished = checkSection(nit);
+      checkFinish();
+   }
+}
+
+ActualNetworkRequest::ActualNetworkRequest(Database::Ptr db, Listener *listener, RetrieveMode mode, void *appData)
+   : TableFilterTrackerRequest<NIT>(db, 0, listener, appData)
+{
+   ChangeInterval(FILTER_TIMEOUT_NIT);
+   Add(0x10, SI::TableIdNIT);
+}
+
+void ActualNetworkRequest::Process(u_short Pid, u_char Tid, const u_char *Data, int Length) {
+   if (Pid==0x10 && Tid==SI::TableIdNIT && !finished) {
+      NIT nit(Data);
+      if (!nit.CheckCRCAndParse())
+         return;
+
+      //printf("Having NIT %d %d %d %d\n", nit.getTableId(), nit.getTableIdExtension(), nit.getSectionNumber(), nit.getLastSectionNumber());
       finished = checkSection(nit);
       checkFinish();
    }
@@ -100,7 +134,7 @@ void NetworksRequest::Process(u_short Pid, u_char Tid, const u_char *Data, int L
 
 TransportStreamDescriptionRequest::TransportStreamDescriptionRequest(Database::Ptr db, Listener *listener,  RetrieveMode mode, void *appData)
    //the tableIdExtension of the TSDT has no meaning, so we have to use the duplicates mechanism
-  : TableFilterTrackerRequest<TSDT>(db, new IdTracker(), listener, appData)
+  : TableFilterTrackerRequest<TSDT>(db, 0, listener, appData)
 {
    Add(0x02, SI::TableIdTSDT);
 }
@@ -117,12 +151,19 @@ void TransportStreamDescriptionRequest::Process(u_short Pid, u_char Tid, const u
    }
 }
 
-ServiceTableRequest::ServiceTableRequest(Database::Ptr db, Listener *listener, IdTracker *tr, RetrieveMode mode, void *appData)
-  : TableFilterTrackerRequest<SDT>(db, tr, listener, appData), duplicatesOther(0)
+ServiceTableRequest::ServiceTableRequest(Database::Ptr db, Listener *listener, IdTracker *originalNetworkIds, IdTracker *tids, RetrieveMode mode, void *appData)
+   : TableFilterTrackerRequest<SDT>(db, tids, listener, appData), originalNetworkIds(originalNetworkIds), duplicatesOther(0)
 {
    ChangeInterval(FILTER_TIMEOUT_SDT);
-   Add(0x11, SI::TableIdSDT);
-   Add(0x11, SI::TableIdSDT_other);
+   // If tracker only includes the current TS, only add one PID.
+   if (tids && tids->getSize() == 1 && tids->isIncluded(db->getTransportStreamId()) ) {
+      Add(0x11, SI::TableIdSDT);
+      // bypass check below
+      duplicatesOther=MAX_DUPLICATES;
+   } else {
+      Add(0x11, SI::TableIdSDT);
+      Add(0x11, SI::TableIdSDT_other);
+   }
 }
 
 void ServiceTableRequest::Process(u_short Pid, u_char Tid, const u_char *Data, int Length) {
@@ -132,7 +173,9 @@ void ServiceTableRequest::Process(u_short Pid, u_char Tid, const u_char *Data, i
          return;
       
       //printf("Having SDT %d %d %d", sdt.getTableId(), sdt.getTableIdExtension(), sdt.getSectionNumber());
-      if (tracker->isFinite()) {
+      if (originalNetworkIds && !originalNetworkIds->isIncluded(sdt.getOriginalNetworkId()))
+         return;
+      if (tracker) {
          finished=checkSection(sdt);
       } else {
          //we need to different duplicates counter, one for SI::TableIdSDT, one for SI::TableIdSDT_other
@@ -190,6 +233,97 @@ void EventTableOtherRequest::Process(u_short Pid, u_char Tid, const u_char *Data
    }
 }
 
+TimeScheduleEventTableRequest::TimeScheduleEventTableRequest(Database::Ptr db, Listener *listener, time_t begin, time_t end,
+      int tid, int sid, RetrieveMode mode, void *appData)
+   : TableFilterTrackerRequest<EIT>(db, new SingleIdTracker(sid), listener, appData), /*presentFollowingFinished(true),*/ scheduleFinished(false)
+{
+   if (!buildSegmentList(begin, end)) {
+      result=ResultCodeObjectNotInTable;
+      Detach();
+      return;
+   }
+   // Note: reception of the next/following section is currently disabled, commented out below and above.
+   // It seems the data is also available in the Schedule sections.
+   // If this proves wrong, needs code to check for duplicate entries and keep order of events.
+   if (tid==db->getTransportStreamId()) {
+      ChangeInterval(FILTER_TIMEOUT_EIT);
+      //Add(0x12, SI::TableIdEIT_presentFollowing);
+      Add(0x12, SI::TableIdEIT_schedule_first, 0xF0);
+   } else {
+      ChangeInterval(FILTER_TIMEOUT_EIT_SCHEDULE_OTHER);
+      //Add(0x12, SI::TableIdEIT_presentFollowing_other);
+      Add(0x12, SI::TableIdEIT_schedule_Other_first, 0xF0);
+   }
+}
+
+void TimeScheduleEventTableRequest::Process(u_short Pid, u_char Tid, const u_char *Data, int Length) {
+   if (Pid==0x12 && !finished) {
+      EIT eit(Data);
+      if (!eit.CheckCRCAndParse())
+         return;
+      // replacing checkSection(), using addSection directly
+      if (Tid == SI::TableIdEIT_presentFollowing || Tid == SI::TableIdEIT_presentFollowing_other) {
+         /*
+         if (tracker->isIncluded(eit.getServiceId())) {
+            bool subtableComplete;
+            addSection(eit, subtableComplete);
+            if (subtableComplete) {
+               presentFollowingFinished=true;
+               Del(Pid, Tid);
+            }
+         }
+         */
+      } else {
+         if (tracker->isIncluded(eit.getServiceId())) {
+            bool segmentsComplete;
+            addSectionSegmented(eit, segments, segmentsComplete);
+            if (segmentsComplete) {
+               scheduleFinished=true;
+               Del(Pid, Tid & 0xF0, 0xF0);
+            }
+         }
+      }
+      finished = /*presentFollowingFinished && */scheduleFinished;
+      checkFinish();
+   }
+}
+
+bool TimeScheduleEventTableRequest::buildSegmentList(time_t begin, time_t end) {
+   // The mechanism is described in ETSI TR 101 211 (Implementation guidelines for SI).
+   // Assignment of section numbers to time intervalls is relative to last midnight in UTC
+   // There are 16 table_id values, each table can have up to 32 segments, each describing a 3-hour period.
+   // This is maximum 512 segments (64 days in the future since last mignight UTC).
+   if (begin > end)
+      return false;
+   time_t now;
+   time(&now);
+   if (end < now)
+      return false;
+   struct tm tmTime;
+   gmtime_r(&now, &tmTime);
+   tmTime.tm_hour=0;
+   tmTime.tm_min=0;
+   tmTime.tm_sec=0;
+   time_t midnight=mktime(&tmTime);
+
+   time_t midnightToBegin=begin-midnight;
+   time_t midnightToEnd=end-midnight;
+   if (midnightToBegin < 0 || midnightToEnd <= 0)
+      return false;
+   int beginSegmentDiff=(midnightToBegin / (3*3600));
+   int endSegmentDiff=(midnightToEnd / (3*3600));
+   if (beginSegmentDiff > 512)
+      return false;
+   if (endSegmentDiff > 512)
+      endSegmentDiff=512;
+   //printf("buildSegmentList: begin %d end %d, now %d, midnight %d, midnightToBegin %d, midnightToEnd %d, beginSegmentDiff %d, endSegmentDiff %d", begin, end, now, midnight, midnightToBegin, midnightToEnd, beginSegmentDiff, endSegmentDiff);
+   segments.reserve(endSegmentDiff-beginSegmentDiff+1);
+   for (int i=beginSegmentDiff; i<=endSegmentDiff; i++)
+      segments.push_back(i);
+   return true;
+}
+
+
 
 BouquetsRequest::BouquetsRequest(Database::Ptr db, Listener *listener, IdTracker *bouquetIds, RetrieveMode mode, void *appData)
   : TableFilterTrackerRequest<BAT>(db, bouquetIds, listener, appData)
@@ -223,8 +357,7 @@ void TDTRequest::Process(u_short Pid, u_char Tid, const u_char *Data, int Length
       tdt.CheckParse();
       //printf("Having TDT %d", tdt.getTableId());
       finished=true;
-      result=ResultCodeSuccess;
-      Detach();
+      checkFinish();
    }
 }
 
@@ -242,8 +375,7 @@ void TOTRequest::Process(u_short Pid, u_char Tid, const u_char *Data, int Length
          return;
       //printf("Having TOT %d", tot.getTableId());
       finished=true;
-      result=ResultCodeSuccess;
-      Detach();
+      checkFinish();
    }
 }
 
@@ -258,7 +390,7 @@ ActualTransportStreamRequest::ActualTransportStreamRequest(Database::Ptr db, Lis
   : ListSecondaryRequest<NIT::TransportStream>(db, listener, appData), nid(0)
 {
    tid=db->getTransportStreamId();
-   req=new NetworksRequest(db, this, new IdTracker(db->getNetworkId()), FromCacheOrStream, 0);
+   request=new ActualNetworkRequest(db, this, FromCacheOrStream, 0);
 }
 
 void ActualTransportStreamRequest::Result(Request *req) {
@@ -287,17 +419,16 @@ void ActualTransportStreamRequest::Result(Request *req) {
    } else
       result=req->getResultCode();
    delete req;
-   hasDispatched=true;
-   getDatabase()->DispatchResult(this);   
+   Dispatch();
 }
 
 
 TransportStreamRequest::TransportStreamRequest(Request *re, std::list<NIT> *nitlist,  Database::Ptr db, Listener *listener, RetrieveMode mode, void *appData)
   : ListSecondaryRequest<NIT::TransportStream>(db, listener, appData), nid(0)
 {
-   req=re;
-   if (req->getResultCode() == ResultCodeSuccess) {
-      setDataSource(req);
+   request=re;
+   if (request->getResultCode() == ResultCodeSuccess) {
+      setDataSource(request);
       NIT::TransportStream ts;
       result=ResultCodeObjectNotInTable;
       for (std::list<NIT>::iterator stlit=nitlist->begin(); stlit != nitlist->end(); ++stlit) {
@@ -317,18 +448,17 @@ TransportStreamRequest::TransportStreamRequest(Request *re, std::list<NIT> *nitl
          finished=true;
       }
    } else
-      result=req->getResultCode();
-   hasDispatched=true;
-   getDatabase()->DispatchResult(this);   
+      result=request->getResultCode();
+   Dispatch();
 }
 
 
 TransportStreamBATRequest::TransportStreamBATRequest(Request *re, std::list<BAT> *nitlist, Database::Ptr db, Listener *listener, RetrieveMode mode, void *appData)
   : ListSecondaryRequest<NIT::TransportStream>(db, listener, appData), bid(0)
 {
-   req=re;
-   if (req->getResultCode() == ResultCodeSuccess) {
-      setDataSource(source);
+   request=re;
+   if (request->getResultCode() == ResultCodeSuccess) {
+      setDataSource(request);
       BAT::TransportStream ts;
       result=ResultCodeObjectNotInTable;
       for (std::list<BAT>::iterator stlit=nitlist->begin(); stlit != nitlist->end(); ++stlit) {
@@ -347,19 +477,18 @@ TransportStreamBATRequest::TransportStreamBATRequest(Request *re, std::list<BAT>
          finished=true;
       }
    } else
-      result=req->getResultCode();
-   hasDispatched=true;
-   getDatabase()->DispatchResult(this);   
+      result=request->getResultCode();
+   Dispatch();
 }
 
 
-PMTElementaryStreamRequest::PMTElementaryStreamRequest(Database::Ptr db, Listener *listener, int serviceId, IdTracker *tr, RetrieveMode mode, void *appData)
+PMTElementaryStreamRequest::PMTElementaryStreamRequest(Database::Ptr db, Listener *listener, int originalNetworkId, int transportStreamId, int serviceId, IdTracker *tr, RetrieveMode mode, void *appData)
   : ListSecondaryRequest<PMT::Stream>(db, listener, appData),
     sid(serviceId),
     tags(tr)
 {
    tid=db->getTransportStreamId();
-   req=new PMTServicesRequest(db, this, new IdTracker(serviceId), FromCacheOrStream, 0);
+   request=new PMTServicesRequest(db, this, originalNetworkId, transportStreamId, new SingleIdTracker(serviceId), FromCacheOrStream, 0);
 }
 
 PMTElementaryStreamRequest::~PMTElementaryStreamRequest() {
@@ -386,7 +515,7 @@ void PMTElementaryStreamRequest::Result(Request *req) {
             SI::Loop::Iterator it2;
             SI::StreamIdentifierDescriptor *d=
                (SI::StreamIdentifierDescriptor *)str.streamDescriptors.getNext(it2, SI::StreamIdentifierDescriptorTag);
-            if (d && tags->isIncluded(d->getComponentTag())) {
+            if (d && (!tags || tags->isIncluded(d->getComponentTag())) ) {
                list.push_back(str);
                //I do not know which return code shall be used if not all ES are found
                result=ResultCodeSuccess;
@@ -397,8 +526,7 @@ void PMTElementaryStreamRequest::Result(Request *req) {
    } else
       result=req->getResultCode();
    delete req;
-   hasDispatched=true;
-   getDatabase()->DispatchResult(this);   
+   Dispatch();
 }
 
 
@@ -408,7 +536,7 @@ ServicesRequest::ServicesRequest(Database::Ptr db, Listener *listener, int origi
     nid(originalNetworkId),
     sids(serviceIds)
 {
-   req=new ServiceTableRequest(db, this, transportStreamIds, mode, appData);
+   request=new ServiceTableRequest(db, this, new SingleIdTracker(originalNetworkId), transportStreamIds, mode, appData);
 }
 
 ServicesRequest::~ServicesRequest() {
@@ -433,7 +561,7 @@ void ServicesRequest::Result(Request *req) {
                service=sdt.serviceLoop.getNext(it);
             #endif
                service.SetIds(nid, sdt.getTransportStreamId());
-               if (sids->isIncluded(service.getServiceId())) {
+               if (!sids || sids->isIncluded(service.getServiceId())) {
                   list.push_back(service);
                   result=ResultCodeSuccess;
                }
@@ -443,15 +571,14 @@ void ServicesRequest::Result(Request *req) {
    } else
       result=req->getResultCode();
    delete req;
-   hasDispatched=true;
-   getDatabase()->DispatchResult(this);   
+   Dispatch();
 }
 
 ActualServicesRequest::ActualServicesRequest(Database::Ptr db, Listener *listener, IdTracker *serviceIds, RetrieveMode mode, void *appData)
   : ListSecondaryRequest<SDT::Service>(db, listener, appData),
     sids(serviceIds)
 {
-   req=new ServiceTableRequest(db, this, new IdTracker(db->getTransportStreamId()), mode, appData);
+   request=new ServiceTableRequest(db, this, new SingleIdTracker(db->getOriginalNetworkId()), new SingleIdTracker(db->getTransportStreamId()), mode, appData);
 }
 
 ActualServicesRequest::~ActualServicesRequest() {
@@ -478,7 +605,7 @@ void ActualServicesRequest::Result(Request *req) {
             service=sdt.serviceLoop.getNext(it);
          #endif
             service.SetIds(nid, tid);
-            if (sids->isIncluded(service.getServiceId())) {
+            if (!sids || sids->isIncluded(service.getServiceId())) {
                //printf("Found service %d\n", service.getServiceId());
                list.push_back(service);
                result=ResultCodeSuccess;
@@ -488,8 +615,7 @@ void ActualServicesRequest::Result(Request *req) {
    } else
       result=req->getResultCode();
    delete req;
-   hasDispatched=true;
-   getDatabase()->DispatchResult(this);
+   Dispatch();
 }
 
 PresentFollowingEventRequest::PresentFollowingEventRequest(Database::Ptr db, Listener *listener, 
@@ -498,9 +624,9 @@ PresentFollowingEventRequest::PresentFollowingEventRequest(Database::Ptr db, Lis
 {
    //printf("PresentFollowingEventRequest: %d %d %d\n", tid, sid, db->getPat().getTransportStreamId());
    if (tid==db->getTransportStreamId())
-      req=new EventTableRequest(db, this, true, new IdTracker(sid), mode, appData);
+      request=new EventTableRequest(db, this, true, new SingleIdTracker(sid), mode, appData);
    else
-      req=new EventTableOtherRequest(db, this, true, new IdTracker(sid), mode, appData);
+      request=new EventTableOtherRequest(db, this, true, new SingleIdTracker(sid), mode, appData);
 }
 
 void PresentFollowingEventRequest::Result(Request *req) {
@@ -540,22 +666,21 @@ void PresentFollowingEventRequest::Result(Request *req) {
          }
          if (result==ResultCodeSuccess)
             break;
-      }      
+      }
    } else
       result=req->getResultCode();
    delete req;
-   hasDispatched=true;
-   database->DispatchResult(this);
+   Dispatch(database);
 }
 
 ScheduleEventRequest::ScheduleEventRequest(Database::Ptr db, Listener *listener, 
                         int tid, int sid, RetrieveMode mode, void *appData)
-   : ListSecondaryRequest<EIT::Event>(db, listener, appData), tid(tid)
+   : ListSecondaryRequest<EIT::Event>(db, listener, appData), sid(sid), tid(tid)
 {
    if (tid==db->getTransportStreamId())
-      req=new EventTableRequest(db, this, false, new IdTracker(sid), mode, appData);
+      request=new EventTableRequest(db, this, false, new SingleIdTracker(sid), mode, appData);
    else
-      req=new EventTableOtherRequest(db, this, false, new IdTracker(sid), mode, appData);
+      request=new EventTableOtherRequest(db, this, false, new SingleIdTracker(sid), mode, appData);
 }
 
 void ScheduleEventRequest::Result(Request *req) {
@@ -565,7 +690,7 @@ void ScheduleEventRequest::Result(Request *req) {
       EventTableRequest *sreq=(EventTableRequest *)req;
       EIT::Event event;
       result=ResultCodeObjectNotInTable;
-         
+
       for (EventTableRequest::iterator stlit=sreq->list.begin(); stlit != sreq->list.end(); ++stlit) {
          if ((*stlit).getTransportStreamId() != tid) //is this necessary?
             continue;
@@ -581,16 +706,121 @@ void ScheduleEventRequest::Result(Request *req) {
             result=ResultCodeSuccess;
             list.push_back(event);
          }
-         if (result==ResultCodeSuccess)
-            break;
-      }      
+      }
    } else
       result=req->getResultCode();
    delete req;
-   hasDispatched=true;
-   getDatabase()->DispatchResult(this);
+   Dispatch();
 }
 
+TimeScheduleEventRequest::TimeScheduleEventRequest(Database::Ptr db, Listener *listener, time_t begin, time_t end,
+            int tid, int sid, RetrieveMode mode, void *appData)
+   : ListSecondaryRequest<EIT::Event>(db, listener, appData), begin(begin), end(end), first(false), mode(mode), sid(sid), tid(tid)
+{
+   request=new TimeScheduleEventTableRequest(db, this, begin, end, tid, sid, mode, appData);
+}
+
+void TimeScheduleEventRequest::Result(Request *req) {
+   //printf("ScheduleEventRequest: received first result, code %d\n", req->getResultCode());
+   if (req->getResultCode() == ResultCodeSuccess) {
+      setDataSource(req);
+      EventTableRequest *sreq=(EventTableRequest *)req;
+      EIT::Event event;
+      result=ResultCodeObjectNotInTable;
+
+      for (EventTableRequest::iterator stlit=sreq->list.begin(); stlit != sreq->list.end(); ++stlit) {
+         if ((*stlit).getTransportStreamId() != tid) //is this necessary?
+            continue;
+         EIT eit(*stlit);
+         nid=eit.getOriginalNetworkId();
+         SI::Loop::Iterator it;
+         #if VDRVERSNUM > 10312
+         while (eit.eventLoop.getNext(event, it)) {
+         #else
+         while (eit.eventLoop.hasNext(it)) {
+            event=eit.eventLoop.getNext(it);
+         #endif
+            time_t endTime=event.getStartTime()+event.getDuration();
+            if ( (event.getStartTime() >= begin && event.getStartTime() < end)
+                 || (endTime >= begin && endTime <= end) ) {
+               result=ResultCodeSuccess;
+               list.push_back(event);
+            }
+         }
+      }
+   } else
+      result=req->getResultCode();
+   delete req;
+   Dispatch();
+}
+
+
+/*
+// The following implementation is sub-optimal: First the whole table is acquired, which may take a
+// considerable amount of time, only then it is parsed.
+// A better implementation: Compute which segments of which table are required, quit when they are received.
+TimeScheduleEventRequest::TimeScheduleEventRequest(Database::Ptr db, Listener *listener, time_t begin, time_t end,
+                        int tid, int sid, RetrieveMode mode, void *appData)
+   : ListSecondaryRequest<EIT::Event>(db, listener, appData), begin(begin), end(end), first(false), mode(mode), sid(sid), tid(tid)
+{
+   // first retrieve Present/Following table
+   if (tid==db->getTransportStreamId()) {
+      request=new EventTableRequest(db, this, true, new IdTracker(sid), mode, appData);
+   } else {
+      request=new EventTableOtherRequest(db, this, true, new IdTracker(sid), mode, appData);
+   }
+   result=ResultCodeObjectNotInTable;
+}
+
+void TimeScheduleEventRequest::Result(Request *req) {
+   //printf("ScheduleEventRequest: received first result, code %d\n", req->getResultCode());
+   if (req->getResultCode() == ResultCodeSuccess) {
+      setDataSource(req);
+      EventTableRequest *sreq=(EventTableRequest *)req;
+      EIT::Event event;
+         
+      for (EventTableRequest::iterator stlit=sreq->list.begin(); stlit != sreq->list.end(); ++stlit) {
+         if ((*stlit).getTransportStreamId() != tid) //is this necessary?
+            continue;
+         EIT eit(*stlit);
+         nid=eit.getOriginalNetworkId();
+         SI::Loop::Iterator it;
+         #if VDRVERSNUM > 10312
+         while (eit.eventLoop.getNext(event, it)) {
+         #else
+         while (eit.eventLoop.hasNext(it)) {
+            event=eit.eventLoop.getNext(it);
+         #endif
+            time_t endTime=event.getStartTime()+event.getDuration();
+            if ( (event.getStartTime() >= begin && event.getStartTime() < end)
+                 || (endTime >= begin && endTime <= end) ) {
+               result=ResultCodeSuccess;
+               list.push_back(event);
+            }
+         }
+      }
+   } else {
+      result=req->getResultCode();
+      delete req;
+      Dispatch();
+      return;
+   }
+   
+   if (first) {
+      first=false;
+      delete req;
+      // Now retrieve schedule table
+      if (tid==getDatabase()->getTransportStreamId()) {
+         request=new EventTableRequest(getDatabase(), this, false, new IdTracker(sid), mode, getAppData());
+      } else {
+         request=new EventTableOtherRequest(getDatabase(), this, false, new IdTracker(sid), mode, getAppData());
+      }
+   } else {
+      delete req;
+      Dispatch();
+   }
+}
+*/
 
 
 

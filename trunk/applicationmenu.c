@@ -47,7 +47,6 @@ MhpApplicationMenuItem::MhpApplicationMenuItem(ApplicationInfo::cApplication::Pt
       asprintf(&buffer, "%s - %s", service ? service->getChannelInformation()->getName() : tr("Unknown channel"), name);
    }
    
-   printf("Setting text %s\n", buffer);
    SetSelectable(selectable);
    SetText(buffer,false);
 }

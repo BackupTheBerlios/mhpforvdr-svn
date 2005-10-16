@@ -10,13 +10,14 @@
 #include <libdsmcc/biop.h>
 #include <libdsmcc/dsmcc.h>
 #include <libservice/transportstream.h>
+#include <libservice/filter.h>
 
 #include "cache.h"
 
 
 
 
-#define	MAXCAROUSELS		16
+#define MAXCAROUSELS 16
 
 
 
@@ -130,20 +131,21 @@ public:
 typedef std::list<DsmccStream> DsmccStreamList;
 
 
-class cDsmccReceiver : public cFilter, cThread {
+class cDsmccReceiver : public Service::TransportStreamFilter, cThread {
 private:
    bool running;
 
 protected:
    virtual void Process(u_short Pid, u_char Tid, const u_char *Data, int Length);
    virtual void Action();
-   virtual void SetStatus(bool On);
+   virtual void AddFilterData();
+   virtual void RemoveFilterData();
+   virtual void OtherTransportStream(Service::TransportStreamID ts);
    void ActivateStream(DsmccStream *str);
    void RemoveStream(DsmccStream *str);
    void SuspendStream(DsmccStream *str);
    std::string name;
    Service::TransportStreamID ts;
-   bool filterOn;
    
    std::list<Dsmcc::ObjectCarousel *> carousels;
    cMutex carouselMutex;
@@ -204,7 +206,7 @@ public:
    
    //Return whether the receiver is attached to a device, and this device
    //is tuned to the transport stream the receiver was created for.
-   bool IsReceiving() { return filterOn; }
+   bool IsReceiving() { return getFilterStatus(); }
    
    //Return channel name
    const char *Name(void) { return name.c_str(); }

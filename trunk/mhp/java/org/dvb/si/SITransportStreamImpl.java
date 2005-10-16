@@ -1,5 +1,6 @@
 package org.dvb.si;
 
+import vdr.mhp.lang.NativeData;
 
 
 public class SITransportStreamImpl extends SICommonObject 
@@ -7,7 +8,7 @@ public class SITransportStreamImpl extends SICommonObject
 
 //nativeData is a pointer to a std::list<NIT::TransportStream>
 
-SITransportStreamImpl (SIDatabaseRequest request, long nativeData) {
+SITransportStreamImpl (SIDatabaseRequest request, NativeData nativeData) {
    super(request, nativeData);
 }
 
@@ -29,7 +30,7 @@ tags). */
 public short[] getDescriptorTags() {
    return descriptorTags(nativeData);
 }
-private native short[] descriptorTags(long nativeData);
+private native short[] descriptorTags(NativeData nativeData);
 
 
 /*
@@ -38,7 +39,7 @@ er. */
 public int getNetworkID() {
    return getNetworkID(request.nativeData);
 }
-private native int getNetworkID(long nativeREQUESTData);
+private native int getNetworkID(NativeData nativeREQUESTData);
 
 /*
 Get the identi cation of the bouquet this transport stream is part of. Returns: The bouquet identi cation identi 
@@ -66,7 +67,7 @@ er. */
 public int getOriginalNetworkID() {
    return getOriginalNetworkID(nativeData);
 }
-private native int getOriginalNetworkID(long nativeData);
+private native int getOriginalNetworkID(NativeData nativeData);
 
 
 /*
@@ -75,7 +76,7 @@ er. */
 public int getTransportStreamID() {
    return getTransportStreamID(nativeData);
 }
-private native int getTransportStreamID(long nativeData);
+private native int getTransportStreamID(NativeData nativeData);
 
 
 /*
@@ -93,14 +94,15 @@ application is interested in all descriptors. If someDescriptorTags is null, the
 descriptors. All values that are out of the valid range for descriptor tags (i.e. 0...255) are ignored, except for the 
 special meaning of -1 as the only element in the array. Returns: An SIRequest object Throws: SIIllegalArgumentException 
 - thrown if the retrieveMode is invalid */
-public SIRequest retrieveSIServices(short retrieveMode, java.lang.Object appData, SIRetrievalListener listener, short[] 
-someDescriptorTags) {
+public SIRequest retrieveSIServices(short retrieveMode, java.lang.Object appData, SIRetrievalListener listener, short[] someDescriptorTags) throws SIIllegalArgumentException {
+   SIDatabase.checkRetrieveMode(retrieveMode);
    return SIDatabaseRequest.ServicesRequest(appData, listener, request.db, retrieveMode, getOriginalNetworkID(), getTransportStreamID(), -1);
 }
 
 
 
-public SIRequest retrieveDescriptors(short retrieveMode, java.lang.Object appData, SIRetrievalListener listener, short[] someDescriptorTags) {
+public SIRequest retrieveDescriptors(short retrieveMode, java.lang.Object appData, SIRetrievalListener listener, short[] someDescriptorTags) throws SIIllegalArgumentException {
+   SIDatabase.checkRetrieveMode(retrieveMode);
    return SIDatabaseRequest.DescriptorRequestTransportStream(this, someDescriptorTags, appData, listener, request.db, retrieveMode);
 }
 

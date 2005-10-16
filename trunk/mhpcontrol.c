@@ -739,6 +739,7 @@ void ControlLoadingManager::ProgressInfo(ProgressIndicator *pi) {
 ChannelWatch::ChannelWatch(CarouselPreloader* preloader) 
   : preloader(preloader)
 {
+   Service::ServiceManager::getManager()->AddServiceListener(this);
 }
 
 void ChannelWatch::TransportStreamChange(Service::TransportStreamID ts, Service::SwitchSource source, Service::Tuner *tuner) {

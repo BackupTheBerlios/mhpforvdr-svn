@@ -18,7 +18,7 @@ LIBS +=
 
 ### The object files (add further files here):
 
-OBJS = servicecontext.o service.o
+OBJS = servicecontext.o service.o filter.o
 
 ### Implicit rules:
 

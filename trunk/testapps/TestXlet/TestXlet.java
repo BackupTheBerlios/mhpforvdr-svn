@@ -44,6 +44,7 @@ import javax.tv.service.Service;
 import javax.tv.service.SIRequestor;
 import javax.tv.service.SIRetrievable;
 import javax.tv.service.ServiceNumber;
+import javax.tv.service.SIException;
 import javax.tv.service.navigation.ServiceList;
 import javax.tv.service.navigation.ServiceDetails;
 import javax.tv.service.ServiceNumber;
@@ -51,6 +52,10 @@ import javax.tv.service.navigation.ServiceIterator;
 import javax.tv.service.guide.ProgramEvent;
 import javax.tv.service.guide.ProgramEventDescription;
 import javax.tv.service.guide.ProgramSchedule;
+import javax.tv.service.selection.ServiceContext;
+import javax.tv.service.selection.ServiceContextFactory;
+import javax.tv.service.selection.InsufficientResourcesException;
+import javax.tv.locator.InvalidLocatorException;
 
 import java.io.File;
 import java.io.FileWriter;
@@ -62,6 +67,9 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.URL;
 import java.util.Enumeration;
+import java.util.Date;
+import java.util.Calendar;
+import java.text.DateFormat;
 
 public class TestXlet implements Xlet {
 
@@ -95,9 +103,9 @@ public class TestXlet implements Xlet {
     public void startXlet() throws XletStateChangeException {
         System.out.println("begin startXlet");
         //testOrgDvbEvent();
-        //testOrgDvbSi();
+        testOrgDvbSi();
         //testOrgDavicDvbLocator();
-        testJavaxTvService();
+        //testJavaxTvService();
         //testUI();
         //testPreference();
         //testIXC();
@@ -131,6 +139,17 @@ public class TestXlet implements Xlet {
             scene.add(comp);
          }
          return scene;
+    }
+    
+    // Returns a locator pointing to a channel which will be available (or not, depending on test performed)
+    // during the execution of the test using this method
+    DvbLocator getTestLocator() throws InvalidLocatorException {
+       // ARD on satellite (Astra)
+       //return new DvbLocator(1, 1101, 28106);
+       // SAT.1 on satellite (Astra)
+       //return new org.davic.net.dvb.DvbLocator(133, 33, 46);
+       // ARD on Düsseldorf/Ruhrgebiet DVB-T. TID is 6144, testing without TID.
+       return new DvbLocator(8468, -1, 256);
     }
     
     
@@ -630,51 +649,72 @@ public class TestXlet implements Xlet {
             System.out.println("Retrieved result, "+event.getClass().toString());
             if (event instanceof SISuccessfulRetrieveEvent) {
                SIIterator it=((SISuccessfulRetrieveEvent)event).getResult();
+               DateFormat format = DateFormat.getTimeInstance(DateFormat.SHORT);
                switch (((Integer)event.getAppData()).intValue()) {
                case 1:
                   //SINetwork - passed
                   while (it.hasMoreElements()) {
                      SINetwork net=(SINetwork)it.nextElement();
-                     System.out.println("Having SINetwork with id "+net.getNetworkID());
-                     System.out.println(net.getName()+" "+net.getShortNetworkName());
-                     System.out.println(net.getUpdateTime());
-                     System.out.println("From TID "+net.getDataSource().getTransportStreamId());
+                     System.out.println("Having SINetwork with id "+net.getNetworkID()+", network name \""+net.getName()+"\", short name \""+net.getShortNetworkName()+"\", update time is "+format.format(net.getUpdateTime())+", acquired from transport stream with ID "+net.getDataSource().getTransportStreamId());
                      short[] tags=net.getDescriptorTags();
+                     System.out.println("Descriptor tags: ");
                      for (int i=0;i<tags.length;i++)
                         System.out.print(tags[i]+" ");
                      System.out.println();
-                     short[] descs=new short[1];
-                     descs[0]=-1;
-                     net.retrieveSITransportStreams(SIInformation.FROM_CACHE_OR_STREAM, new Integer(4), this, descs);
-                     net.retrieveDescriptors(SIInformation.FROM_CACHE_OR_STREAM, new Integer(7), this);
+                     short[] descs=new short[] { -1 };
+                     /*
+                     try {
+                        net.retrieveSITransportStreams(SIInformation.FROM_CACHE_OR_STREAM, new Integer(4), this, descs);
+                        net.retrieveDescriptors(SIInformation.FROM_CACHE_OR_STREAM, new Integer(7), this);
+                     } catch (SIIllegalArgumentException ex) {
+                        ex.printStackTrace();
+                     }
+                     */
                   }
                   break;
                case 2:
                   //SIService - passed
                   while (it.hasMoreElements()) {
                      SIService ser=(SIService)it.nextElement();
-                     System.out.println("Having SIService with triple "+ser.getOriginalNetworkID()+" "
-                                         +ser.getTransportStreamID()+" "+ser.getServiceID());
-                     System.out.println(ser.getName()+ser.getProviderName()+ser.getShortServiceName());
+                     System.out.println("Having SIService with ID triple "+ser.getOriginalNetworkID()+" - "                           +ser.getTransportStreamID()+" - "+ser.getServiceID()+", service name \""+ser.getName()+"\", provider name \""+ser.getProviderName()+"\", short service name \""+ser.getShortServiceName()+"\"");
+                     System.out.println("Descriptor tags: ");
                      short[] tags=ser.getDescriptorTags();
                      for (int i=0;i<tags.length;i++)
-                        System.out.print(tags[i]+" ");                     
+                        System.out.print(tags[i]+" ");
                      System.out.println();
-                     short[] descs=new short[1];
-                     descs[0]=-1;
+                     short[] descs=new short[] { -1 };
                      //ser.retrievePresentSIEvent(SIInformation.FROM_CACHE_OR_STREAM, new Integer(3), this, descs);
-                     ser.retrieveFollowingSIEvent(SIInformation.FROM_CACHE_OR_STREAM, new Integer(3), this, descs);
+                     //ser.retrieveFollowingSIEvent(SIInformation.FROM_CACHE_OR_STREAM, new Integer(3), this, descs);
+                     // retrieve events from 20:15 - 23:45, today
+                     Calendar cal = Calendar.getInstance();
+                     cal.set(Calendar.HOUR_OF_DAY, 20);
+                     cal.set(Calendar.MINUTE, 15);
+                     Date begin = cal.getTime();
+                     cal.set(Calendar.HOUR_OF_DAY, 23);
+                     cal.set(Calendar.MINUTE, 30);
+                     Date end = cal.getTime();
+                     try {
+                        ser.retrieveScheduledSIEvents(SIInformation.FROM_CACHE_OR_STREAM, new Integer(3), this, descs, begin, end);
+                     } catch (SIIllegalArgumentException ex) {
+                        ex.printStackTrace();
+                     }
                   }
                   break;
                case 3:
                   //SIEvent - passed
+                  boolean printed = false;
+                  int i=0;
+                  //synchronized (this) { try { wait(400); } catch (InterruptedException ex) {} }
                   while (it.hasMoreElements()) {
                      SIEvent ev=(SIEvent)it.nextElement();
-                     System.out.println("Having SIEvent with quatuple "+ev.getOriginalNetworkID()+" "
-                                         +ev.getTransportStreamID()+" "+ev.getServiceID()+" "+ev.getEventID());
-                     System.out.println(ev.getName()+" "+ev.getShortEventName());
-                     System.out.println(ev.getStartTime()+" duration "+ev.getDuration());
+                     if (!printed) {
+                        System.out.println("Having SIEvent with ID "+ev.getOriginalNetworkID()+" - "
+                              +ev.getTransportStreamID()+" - "+ev.getServiceID()+" - "+ev.getEventID());
+                        printed = true;
+                     }
+                     System.out.println(" Event "+(++i)+": "+format.format(ev.getStartTime())+", duration "+ev.getDuration()/1000+" seconds: \""+ev.getName()+"\", short name \""+ev.getShortEventName()+"\"");
                   }
+                  System.out.println("All events");
                   break;
                case 4:
                   //SITransportStream (NIT) - passed
@@ -690,11 +730,16 @@ public class TestXlet implements Xlet {
                      PMTService ser=(PMTService)it.nextElement();
                      System.out.println("Having PMTService with triple "+ser.getOriginalNetworkID()+" "
                                          +ser.getTransportStreamID()+" "+ser.getServiceID());
-                     System.out.println("with PcrPid "+ser.getPcrPid()+" updateTime: "+ser.getUpdateTime());
+                     System.out.println("with PcrPid "+ser.getPcrPid()+" updateTime: "+format.format(ser.getUpdateTime()));
                      
-                     short[] descs=new short[1];
-                     descs[0]=-1;
-                     ser.retrievePMTElementaryStreams(SIInformation.FROM_CACHE_OR_STREAM, new Integer(6), this, descs);
+                     short[] descs=new short[] { -1 };
+                     /*
+                     try {
+                        ser.retrievePMTElementaryStreams(SIInformation.FROM_CACHE_OR_STREAM, new Integer(6), this, descs);
+                     } catch (SIIllegalArgumentException ex) {
+                        ex.printStackTrace();
+                     }
+                     */
                   }
                   break;
                case 6:
@@ -726,22 +771,21 @@ public class TestXlet implements Xlet {
          return;
       }
       SIDatabase db = dbs[0];
-      short[] descs=new short[1];
-      descs[0]=-1;
+      short[] descs=new short [] { -1 };
       org.davic.net.dvb.DvbLocator loc;
       try {
-         loc=new org.davic.net.dvb.DvbLocator(133, 33, 46); //Sat.1
+         loc=getTestLocator();
       } catch (javax.tv.locator.InvalidLocatorException e) {
          e.printStackTrace();
          return;
       }
-      db.retrieveSINetworks(SIInformation.FROM_CACHE_OR_STREAM, new Integer(1), ex, -1, descs);
-      db.retrieveSIService(SIInformation.FROM_CACHE_OR_STREAM, new Integer(2), ex, loc, descs);
-      /*try {
-         Thread.sleep(15000);
-      } catch (java.lang.InterruptedException e) {
-      }*/
-      db.retrievePMTService(SIInformation.FROM_CACHE_OR_STREAM, new Integer(5), ex, loc, descs);
+      try {
+         //db.retrieveSINetworks(SIInformation.FROM_CACHE_OR_STREAM, new Integer(1), ex, -1, descs);
+         db.retrieveSIService(SIInformation.FROM_CACHE_OR_STREAM, new Integer(2), ex, loc, descs);
+         //db.retrievePMTService(SIInformation.FROM_CACHE_OR_STREAM, new Integer(5), ex, loc, descs);
+      } catch (SIIllegalArgumentException e) {
+         e.printStackTrace();
+      }
    }
 
    // 27.04.04: Test passed
@@ -803,7 +847,8 @@ public class TestXlet implements Xlet {
    }
    
    
-   //4.5.2004: Test passed
+   //4.5.2004: Test passed (first, org.dvb.si implementation)
+   //10.10.2005: Test passed (VDR based reimplementation)
    void testJavaxTvService() {
       //Note: This test does not test all parts of the javax.tv.service.*.* API
       //Not covered: javax.tv.service.selection.*
@@ -813,21 +858,44 @@ public class TestXlet implements Xlet {
                if (result.length > 0) {
                   if (result[0] instanceof ServiceDetails) {
                      ServiceDetails ser=(ServiceDetails)result[0];
-                     System.out.println("Service Details "+ser.getLocator()+" "+ser.getServiceType());
-                     System.out.println(ser.getLongName());
+                     System.out.println("Service Details for "+ser.getLocator()+", \""+ser.getLongName()+"\": "+ser.getServiceType()+", "+ser.getDeliverySystemType());
                      javax.tv.service.Service service=ser.getService();
-                     System.out.println("Stored service is "+((ServiceNumber)service).getServiceNumber()+service.getName());
+                     if (service instanceof ServiceNumber)
+                        System.out.println("Stored as service \""+service.getName()+"\", number "+((ServiceNumber)service).getServiceNumber());
                      ProgramSchedule schedule=ser.getProgramSchedule();
                      schedule.retrieveCurrentProgramEvent(this);
+                     // retrieve events from 20:15 - 23:45, today
+                     Calendar cal = Calendar.getInstance();
+                     cal.set(Calendar.HOUR_OF_DAY, 20);
+                     cal.set(Calendar.MINUTE, 15);
+                     Date begin = cal.getTime();
+                     cal.set(Calendar.HOUR_OF_DAY, 23);
+                     cal.set(Calendar.MINUTE, 30);
+                     Date end = cal.getTime();
+                     // will throw an exception if you work too late and it is between 23:30 and 0:00 ;-)
+                     try {
+                        schedule.retrieveFutureProgramEvents(begin, end, this);
+                     } catch (SIException ex) {
+                        ex.printStackTrace();
+                     }
                   } else if (result[0] instanceof ProgramEvent) {
-                     ProgramEvent event=(ProgramEvent)result[0];
-                     System.out.println("Event: "+event.getLocator());
-                     System.out.println("From "+event.getStartTime()+" to "+event.getEndTime());
-                     event.retrieveDescription(this);
-                     javax.tv.service.Service service=event.getService();
-                     System.out.println("Stored service is "+((ServiceNumber)service).getServiceNumber()+service.getName());
+                     DateFormat format = DateFormat.getTimeInstance(DateFormat.SHORT);
+                     if (result.length == 1) {
+                        ProgramEvent event=(ProgramEvent)result[0];
+                        System.out.println("Event "+event.getLocator()+", \""+event.getName()+"\", from "+format.format(event.getStartTime())+" to "+format.format(event.getEndTime()) );
+                        event.retrieveDescription(this);
+                        javax.tv.service.Service service=event.getService();
+                        if (service instanceof ServiceNumber)
+                           System.out.println("Stored as service \""+service.getName()+"\", number " +((ServiceNumber)service).getServiceNumber());
+                     } else {
+                        System.out.println("Schedule: ");
+                        for (int i=0;i<result.length;i++) {
+                           ProgramEvent event=(ProgramEvent)result[i];
+                           System.out.println(format.format(event.getStartTime())+" - "+format.format(event.getEndTime())+": \""+event.getName()+"\"");
+                        }
+                     }
                   } else if (result[0] instanceof ProgramEventDescription) {
-                     System.out.println(((ProgramEventDescription)result[0]).getProgramEventDescription());
+                     System.out.println("Description of program event: "+((ProgramEventDescription)result[0]).getProgramEventDescription());
                   }
                }
             }
@@ -852,16 +920,14 @@ public class TestXlet implements Xlet {
       
       DvbLocator loc=null;
       try {
-         //GERMAN CHANNEL
-         loc=new DvbLocator(1, 1101, 28106); //ARD
+         loc=getTestLocator();
       } catch (javax.tv.locator.InvalidLocatorException ex) {
          ex.printStackTrace();
       }
       
       try {
-         System.out.println("Retrieving service");
+         System.out.println("Retrieving service via its locator");
          man.retrieveSIElement(loc, req);
-         System.out.println("Retrieved service");
       } catch (javax.tv.locator.InvalidLocatorException ex) {
          ex.printStackTrace();
       } catch (SecurityException ex) {
@@ -871,14 +937,20 @@ public class TestXlet implements Xlet {
       Service service=null;
       try {
          service=man.getService(loc);
-         System.out.println("Service is "+service);
       } catch (javax.tv.locator.InvalidLocatorException ex) {
          ex.printStackTrace();
       } catch (SecurityException ex) {
          ex.printStackTrace();
       }
-      System.out.println("ARD is "+ ((service==null) ? "not available" :
-      "channel "+((ServiceNumber)service).getServiceNumber()+" "+service.getName()+" "+service.getLocator() ));
+      
+      if (service == null)
+         System.out.println("Test service is not available");
+      else {
+         if (service instanceof ServiceNumber)
+            System.out.println("Test service is channel "+((ServiceNumber)service).getServiceNumber()+" \""+service.getName()+"\", "+service.getLocator() );
+         else
+            System.out.println("Test service is \""+service.getName()+"\" "+service.getLocator()+" - service number unknown!");
+      }
       
       ServiceList list = man.filterServices(null);
       System.out.println("ServiceList contains "+list.size()+" elements:");
@@ -886,8 +958,29 @@ public class TestXlet implements Xlet {
       for (ServiceIterator it = list.createServiceIterator(); it.hasNext(); ) {
          service = it.nextService();
          if (service instanceof ServiceNumber)
-            System.out.print("Service number "+((ServiceNumber)service).getServiceNumber()+": ");
-         System.out.println(service.getName()+", "+service.getLocator());
+            System.out.print(" Service number "+((ServiceNumber)service).getServiceNumber()+": ");
+         System.out.println("\""+service.getName()+"\", "+service.getLocator());
+      }
+      
+      ServiceContextFactory factory = ServiceContextFactory.getInstance();
+      ServiceContext servicecontext = null;
+      try {
+         servicecontext = factory.createServiceContext();
+      } catch (InsufficientResourcesException ex) {
+         ex.printStackTrace();
+      } catch (SecurityException ex) {
+         ex.printStackTrace();
+      }
+      
+      if (servicecontext == null) {
+         System.out.println("Service context is null!");
+      } else {
+         Service currentService = servicecontext.getService();
+         if (currentService == null)
+            System.out.println("Current service is null!");
+         else {
+            System.out.println("Current service is "+service.getName()+" "+service.getLocator()+" service type "+service.getServiceType());
+         }
       }
    }
    

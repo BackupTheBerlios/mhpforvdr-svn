@@ -77,19 +77,29 @@ protected:
 
 class IdTracker {
 public:
-   IdTracker() : ids(0), size(-1) {}
-   IdTracker(int id) : ids(0), size(-1) { Set(id); }
-   IdTracker(int *id, bool copy=true) : ids(0), size(-1) { Set(id, copy); }
-   
-   ~IdTracker();
-   
-   bool isIncluded(int id);   
-   
-   void IncludeAll();
-   void Set(int id);
+   virtual ~IdTracker() {}
+   // returns if given id is included in this tracker.
+   virtual bool isIncluded(int id) = 0;
+   // returns the number of ids
+   virtual int getSize() = 0;
+};
+
+class SingleIdTracker : public IdTracker {
+public:
+   SingleIdTracker(int id) : id(id) {}
+   virtual bool isIncluded(int i) { return id == i; }
+   virtual int getSize() { return 1; }
+private:
+   int id;
+};
+
+class ListIdTracker : public IdTracker {
+public:
+   ListIdTracker(int *id, bool copy=true) : ids(0), size(-1) { Set(id, copy); }
+   virtual ~ListIdTracker();
+   virtual bool isIncluded(int id);
+   virtual int getSize() { return size; }
    void Set(int *id, bool copy=true);
-   bool isFinite() { return size != -1; }
-   int getSize() { return size; }
 private:
    int *ids;
    int size;

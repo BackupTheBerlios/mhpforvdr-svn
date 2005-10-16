@@ -225,7 +225,7 @@ void cPluginMhp::InitializeLocalApps() {
                      strreplace(buf, '/', '.'); // / -> .
                      app=new cLocalApplication(entry->d_name, entry->d_name, buf, tp);
                   }
-                  printf("Readlink %s, %d, %s\n", path, errno, buf);
+                  //printf("Readlink %s, %d, %s\n", path, errno, buf);
                }
                if (app)
                   localApps.push_back(app);
@@ -243,6 +243,7 @@ bool cPluginMhp::Start(void)
    JavaInterface::InitializeSystem();
    
    Service::ServiceManager::getManager()->Initialize();
+   DvbSi::Database::Initialize();
    //Cannot call this in Initialize(), it may use VDR structures like devices
    printf("Init output\n");
    MhpOutput::Administration::Init(outputSystem);

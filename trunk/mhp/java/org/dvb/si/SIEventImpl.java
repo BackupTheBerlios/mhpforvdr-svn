@@ -1,12 +1,13 @@
 package org.dvb.si;
 
+import vdr.mhp.lang.NativeData;
 
 
 public class SIEventImpl extends SICommonObject implements SIEvent,
    javax.tv.service.guide.ProgramEvent {
 //nativeData is a pointer to an EIT::Event
 
-SIEventImpl (SIDatabaseRequest request, long nativeData) {
+SIEventImpl (SIDatabaseRequest request, NativeData nativeData) {
    super(request, nativeData);
 }
 
@@ -22,7 +23,7 @@ public boolean fromActual() {
 public short[] getDescriptorTags() {
    return descriptorTags(nativeData);
 }
-private native short[] descriptorTags(long nativeData);
+private native short[] descriptorTags(NativeData nativeData);
 
 
 /*
@@ -35,14 +36,14 @@ nibbles the four least signi cant bits. */
 public byte[] getContentNibbles() {
    return getContentNibbles(nativeData);
 }
-private native byte[] getContentNibbles(long nativeData);
+private native byte[] getContentNibbles(NativeData nativeData);
 
 /*
 Get the duration of this event. Returns: The duration in milliseconds. */
 public long getDuration() {
    return 1000*getDuration(nativeData);
 }
-private native long getDuration(long nativeData);
+private native long getDuration(NativeData nativeData);
 
 
 /*
@@ -63,7 +64,7 @@ Get the event identi cation. Returns: The event identi cation. */
 public int getEventID() {
    return getEventID(nativeData);
 }
-private native int getEventID(long nativeData);
+private native int getEventID(NativeData nativeData);
 
 
 /*
@@ -72,7 +73,7 @@ Returns: The free_CA_mode value. */
 public boolean getFreeCAMode() {
    return getFreeCAMode(nativeData);
 }
-private native boolean getFreeCAMode(long nativeData);
+private native boolean getFreeCAMode(NativeData nativeData);
 
 
 /*
@@ -84,7 +85,7 @@ the event. */
 public byte[] getLevel1ContentNibbles() {
    return getLevel1ContentNibbles(nativeData);
 }
-private native byte[] getLevel1ContentNibbles(long nativeData);
+private native byte[] getLevel1ContentNibbles(NativeData nativeData);
 
 
 /*
@@ -92,10 +93,10 @@ This method returns the name of this event. The name is extracted from a short_e
 is not available "" is returned. All control characters as de ned in ETR 211 are ignored. For each character the DVB-SI 
 8 bit character code is mapped to the appropriate Unicode representation. Returns: The event name of this 
 event. */
-public java.lang.String getName() {
-   return new String(getName(nativeData));
+public String getName() {
+   return getName(nativeData);
 }
-private native byte[] getName(long nativeData);
+private native String getName(NativeData nativeData);
 
 
 /*
@@ -104,7 +105,7 @@ cation. */
 public int getOriginalNetworkID() {
    return getOriginalNetworkID(request.nativeData);
 }
-private native int getOriginalNetworkID(long nativeREQUESTData);
+private native int getOriginalNetworkID(NativeData nativeREQUESTData);
 
 
 /*
@@ -113,7 +114,7 @@ interface). */
 public byte getRunningStatus() {
    return getRunningStatus(nativeData);
 }
-private native byte getRunningStatus(long nativeData);
+private native byte getRunningStatus(NativeData nativeData);
 
 
 /*
@@ -121,17 +122,17 @@ Get the service identi cation identi er. Returns: The service identi cation. */
 public int getServiceID() {
    return getServiceID(request.nativeData);
 }
-private native int getServiceID(long nativeREQUESTData);
+private native int getServiceID(NativeData nativeREQUESTData);
 
 
 /*
 This method returns the description of this event. The description is extracted from a short_event_descriptor. When this 
 information is not available, "" is returned. For each character the DVB-SI 8 bit character code is mapped to the 
 appropriate Unicode representation Returns: The short description of this event. */
-public java.lang.String getShortDescription() {
-   return new String(getShortDescription(nativeData));
+public String getShortDescription() {
+   return getShortDescription(nativeData);
 }
-private native byte[] getShortDescription(long nativeData);
+private native String getShortDescription(NativeData nativeData);
 
 
 /*
@@ -139,10 +140,10 @@ This method returns the short event name (ETR 211) of this event without emphasi
 short_event_descriptor. When this information is not available "" is returned. For each character the DVB-SI 8 bit 
 character code is mapped to the appropriate Unicode representation. Returns: The short event name of this 
 event. */
-public java.lang.String getShortEventName() {
-   return new String(getShortEventName(nativeData));
+public String getShortEventName() {
+   return getShortEventName(nativeData);
 }
-private native byte[] getShortEventName(long nativeData);
+private native String getShortEventName(NativeData nativeData);
 
 
 /*
@@ -151,7 +152,7 @@ event. */
 public java.util.Date getStartTime() {
    return new java.util.Date(getStartTime(nativeData)*1000);
 }
-private native long getStartTime(long nativeData);
+private native long getStartTime(NativeData nativeData);
 
 
 /*
@@ -160,7 +161,7 @@ cation. */
 public int getTransportStreamID() {
    return getTransportStreamID(request.nativeData);
 }
-private native int getTransportStreamID(long nativeREQUESTData);
+private native int getTransportStreamID(NativeData nativeREQUESTData);
 
 
 /*
@@ -179,7 +180,8 @@ someDescriptorTags is null, the application is not interested in descriptors. Al
 for descriptor tags (i.e. 0...255) are ignored, except for the special meaning of -1 as the only element in the 
 array.Returns: An SIRequest object Throws: SIIllegalArgumentException - thrown if the retrieveMode is 
 invalid */
-public SIRequest retrieveSIService(short retrieveMode, java.lang.Object appData, SIRetrievalListener listener, short[] someDescriptorTags) {
+public SIRequest retrieveSIService(short retrieveMode, java.lang.Object appData, SIRetrievalListener listener, short[] someDescriptorTags) throws SIIllegalArgumentException {
+   SIDatabase.checkRetrieveMode(retrieveMode);
    return SIDatabaseRequest.ServicesRequest(appData, listener, request.db, retrieveMode, getOriginalNetworkID(),
                                            getTransportStreamID(), getServiceID());
 }
@@ -196,7 +198,8 @@ An object supplied by the application. This object will be delivered to the list
 application can use this objects for internal communication purposes. If the application does not need any application 
 data, the parameter can be null. listener - SIRetrievalListener that will receive the event informing about the 
 completion of the request. */
-public SIRequest retrieveDescriptors(short retrieveMode, java.lang.Object appData, SIRetrievalListener listener, short[] someDescriptorTags) {
+public SIRequest retrieveDescriptors(short retrieveMode, java.lang.Object appData, SIRetrievalListener listener, short[] someDescriptorTags) throws SIIllegalArgumentException {
+   SIDatabase.checkRetrieveMode(retrieveMode);
    return SIDatabaseRequest.DescriptorRequestEvent(this, someDescriptorTags, appData, listener, request.db, retrieveMode);
 }
 
@@ -299,7 +302,7 @@ public javax.tv.service.ServiceInformationType  getServiceInformationType () {
  
  */
 public int[] getCASystemIDs () {
-   //TODO
+   //javax-TODO
    return new int[0];
 }
 
@@ -313,7 +316,7 @@ public int[] getCASystemIDs () {
  
 */
 public boolean isFree () {
-   //TODO
+   //javax-TODO
    return true;
 }
 
@@ -371,7 +374,7 @@ public javax.tv.service.SIRequest retrieveDescription ( javax.tv.service.SIReque
 
 public javax.tv.service.guide.ContentRatingAdvisory  getRating () {
    return null;
-   //TODO:
+   //javax-TODO:
    //return new javax.tv.service.DVBParentalRating(getRating(nativeData));
    //getRating(nativeData) shall return the rating from the parental
    //rating descriptor, 0 otherwise
@@ -405,7 +408,7 @@ public javax.tv.service.Service  getService () {
  components will be available. */
 
 public javax.tv.service.SIRequest  retrieveComponents ( javax.tv.service.SIRequestor requestor) {
-   //TODO:
+   //javax-TODO:
    //retrieve component descriptors
    //create ServiceComponents of these
    return javax.tv.service.SIManager.deliverRequest(requestor, javax.tv.service.SIRequestFailureType.DATA_UNAVAILABLE);

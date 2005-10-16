@@ -3,7 +3,7 @@ package javax.tv.service;
 /*
 
    Implements the DVB age based rating dimension.
-   All values are given in the spec, so this implementation is trivial.
+   All values according to annex of of the MHP spec.
 
 */
 public class DVBRatingDimension implements RatingDimension {
@@ -59,10 +59,7 @@ public short getNumberOfLevels () {
 public java.lang.String[] getRatingLevelDescription (short ratingLevel)
                        throws SIException 
 {
-   String[] ret=new String[2];
-   ret[0]="Over "+(ratingLevel+4);
-   ret[1]="Recommended minimum age: "+(ratingLevel+4)+" years";
-   return ret;
+   return new String [] { "Over "+(ratingLevel+4), "Recommended minimum age: "+(ratingLevel+4)+" years" };
 }
 
 

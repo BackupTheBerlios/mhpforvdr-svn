@@ -13,7 +13,7 @@
 
 #include <list>
 
-#include <vdr/osd.h>
+#include <vdr/osdbase.h>
 #include <vdr/tools.h>
 #include <libait/ait.h>
 #include <libservice/service.h>

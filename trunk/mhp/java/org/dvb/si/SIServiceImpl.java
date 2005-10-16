@@ -1,5 +1,6 @@
 package org.dvb.si;
 
+import vdr.mhp.lang.NativeData;
 
 
 public class SIServiceImpl extends SICommonObject implements SIService,
@@ -7,7 +8,7 @@ public class SIServiceImpl extends SICommonObject implements SIService,
 
 //nativeData is a pointer to an SDT::Service
 
-SIServiceImpl (SIDatabaseRequest request, long nativeData) {
+SIServiceImpl (SIDatabaseRequest request, NativeData nativeData) {
    super(request, nativeData);
 }
 
@@ -29,7 +30,7 @@ tags). */
 public short[] getDescriptorTags() {
    return descriptorTags(nativeData);
 }
-private native short[] descriptorTags(long nativeData);
+private native short[] descriptorTags(NativeData nativeData);
 
 
 /*
@@ -51,7 +52,7 @@ Returns: The EIT_present_following_ ag value. */
 public boolean getEITPresentFollowingFlag() {
    return getEITPresentFollowingFlag(nativeData);
 }
-private native boolean getEITPresentFollowingFlag(long nativeData);
+private native boolean getEITPresentFollowingFlag(NativeData nativeData);
 
 
 /*
@@ -60,7 +61,7 @@ ag value. */
 public boolean getEITScheduleFlag() {
    return getEITScheduleFlag(nativeData);
 }
-private native boolean getEITScheduleFlag(long nativeData);
+private native boolean getEITScheduleFlag(NativeData nativeData);
 
 
 /*
@@ -69,7 +70,7 @@ Returns:The free_CA_mode value of this service. */
 public boolean getFreeCAMode() {
    return getFreeCAMode(nativeData);
 }
-private native boolean getFreeCAMode(long nativeData);
+private native boolean getFreeCAMode(NativeData nativeData);
 
 
 /*
@@ -78,10 +79,10 @@ service_descriptor or optionally from the multilingual_service_name_descriptor. 
 returned. All control characters as de ned in ETR 211 are ignored. For each character the DVB-SI 8 bit character code is 
 mapped to the appropriate Unicode representation. Returns: The name of this 
 service. */
-public java.lang.String getName() {
-   return new String(getName(nativeData));
+public String getName() {
+   return getName(nativeData);
 }
-private native byte[] getName(long nativeData);
+private native String getName(NativeData nativeData);
 
 
 /*
@@ -90,7 +91,7 @@ er. */
 public int getOriginalNetworkID() {
    return getOriginalNetworkID(nativeData);
 }
-private native int getOriginalNetworkID(long nativeData);
+private native int getOriginalNetworkID(NativeData nativeData);
 
 
 /*
@@ -99,10 +100,10 @@ service_descriptor or optionally from the multilingual_service_name_descriptor. 
 returned. All control characters as de ned in ETR 211 are ignored. For each character the DVB-SI 8 bit character code is 
 mapped to the appropriate Unicode representation. Returns: The service provider name of this 
 service. */
-public java.lang.String getProviderName() {
-   return new String(getProviderName(nativeData));
+public String getProviderName() {
+   return getProviderName(nativeData);
 }
-private native byte[] getProviderName(long nativeData);
+private native String getProviderName(NativeData nativeData);
 
 
 /*
@@ -111,7 +112,7 @@ SIRunningStatus interface) */
 public byte getRunningStatus() {
    return getRunningStatus(nativeData);
 }
-private native byte getRunningStatus(long nativeData);
+private native byte getRunningStatus(NativeData nativeData);
 
 
 /*
@@ -119,7 +120,7 @@ Get the service identi cation. Returns: The service identi cation identi er. */
 public int getServiceID() {
    return getServiceID(nativeData);
 }
-private native int getServiceID(long nativeData);
+private native int getServiceID(NativeData nativeData);
 
 
 /*
@@ -127,10 +128,10 @@ This method returns the short name (ETR 211) of the service provider of this ser
 extracted from the service_descriptor or optionally from the multilingual_service_name_descriptor. When this information 
 is not available "" is returned. For each character the DVB-SI 8 bit character code is mapped to the appropriate Unicode 
 representation. Returns: The short service provider name of this service. */
-public java.lang.String getShortProviderName() {
-   return new String(getShortProviderName(nativeData));
+public String getShortProviderName() {
+   return getShortProviderName(nativeData);
 }
-private native byte[] getShortProviderName(long nativeData);
+private native String getShortProviderName(NativeData nativeData);
 
 
 /*
@@ -138,10 +139,10 @@ This method returns the short name (ETR 211) of this service without emphasis ma
 service_descriptor or optionally from the multilingual_service_name_descriptor. When this information is not available 
 "" is returned. For each character the DVB-SI 8 bit character code is mapped to the appropriate Unicode representation. 
 Returns: The short name of this service. */
-public java.lang.String getShortServiceName() {
-   return new String(getShortServiceName(nativeData));
+public String getShortServiceName() {
+   return getShortServiceName(nativeData);
 }
-private native byte[] getShortServiceName(long nativeData);
+private native String getShortServiceName(NativeData nativeData);
 
 
 /*
@@ -150,14 +151,14 @@ possible values are de ned in the SIServiceType interface.) */
 public short getSIServiceType() {
    return getSIServiceType(nativeData);
 }
-private native short getSIServiceType(long nativeData);
+private native short getSIServiceType(NativeData nativeData);
 
 
 /*
 Returns the textual service identi ers related to this object. Overrides: getTextualServiceIdentifiers() in interface 
 TextualServiceIdentifierQuery Returns: an array of String objects containing the textual service identi ers or null if 
 none are present. */
-public java.lang.String[] getTextualServiceIdentifiers() {
+public String[] getTextualServiceIdentifiers() {
    //TODO
    return null;
 }
@@ -169,7 +170,7 @@ er. */
 public int getTransportStreamID() {
    return getTransportStreamID(nativeData);
 }
-private native int getTransportStreamID(long nativeData);
+private native int getTransportStreamID(NativeData nativeData);
 
 
 /*
@@ -188,7 +189,8 @@ is null, the application is not interested in descriptors. All values that are o
 tags (i.e. 0...255) are ignored, except for the special meaning of -1 as the only element in the array. Returns: An 
 SIRequest object Throws: SIIllegalArgumentException - thrown if the retrieveMode is 
 invalid */
-public SIRequest retrieveFollowingSIEvent(short retrieveMode, java.lang.Object appData, SIRetrievalListener listener, short[] someDescriptorTags) {
+public SIRequest retrieveFollowingSIEvent(short retrieveMode, java.lang.Object appData, SIRetrievalListener listener, short[] someDescriptorTags) throws SIIllegalArgumentException {
+   SIDatabase.checkRetrieveMode(retrieveMode);
    //tags can be ignored, will be fetched anyway
    return SIDatabaseRequest.PresentFollowingEventRequest(appData, listener, request.db, retrieveMode, false, getTransportStreamID(), getServiceID());
 }
@@ -209,10 +211,10 @@ its one and only element, the application is interested in all descriptors. If s
 application is not interested in descriptors. All values that are out of the valid range for descriptor tags (i.e. 
 0...255) are ignored, except for the special meaning of -1 as the only element in the array. Returns:An SIRequest object 
 Throws: SIIllegalArgumentException - thrown if the retrieveMode is invalid */
-public SIRequest retrievePMTService(short retrieveMode, java.lang.Object appData, SIRetrievalListener listener, short[] 
-someDescriptorTags) {
+public SIRequest retrievePMTService(short retrieveMode, java.lang.Object appData, SIRetrievalListener listener, short[] someDescriptorTags) throws SIIllegalArgumentException {
+   SIDatabase.checkRetrieveMode(retrieveMode);
    //tags can be ignored, will be fetched anyway
-   return SIDatabaseRequest.PMTServicesRequest(appData, listener, request.db, retrieveMode, getServiceID());
+   return SIDatabaseRequest.PMTServicesRequest(appData, listener, request.db, retrieveMode, getOriginalNetworkID(), getTransportStreamID(), getServiceID());
 }
 
 
@@ -232,8 +234,8 @@ is null, the application is not interested in descriptors. All values that are o
 tags (i.e. 0...255) are ignored, except for the special meaning of -1 as the only element in the array. Returns: An 
 SIRequesappData, SIRetrievalListener listener, short[] someDescriptorTagst) object Throws: SIIllegalArgumentException - thrown if the retrieveMode is 
 invalid */
-public SIRequest retrievePresentSIEvent(short retrieveMode, java.lang.Object 
-appData, SIRetrievalListener listener, short[] someDescriptorTags) {
+public SIRequest retrievePresentSIEvent(short retrieveMode, java.lang.Object appData, SIRetrievalListener listener, short[] someDescriptorTags) throws SIIllegalArgumentException {
+   SIDatabase.checkRetrieveMode(retrieveMode);
    //tags can be ignored, will be fetched anyway
    return SIDatabaseRequest.PresentFollowingEventRequest(appData, listener, request.db, retrieveMode, true, getTransportStreamID(), getServiceID());
 }
@@ -255,10 +257,10 @@ descriptors. All values that are out of the valid range for descriptor tags (i.e
 special meaning of -1 as the only element in the array. startTime - The beginning of the required period in UTC time. 
 endTime - The end of the required period in UTC time. Returns: An SIRequest object Throws: SIIllegalArgumentException - 
 thrown if the retrieveMode is invalid */
-public SIRequest retrieveScheduledSIEvents(short retrieveMode, java.lang.Object appData, SIRetrievalListener listener, short[] someDescriptorTags, java.util.Date startTime, java.util.Date endTime) {
+public SIRequest retrieveScheduledSIEvents(short retrieveMode, java.lang.Object appData, SIRetrievalListener listener, short[] someDescriptorTags, java.util.Date startTime, java.util.Date endTime) throws SIIllegalArgumentException {
+   SIDatabase.checkRetrieveMode(retrieveMode);
    //tags can be ignored, will be fetched anyway
-   //TODO: implement start/end time. Real solution is non-trivial, see ETSI TR 101 211, must be done in libdvbsi.
-   return SIDatabaseRequest.ScheduledEventsRequest(appData, listener, request.db, retrieveMode, getTransportStreamID(), getServiceID());
+   return SIDatabaseRequest.TimeScheduledEventsRequest(appData, listener, request.db, retrieveMode, startTime, endTime, getTransportStreamID(), getServiceID());
 }
 
 /*
@@ -272,7 +274,8 @@ An object supplied by the application. This object will be delivered to the list
 application can use this objects for internal communication purposes. If the application does not need any application 
 data, the parameter can be null. listener - SIRetrievalListener that will receive the event informing about the 
 completion of the request. */
-public SIRequest retrieveDescriptors(short retrieveMode, java.lang.Object appData, SIRetrievalListener listener, short[] someDescriptorTags) {
+public SIRequest retrieveDescriptors(short retrieveMode, java.lang.Object appData, SIRetrievalListener listener, short[] someDescriptorTags) throws SIIllegalArgumentException {
+   SIDatabase.checkRetrieveMode(retrieveMode);
    return SIDatabaseRequest.DescriptorRequestService(this, someDescriptorTags, appData, listener, request.db, retrieveMode);
 }
 
@@ -429,7 +432,7 @@ public javax.tv.service.ServiceType  getServiceType () {
  DATA_UNAVAILABLE .*/
 
 public javax.tv.service.SIRequest  retrieveComponents ( javax.tv.service.SIRequestor requestor) {
-   //TODO:
+   //javax-TODO:
    //Retrieve present event
    //retrieve component descriptors from this EIT
    //create ServiceComponents from these.
@@ -469,7 +472,7 @@ public javax.tv.service.guide.ProgramSchedule  getProgramSchedule () {
  
  */
 
-public java.lang.String getLongName () {
+public String getLongName () {
    return getName();
 }
 
@@ -525,7 +528,7 @@ public javax.tv.service.Service  getService () {
  */
 
 public void addServiceComponentChangeListener ( javax.tv.service.navigation.ServiceComponentChangeListener listener) {
-   //TODO
+   //javax-TODO
 }
 
 
@@ -544,7 +547,7 @@ public void addServiceComponentChangeListener ( javax.tv.service.navigation.Serv
  */
 
 public void removeServiceComponentChangeListener ( javax.tv.service.navigation.ServiceComponentChangeListener listener) {
-   //TODO
+   //javax-TODO
 }
 
 
@@ -561,7 +564,7 @@ public void removeServiceComponentChangeListener ( javax.tv.service.navigation.S
 */
 
 public javax.tv.service.navigation.DeliverySystemType  getDeliverySystemType () {
-   //TODO
+   //javax-TODO
    return null;
 }
 
@@ -577,7 +580,7 @@ public javax.tv.service.navigation.DeliverySystemType  getDeliverySystemType () 
  
  */
 public int[] getCASystemIDs () {
-   //TODO
+   //javax-TODO
    return new int[0];
 }
 
@@ -591,7 +594,7 @@ public int[] getCASystemIDs () {
  
 */
 public boolean isFree () {
-   //TODO
+   //javax-TODO
    return true;
 }
 

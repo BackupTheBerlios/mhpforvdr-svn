@@ -4,6 +4,9 @@ package javax.tv.service.guide;
 import org.dvb.si.SIServiceImpl;
 import org.dvb.si.SIService;
 
+// DEPRECATED
+
+
 /*
 
 This interface represents a collection of program events for a given
@@ -29,8 +32,12 @@ public DVBProgramSchedule(SIServiceImpl service) {
 
 public javax.tv.service.SIRequest  retrieveCurrentProgramEvent ( javax.tv.service.SIRequestor requestor) {
    javax.tv.service.OrgDvbSiRequestAdapter req=new javax.tv.service.OrgDvbSiRequestAdapter(requestor);
-   req.setRequest(service.retrievePresentSIEvent(SIService.FROM_CACHE_OR_STREAM, null, req, null));
-   return req;   
+   try {
+      req.setRequest(service.retrievePresentSIEvent(SIService.FROM_CACHE_OR_STREAM, null, req, null));
+   } catch (org.dvb.si.SIIllegalArgumentException ex) {
+      ex.printStackTrace();
+   }
+   return req;
 }
 
 
@@ -45,7 +52,11 @@ public javax.tv.service.SIRequest  retrieveFutureProgramEvent (java.util.Date ti
                    throws javax.tv.service.SIException 
 {
    javax.tv.service.OrgDvbSiRequestAdapter req=new javax.tv.service.OrgDvbSiRequestAdapter(requestor);
-   req.setRequest(service.retrieveScheduledSIEvents(SIService.FROM_CACHE_OR_STREAM, null, req, null, time, time));
+   try {
+      req.setRequest(service.retrieveScheduledSIEvents(SIService.FROM_CACHE_OR_STREAM, null, req, null, time, time));
+   } catch (org.dvb.si.SIIllegalArgumentException ex) {
+      ex.printStackTrace();
+   }
    return req;   
 }
 
@@ -66,7 +77,11 @@ public javax.tv.service.SIRequest  retrieveFutureProgramEvents (java.util.Date b
                    throws javax.tv.service.SIException
 {
    javax.tv.service.OrgDvbSiRequestAdapter req=new javax.tv.service.OrgDvbSiRequestAdapter(requestor);
-   req.setRequest(service.retrieveScheduledSIEvents(SIService.FROM_CACHE_OR_STREAM, null, req, null, begin, end));
+   try {
+      req.setRequest(service.retrieveScheduledSIEvents(SIService.FROM_CACHE_OR_STREAM, null, req, null, begin, end));
+   } catch (org.dvb.si.SIIllegalArgumentException ex) {
+      ex.printStackTrace();
+   }
    return req;   
 }
 
@@ -80,7 +95,11 @@ public javax.tv.service.SIRequest  retrieveNextProgramEvent ( ProgramEvent event
 {
    //TODO: currently returns the "next" event, but not the event following the one given
    javax.tv.service.OrgDvbSiRequestAdapter req=new javax.tv.service.OrgDvbSiRequestAdapter(requestor);
-   req.setRequest(service.retrieveFollowingSIEvent(SIService.FROM_CACHE_OR_STREAM, null, req, null));
+   try {
+      req.setRequest(service.retrieveFollowingSIEvent(SIService.FROM_CACHE_OR_STREAM, null, req, null));
+   } catch (org.dvb.si.SIIllegalArgumentException ex) {
+      ex.printStackTrace();
+   }
    return req;   
 }
 

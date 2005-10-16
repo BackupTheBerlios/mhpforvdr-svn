@@ -13,10 +13,20 @@
 
 namespace DvbSi {
 
+void DatabaseRequest::Dispatch(Database::Ptr db) {
+   if (!hasDispatched) {
+      hasDispatched=true;
+      db->DispatchResult(this);
+   }
+}
+
 
 FilterRequest::FilterRequest(Database::Ptr db, Listener *l, void *ad)
  : DatabaseRequest(l, ad), Filter(db), TimedBySeconds(FILTER_TIMEOUT), timeOutCode(ResultCodeTableNotFound) {
-   db->Add(this, false); //add to scheduler for timeout
+   // add to scheduler for timeout
+   db->Add(this, false);
+   // Attach filter to device
+   Attach();
 }
 
 FilterRequest::~FilterRequest() {
@@ -24,24 +34,26 @@ FilterRequest::~FilterRequest() {
    getDatabase()->Remove(this);
 }
 
-//This is a crucial hook to cleanly finish a request:
-//If the request is finished, it will call this Function.
-//If VDR calls this (channel switch e.g.) the request will be cancelled.
-void FilterRequest::SetStatus(bool On) {
-   cFilter::SetStatus(On);
-   if (!On && !hasDispatched) {
-      hasDispatched=true;
+// The one central place where a request is finished
+void FilterRequest::Detach() {
+   Filter::Detach();
+   Dispatch();
+}
+
+//If the transport stream changes (channel switch from VDR e.g.) the request will be cancelled.
+void FilterRequest::OtherTransportStream(Service::TransportStreamID ts) {
+   if (!hasDispatched) {
       if (result==ResultCodeUnknown) //set status called by VDR because of channel switch
          result=finished ? ResultCodeSuccess : ResultCodeDataSwitch;
-      getDatabase()->DispatchResult(this);
+      Detach();
    }
 }
 
 void FilterRequest::Execute() {
    if (!hasDispatched) {
       result=timeOutCode;
-      setDataSource(DataSource(getDatabase()->getCurrentSource(), 
-                    getDatabase()->getNetworkId(), getDatabase()->getTransportStreamId()));
+      setDataSource(DataSource(getDatabase()->getSource(), 
+                    getDatabase()->getOriginalNetworkId(), getDatabase()->getTransportStreamId()));
       Detach();
    }
 }
@@ -49,8 +61,8 @@ void FilterRequest::Execute() {
 bool FilterRequest::CancelRequest() {
    if (!hasDispatched) {
       result=ResultCodeRequestCancelled;
-      setDataSource(DataSource(getDatabase()->getCurrentSource(), 
-                    getDatabase()->getNetworkId(), getDatabase()->getTransportStreamId()));
+      setDataSource(DataSource(getDatabase()->getSource(), 
+                    getDatabase()->getOriginalNetworkId(), getDatabase()->getTransportStreamId()));
       Detach();
       return true;
    }
@@ -60,8 +72,8 @@ bool FilterRequest::CancelRequest() {
 bool FilterRequest::checkFinish() {
    if (finished) {
       result=ResultCodeSuccess;
-      setDataSource(DataSource(getDatabase()->getCurrentSource(), 
-                    getDatabase()->getNetworkId(), getDatabase()->getTransportStreamId()));
+      setDataSource(DataSource(getDatabase()->getSource(), 
+                    getDatabase()->getOriginalNetworkId(), getDatabase()->getTransportStreamId()));
       Detach();
       return true;
    }
@@ -69,8 +81,8 @@ bool FilterRequest::checkFinish() {
 }
 
 bool SecondaryRequest::CancelRequest() {
-   if (req && !hasDispatched) {
-      return req->CancelRequest();
+   if (request && !hasDispatched) {
+      return request->CancelRequest();
    }
    return false;
 }

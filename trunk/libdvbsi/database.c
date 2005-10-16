@@ -9,8 +9,9 @@
  ***************************************************************************/
 
 #include <vector>
- 
+
 #include <vdr/channels.h>
+#include <vdr/device.h>
 
 #include "database.h"
 
@@ -18,82 +19,22 @@ namespace DvbSi {
 
 Database::DatabaseArray Database::databases;
 Database::DispatchThread *Database::dispatchThread=new Database::DispatchThread();
-bool *Database::noReceptionDatabases=0;
-int Database::primaryIndex = -1;
 
-int Database::getNumberOfValidDatabases() {
-   int count=getNumberOfDatabases();
+Database::Ptr Database::getDatabaseForTuner(Service::Tuner *tuner) {
    for (uint i=0;i<databases.size();i++)
-      if (noReceptionDatabases[i])
-         count--;
-   return count;
-}
-
-Database::Ptr Database::getPrimaryDatabase() {
-   checkInitialDatabaseSetup();
-      
-   if (primaryIndex != -1)
-      return databases[primaryIndex];
-   
-   DeliverySystem system;
-   int indexOfPrimary=cDevice::PrimaryDevice()->DeviceNumber();
-   if (!databases[indexOfPrimary] && !noReceptionDatabases[indexOfPrimary]) {    
-      if ((system=getDeliverySystem(cDevice::PrimaryDevice())) != DeliverySystemNone) {
-         primaryIndex=indexOfPrimary;
-         databases[primaryIndex]=new Database(cDevice::PrimaryDevice(), system);
-         return databases[primaryIndex];
-      } else
-         noReceptionDatabases[indexOfPrimary]=true;
-   }
-   
-   Database::Ptr db(0);
-   for (int i=0;i<cDevice::NumDevices();i++) {
-      if ( (db=getDatabase(i)) ) {
-         primaryIndex=i;
-         return db;
-      }
-   }
-   esyslog("Could not find a device which can receive a broadcast");
-   return 0;
-}
-
-Database::Ptr Database::getDatabase(cDevice *dev) {
-   checkInitialDatabaseSetup();
-   
-   for (int i=0;i<cDevice::NumDevices();i++)
-      if (databases[i] && databases[i]->device==dev)
+      if (databases[i]->tuner == tuner)
          return databases[i];
-   DeliverySystem system;
-   for (int i=0;i<cDevice::NumDevices();i++) {
-      cDevice  *idev=cDevice::GetDevice(i);
-      if (idev==dev && !noReceptionDatabases[i]) {
-         if ((system=getDeliverySystem(idev)) != DeliverySystemNone) {
-            databases[i]=new Database(idev, system);
-            return databases[i];
-         } else
-            noReceptionDatabases[i]=true;
-      }
-   }
    return 0;
 }
 
-Database::Ptr Database::getDatabase(int numDevice) {
-   checkInitialDatabaseSetup();
-   
-   DeliverySystem system;
-   cDevice  *idev=cDevice::GetDevice(numDevice);
-   if (!databases[numDevice] && !noReceptionDatabases[numDevice]) {
-      if ((system=getDeliverySystem(idev)) != DeliverySystemNone)
-         databases[numDevice]=new Database(idev, system);
-      else
-         noReceptionDatabases[numDevice]=true;
-   }
-   return databases[numDevice];
+bool Database::getDatabases(std::list<Database::Ptr> &list) {
+   for (uint i=0;i<databases.size();i++)
+      list.push_back(databases[i]);
+   return databases.size();
 }
 
-
-
-Database::Ptr Database::getDatabaseForChannel(int nid, int tid, int sid, bool shallBeTunedTo, cChannel **chan) {
+/*
+Database::Ptr Database::getDatabaseForChannel(int nid, int tid, int sid, bool shallBeTunedTo) {
    ReadLock rwlock(&Channels);
    std::vector<cChannel *> list;
    findChannels(nid, tid, sid, list);
@@ -186,15 +127,28 @@ void Database::findChannels(int nid, int tid, int sid, std::vector<cChannel *> &
    }
    
 }
-
-int Database::getCurrentSource() {
-   ReadLock rwlock(&Channels);
-   if (device)
-      return Channels.GetByNumber(device->CurrentChannel())->Source();
-   else
+*/
+Database::Ptr Database::getDatabaseForService(Service::Service::Ptr service) {
+   if (!service)
       return 0;
+   //Service::ServiceManager::ServiceLock lock;
+   Service::ServiceManager *manager=Service::ServiceManager::getManager();
+   Service::Tunable *tunable=service->getTunable();
+   Service::Tuner *tuner=manager->getTunerTuned(tunable);
+   if (!tuner)
+      tuner=manager->getTuner(tunable);
+   return getDatabaseForTuner(tuner);
 }
 
+Database::Ptr Database::getDatabaseTunedForService(Service::Service::Ptr service) {
+   if (!service)
+      return 0;
+   Database::Ptr db=getDatabaseForService(service);
+   Service::Tunable *tunable=service->getTunable();
+   if (db)
+      db->tuner->Tune(tunable);
+   return db;
+}
 
 bool Database::retrievePat(SI::PAT &Pat) {
    if (HasState(TuningStatePat)) {
@@ -205,66 +159,59 @@ bool Database::retrievePat(SI::PAT &Pat) {
    return false;
 }
 
-PMTServicesRequest *Database::retrievePMTServices(Listener *listener, IdTracker *serviceIds, RetrieveMode mode, void *appData) {
-   //DatabaseLock lock(this);
-   cMutexLock lock(&switchMutex);
+PMTServicesRequest *Database::retrievePMTServices(Listener *listener, int originalNetworkId, int transportStreamId, IdTracker *serviceIds, RetrieveMode mode, void *appData) {
+   DatabaseLock lock(this);
    if (!WaitForDefinedState(TuningStatePat))
       return 0;
-   return new PMTServicesRequest(this, listener, serviceIds, mode, appData);
+   return new PMTServicesRequest(this, listener, originalNetworkId, transportStreamId, serviceIds, mode, appData);
 }
 
+
 NetworksRequest *Database::retrieveNetworks(Listener *listener, IdTracker *networkIds, RetrieveMode mode, void *appData) {
-   //DatabaseLock lock(this);
-   cMutexLock lock(&switchMutex);
+   DatabaseLock lock(this);
    if (!WaitForDefinedState(TuningStateChannel))
       return 0;
    return new NetworksRequest(this, listener, networkIds, mode, appData);
 }
 
-NetworksRequest *Database::retrieveActualNetwork(Listener *listener, RetrieveMode mode, void *appData) {
-   //DatabaseLock lock(this);
-   cMutexLock lock(&switchMutex);
+ActualNetworkRequest *Database::retrieveActualNetwork(Listener *listener, RetrieveMode mode, void *appData) {
+   DatabaseLock lock(this);
    if (!WaitForDefinedState(TuningStateChannel))
       return 0;
-   return new NetworksRequest(this, listener, new IdTracker(getNetworkId()), mode, appData);
+   return new ActualNetworkRequest(this, listener, mode, appData);
 }
 
 TransportStreamDescriptionRequest *Database::retrieveTransportStreamDescription(Listener *listener, RetrieveMode mode, void *appData) {
-   //DatabaseLock lock(this);
-   cMutexLock lock(&switchMutex);
+   DatabaseLock lock(this);
    if (!WaitForDefinedState(TuningStateChannel))
       return 0;
    return new TransportStreamDescriptionRequest(this, listener, mode, appData);
 }
 
 ActualTransportStreamRequest *Database::retrieveActualTransportStream(Listener *listener, RetrieveMode mode, void *appData) {
-   //DatabaseLock lock(this);
-   cMutexLock lock(&switchMutex);
-   if (!WaitForDefinedState(TuningStatePat))
+   DatabaseLock lock(this);
+   if (!WaitForDefinedState(TuningStateChannel))
       return 0;
    return new ActualTransportStreamRequest(this, listener, mode, appData);
 }
 
-ServiceTableRequest *Database::retrieveServiceTable(Listener *listener, IdTracker *transportStreamIds, RetrieveMode mode, void *appData) {
-   //DatabaseLock lock(this);
-   cMutexLock lock(&switchMutex);
+ServiceTableRequest *Database::retrieveServiceTable(Listener *listener, IdTracker *originalNetworkIds, IdTracker *transportStreamIds, RetrieveMode mode, void *appData) {
+   DatabaseLock lock(this);
    if (!WaitForDefinedState(TuningStateChannel))
       return 0;
-   return new ServiceTableRequest(this, listener, transportStreamIds, mode, appData);
+   return new ServiceTableRequest(this, listener, originalNetworkIds, transportStreamIds, mode, appData);
 }
 
-PMTElementaryStreamRequest *Database::retrievePMTElementaryStreams(Listener *listener, int serviceId, IdTracker *componentTags, RetrieveMode mode, void *appData) {
-   //DatabaseLock lock(this);
-   cMutexLock lock(&switchMutex);
+PMTElementaryStreamRequest *Database::retrievePMTElementaryStreams(Listener *listener, int originalNetworkId, int transportStreamId, int serviceId, IdTracker *componentTags, RetrieveMode mode, void *appData) {
+   DatabaseLock lock(this);
    if (!WaitForDefinedState(TuningStatePat))
       return 0;
-   return new PMTElementaryStreamRequest(this, listener, serviceId, componentTags, mode, appData);
+   return new PMTElementaryStreamRequest(this, listener, originalNetworkId, transportStreamId, serviceId, componentTags, mode, appData);
 }
 
 EventTableRequest *Database::retrieveEventTable(Listener *listener, bool presentFollowingOrOther, 
                                                 IdTracker *serviceIds, RetrieveMode mode, void *appData) {
-   //DatabaseLock lock(this);
-   cMutexLock lock(&switchMutex);
+   DatabaseLock lock(this);
    if (!WaitForDefinedState(TuningStateChannel))
       return 0;
    return new EventTableRequest(this, listener, presentFollowingOrOther, serviceIds, mode, appData);
@@ -272,8 +219,7 @@ EventTableRequest *Database::retrieveEventTable(Listener *listener, bool present
 
 EventTableOtherRequest *Database::retrieveEventTableOther(Listener *listener, bool presentFollowingOrOther, 
                                                 IdTracker *serviceIds, RetrieveMode mode, void *appData) {
-   //DatabaseLock lock(this);
-   cMutexLock lock(&switchMutex);
+   DatabaseLock lock(this);
    if (!WaitForDefinedState(TuningStateChannel))
       return 0;
    return new EventTableOtherRequest(this, listener, presentFollowingOrOther, serviceIds, mode, appData);
@@ -281,24 +227,21 @@ EventTableOtherRequest *Database::retrieveEventTableOther(Listener *listener, bo
 
 
 BouquetsRequest *Database::retrieveBouquets(Listener *listener, IdTracker *bouquetIds, RetrieveMode mode, void *appData) {
-   //DatabaseLock lock(this);
-   cMutexLock lock(&switchMutex);
+   DatabaseLock lock(this);
    if (!WaitForDefinedState(TuningStateChannel))
       return 0;
    return new BouquetsRequest(this, listener, bouquetIds, mode, appData);
 }
 
 TDTRequest *Database::retrieveTDT(Listener *listener, RetrieveMode mode, void *appData) {
-   //DatabaseLock lock(this);
-   cMutexLock lock(&switchMutex);
+   DatabaseLock lock(this);
    if (!WaitForDefinedState(TuningStateChannel))
       return 0;
    return new TDTRequest(this, listener, mode, appData);
 }
 
 TOTRequest *Database::retrieveTOT(Listener *listener, RetrieveMode mode, void *appData) {
-   //DatabaseLock lock(this);
-   cMutexLock lock(&switchMutex);
+   DatabaseLock lock(this);
    if (!WaitForDefinedState(TuningStateChannel))
       return 0;
    return new TOTRequest(this, listener, mode, appData);
@@ -306,40 +249,54 @@ TOTRequest *Database::retrieveTOT(Listener *listener, RetrieveMode mode, void *a
 
 ServicesRequest *Database::retrieveServices(Listener *listener, int originalNetworkId, IdTracker *transportStreamIds,
                    IdTracker * serviceIds, RetrieveMode mode, void *appData) {
-   //DatabaseLock lock(this);
-   cMutexLock lock(&switchMutex);
+   DatabaseLock lock(this);
    if (!WaitForDefinedState(TuningStateChannel))
       return 0;
    return new ServicesRequest(this, listener, originalNetworkId, transportStreamIds, serviceIds, mode, appData);
 }
 
 ActualServicesRequest *Database::retrieveActualServices(Listener *listener, IdTracker *serviceIds, RetrieveMode mode, void *appData) {
-   //DatabaseLock lock(this);
-   cMutexLock lock(&switchMutex);
-   if (!WaitForDefinedState(TuningStatePat))
+   DatabaseLock lock(this);
+   if (!WaitForDefinedState(TuningStateChannel))
       return 0;
    return new ActualServicesRequest(this, listener, serviceIds, mode, appData);
 }
 
 PresentFollowingEventRequest *Database::retrievePresentFollowingEvent(Listener *listener, 
          int tid, int sid, bool presentOrFollowing, RetrieveMode mode, void *appData) {
-   //DatabaseLock lock(this);
-   cMutexLock lock(&switchMutex);
-   if (!WaitForDefinedState(TuningStatePat))
+   DatabaseLock lock(this);
+   if (!WaitForDefinedState(TuningStateChannel))
       return 0;
    return new PresentFollowingEventRequest(this, listener, tid, sid, presentOrFollowing, mode, appData);
 }
 
 ScheduleEventRequest *Database::retrieveScheduledEvents(Listener *listener, 
                         int tid, int sid, RetrieveMode mode, void *appData) {
-   //DatabaseLock lock(this);
-   cMutexLock lock(&switchMutex);
-   if (!WaitForDefinedState(TuningStatePat))
+   DatabaseLock lock(this);
+   if (!WaitForDefinedState(TuningStateChannel))
       return 0;
    return new ScheduleEventRequest(this, listener, tid, sid, mode, appData);
 }
 
+TimeScheduleEventRequest *Database::retrieveTimeScheduledEvents(Listener *listener, time_t begin, time_t end,
+                        int tid, int sid, RetrieveMode mode, void *appData) {
+   DatabaseLock lock(this);
+   if (!WaitForDefinedState(TuningStateChannel))
+      return 0;
+   return new TimeScheduleEventRequest(this, listener, begin, end, tid, sid, mode, appData);
+}
 
+
+void Database::Initialize() {
+   Service::ServiceManager::ServiceLock lock;
+   Service::ServiceManager *manager=Service::ServiceManager::getManager();
+   std::list<Service::Tuner *> tuners;
+   manager->getTuners(tuners);
+   databases.reserve(tuners.size());
+   for (std::list<Service::Tuner *>::iterator it=tuners.begin(); it != tuners.end(); ++it) {
+      databases.push_back(Database::Ptr(new Database(*it)));
+   }
+}
 
 void Database::CleanUp() {
    delete dispatchThread;
@@ -352,15 +309,12 @@ void Database::CleanUp() {
    }
 }
 
-Database::Database(cDevice *dev, DeliverySystem system) 
-  : patFilter(this), nid(-1), tid(-1), state(TuningStateUnknown), device(dev), deliverySystem(system)
+Database::Database(Service::Tuner *tuner) 
+   : patFilter(this), state(TuningStateUnknown), tuner(tuner)
 {
-   printf("Creating database for device %d\n", dev->DeviceNumber());
-   //channelMonitor=new ChannelMonitor(this);
-   //new ChannelMonitor();
-   //new cStatus;
-   //patFilter is _not_ attached by its constructor, since at that time this->device is still 0!
-   Attach(&patFilter);
+   printf("Creating database for device %d\n", tuner->getDevice()->DeviceNumber());
+   Service::ServiceManager::getManager()->AddServiceListener(this);
+   tuner->getDevice()->AttachFilter(&patFilter);
    Add(&patFilter, false); //schedule
 }
 
@@ -371,90 +325,71 @@ Database::~Database() {
 
 void Database::Stop() {
    printf("Stopping database\n");
-   if (!device)
+   if (!tuner)
       return;
 
+   // remove scheduled objects, patFilter
+   RemoveAll();
+
+   tuner->getDevice()->Detach(&patFilter);
    {
       cMutexLock lock(&listMutex);
-      for (std::list<Filter *>::iterator it=activeFilters.begin(); it != activeFilters.end(); ++it) {
-         Detach(*it); //do not delete a filter, they do not belong to us
+      for (std::list<Filter *>::iterator it=activeFilters.begin(); it != activeFilters.end(); ) {
+         // list will be modified by Detach. All iterators will remain valid, except the current one.
+         Filter *detachFilter = *it;
+         ++it;
+         Detach(detachFilter); //do not delete a filter, they do not belong to us
       }
       activeFilters.clear();
       dataSwitchListener.clear();
    }
    // disable database
-   device=0;
+   tuner=0;
 }
 
 //called by Filter->Attach()
 void Database::Attach(Filter *filter) {
-   if (filter->attached || !device)
+   if (filter->attached || !tuner)
       return;
-   filter->attached=true;
    {
       cMutexLock lock(&listMutex);
+      filter->attached=true;
       //printf("Adding active Filter %p\n", filter);
       activeFilters.push_back(filter);
    }
-   device->AttachFilter(filter);
+   tuner->getDevice()->AttachFilter(filter);
 }
 
 //called by Filter->Detach()
 void Database::Detach(Filter *filter) {
    if (!filter->attached)
       return;
-   filter->attached=false;
    {
       cMutexLock lock(&listMutex);
       //printf("Removing active Filter %p\n", filter);
+      filter->attached=false;
       activeFilters.remove(filter);
    }
-   printf("Device is %p\n", device);
-   if (device)
-      device->Detach(filter);
-   //printf("Removed active Filter %p\n", filter);
+   //printf("Device is %p\n", tuner->getDevice());
+   if (tuner)
+      tuner->getDevice()->Detach(filter);
 }
 
-void Database::ChannelSwitch(const cDevice *Device, int ChannelNumber) {
-   if (Device==device) {
-      cMutexLock lock(&switchMutex);
-      if (ChannelNumber) {
-         cChannel *channel=Channels.GetByNumber(ChannelNumber);
-         if (!channel)
-            return;
-         int oldNid, oldTid;
-         {
-            DatabaseLock lock(this);
-            oldNid=nid;
-            oldTid=tid;
-            nid=channel->Nid();
-            tid=channel->Tid();
-         }
-         printf("DATABASE: set nid %d tid %d\n", nid, tid);
-         
-         if (HasState(TuningStatePat)) {
-            if ( (nid == oldNid) && (tid == oldTid) ) {
-               //no tuning occurred
-               state=TuningStatePat;
-               HandleDataSwitch(DataSwitchServiceChange);
-               return;
-            } else {
-               state=TuningStateChannel;
-               HandleDataSwitch(DataSwitchDataSwitching);
-               InvalidatePat();
-            }
-         } else {
-            state=TuningStateChannel;
-            HandleDataSwitch(DataSwitchDataSwitching);
-         }
-         
-         //Restart PAT filter
-         InvalidatePat();
-         //call WaitForPat from a different thread - dont block channel switch :-)
-         dispatchThread->SynchronizeOnPat(this);
-      } else {
-         state=TuningStateTuning;
+void Database::TransportStreamChange(Service::TransportStreamID transportstream, Service::SwitchSource source, Service::Tuner *t) {
+   if (tuner == t) {
+      {
+         DatabaseLock lock(this);
+         ts=transportstream;
+         state=TuningStateChannel;
       }
+      HandleDataSwitch(DataSwitchDataSwitching);
+      printf("DATABASE: set nid %d tid %d\n", ts.GetNid(), ts.GetTid());
+         //Restart PAT filter
+      InvalidatePat();
+         //call WaitForPat from a different thread - dont block channel switch :-)
+      dispatchThread->SynchronizeOnPat(this);
+   } else {
+      state=TuningStateTuning;
    }
 }
 
@@ -484,25 +419,6 @@ bool Database::WaitForDefinedState(TuningState newstate) {
    return false;
 }
 
-Database::DeliverySystem Database::getDeliverySystem(cDevice *candidate) {
-   DeliverySystem system=DeliverySystemNone;
-   ReadLock rwlock(&Channels);
-   for (cChannel *channel = Channels.First(); channel; channel = Channels.Next(channel)) {
-      if (!channel->GroupSep() && candidate->ProvidesTransponder(channel)) {
-         if (channel->IsSat())
-            system=DeliverySystemSatellite;
-         else if (channel->IsTerr())
-            system=DeliverySystemTerrestrial;
-         else if (channel->IsCable())
-            system=DeliverySystemCable;
-         break;
-      }
-   }
-   //no channel found that is provided by the device
-   // => device has no reception capabilities (is there a more elegant way to find this out?)
-   return system;
-}
-
 /*bool Database::findNextChannel(int nid, int tid, int sid, cChannel *&channel) {
    //only use when Channels is locked?
    //printf("findNextChannel %p %p %p %p\n", last, Channels.Next(last), Channels.Next(Channels.Next(last)), //Channels.Next(Channels.Next(Channels.Next(last))) );
@@ -514,18 +430,6 @@ Database::DeliverySystem Database::getDeliverySystem(cDevice *candidate) {
    //printf("findNextChannel: returning 0\n");
    return 0;
 }*/
-
-
-void Database::checkInitialDatabaseSetup() {
-   if (!databases.size()) {
-      //initial setup
-      databases.insert(databases.begin(), MAXDEVICES, Database::Ptr(0));
-      noReceptionDatabases=new bool[databases.size()];
-      for (uint i=0;i<databases.size();i++) {
-         noReceptionDatabases[i]=false;
-      }
-   }
-}
 
 
 void Database::addDataSwitchListener(DataSwitchListener *listener) {
@@ -544,18 +448,12 @@ void Database::HandleDataSwitch(DataSwitchEvent event) {
    case DataSwitchDataSwitching:
       for (std::list<DataSwitchListener *>::iterator it=dataSwitchListener.begin(); it != dataSwitchListener.end(); ++it)
          (*it)->DataSwitching(this);
-      //for (std::list<Filter *>::iterator it=activeFilters.begin(); it != activeFilters.end(); ++it)
-       //  (*it)->FilterDataSwitching();
-      break;
-   case DataSwitchServiceChange:
-      for (std::list<DataSwitchListener *>::iterator it=dataSwitchListener.begin(); it != dataSwitchListener.end(); ++it)
-         (*it)->ServiceChange(this);
       break;
    }
 }
 
 
-Database::PatFilter::PatFilter(Database *db) : Filter(db, false), TimedBySeconds(30) 
+Database::PatFilter::PatFilter(Database *db) : TimedBySeconds(30), database(db)
 {
    Set(0x00, SI::TableIdPAT);
    //Set(0x10, SI::TableIdNIT);
@@ -573,7 +471,7 @@ void Database::PatFilter::Process(u_short Pid, u_char Tid, const u_char *Data, i
             printf(" !!! PAT SECTION %d !!!\n", pat.getSectionNumber());
          database->pat=pat;
          database->state=TuningStatePat;
-         database->tid=pat.getTransportStreamId();
+         database->ts.tid=pat.getTransportStreamId();
          database->stateVar.Broadcast();
          //printf("Setting database's pat\n");
       }

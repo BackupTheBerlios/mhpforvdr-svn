@@ -21,15 +21,24 @@
 namespace Service {
 
 TransportStream::TransportStream(const cChannel *channel) {
-   data.source=channel->Source();
-   data.onid=channel->Nid();
-   data.tid=channel->Tid();
+   if (channel) {
+      data.source=channel->Source();
+      data.onid=channel->Nid();
+      data.tid=channel->Tid();
+   } else {
+      data.source=0;
+      data.onid=0;
+      data.tid=0;
+   }
 }
 
 ServiceIDAdapter::ServiceIDAdapter(const cChannel *channel)
    : TransportStream(channel)
 {
-   sid=channel->Sid();
+   if (channel)
+      sid=channel->Sid();
+   else
+      sid=0;
 }
 
 ServiceListener::~ServiceListener() {
@@ -73,8 +82,7 @@ Manager::Manager() {
    DvbSi::ReadLock rwlock(&Channels);
    for (cChannel *chan=Channels.First(); chan; chan=Channels.Next(chan)) {
       ChIDService::Ptr s=new ChIDService(chan);
-      services.push_back(s);
-      s->managerIterator=services.end();
+      s->managerIterator=services.insert(services.end(), s);
    }
    for (int i=0; i<cDevice::NumDevices(); i++) {
       DeviceTuner *tuner = DeviceTuner::checkDevice(cDevice::GetDevice(i));
@@ -153,16 +161,26 @@ Service::Ptr Manager::findService(ServiceID id) {
    return Service::Ptr(0);
 }
 
-bool Manager::findService(int nid, int tid, int sid, std::list<Service::Ptr> retlist) {
+bool Manager::findServices(int onid, int tid, int sid, std::list<Service::Ptr> retlist) {
    cMutexLock lock(&mutex);
    bool success = false;
    for (ChIDServiceList::iterator it=services.begin(); it != services.end(); ++it) {
-      if ((*it)->GetSid()==sid && (*it)->GetTid()==tid && (*it)->GetNid()==nid) {
+      if ((*it)->GetSid()==sid && ((*it)->GetTid()==tid || tid == -1) && (*it)->GetNid()==onid) {
          retlist.push_back(*it);
          success=true;
       }
    }
    return success;
+}
+
+Service::Ptr Manager::findService(int onid, int tid, int sid) {
+   cMutexLock lock(&mutex);
+   for (ChIDServiceList::iterator it=services.begin(); it != services.end(); ++it) {
+      if ((*it)->GetSid()==sid && ((*it)->GetTid()==tid || tid == -1) && (*it)->GetNid()==onid) {
+         return *it;
+      }
+   }
+   return Service::Ptr(0);
 }
 
 Tunable *Manager::findTunable(TransportStreamID id) {
@@ -245,11 +263,10 @@ Service::Ptr Manager::getNextService(Service::Ptr service) {
 Service::Ptr Manager::getPreviousService(Service::Ptr service) {
    cMutexLock lock(&mutex);
    ChIDServiceList::iterator it(((ChIDService::Ptr)service)->managerIterator);
-   --it;
    if (it == services.begin())
       return Service::Ptr(0);
    else
-      return *it;
+      return *(--it);
 }
 
 int Manager::getNumberOfServices() {
@@ -292,7 +309,7 @@ DeviceTuner::DeviceTuner(cDevice *device, DeliverySystem system)
 
 DeviceTuner *DeviceTuner::checkDevice(cDevice *device) {
    DeliverySystem system=getDeliverySystem(device);
-   if (system != DeliverySystemOther)
+   if (system != DeliverySystemNone)
       return new DeviceTuner(device, system);
    return 0;
 }
@@ -303,6 +320,14 @@ bool DeviceTuner::Tune(Tunable *tune) {
 
 bool DeviceTuner::IsTunedTo(Tunable *tune) {
    return TransportStream(getChannel())==TransportStream(tune->getTunableChannel());
+}
+
+bool DeviceTuner::Provides(Tunable *tune) {
+   return device->ProvidesTransponder(tune->getTunableChannel());
+}
+
+TransportStreamID DeviceTuner::getCurrentTransportStream() {
+   return TransportStream(getChannel()).GetTransportStreamID();
 }
 
 bool DeviceTuner::SetService(Service::Ptr service) {
@@ -337,7 +362,7 @@ bool DeviceTuner::SetChannel(const cChannel *chan, SwitchSource source, bool isT
    return success;
 }
 
-Tuner::DeliverySystem DeviceTuner::getDeliverySystem(cDevice *device) {
+DeliverySystem DeviceTuner::getDeliverySystem(cDevice *device) {
    DeliverySystem system=DeliverySystemNone;
    DvbSi::ReadLock lock(&Channels);
    for (cChannel *channel = Channels.First(); channel; channel = Channels.Next(channel)) {
@@ -454,6 +479,29 @@ void ChIDService::getSubtitlingPids(ElementaryStreams::PidList &list) {
       pl.language=chan->Slang(i);
       list.push_back(pl);
    }
+}
+
+DeliverySystem ChIDService::getDeliverySystem() {
+   const cChannel *chan=getChannel();
+   if (chan->IsSat())
+      return DeliverySystemSatellite;
+   else if (chan->IsTerr())
+      return DeliverySystemTerrestrial;
+   else if (chan->IsCable())
+      return DeliverySystemCable;
+   else
+      return DeliverySystemOther;
+}
+
+void ChIDService::getCaIDs(CaIDList &list) {
+   const cChannel *chan=getChannel();
+   int caid;
+   for (int i=0; (caid=chan->Ca(i)); i++)
+      list.push_back(caid);
+}
+
+bool ChIDService::isFreeToAir() {
+   return !getChannel()->Ca();
 }
 
 

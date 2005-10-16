@@ -1,26 +1,27 @@
 package org.dvb.si;
 
+import vdr.mhp.lang.NativeData;
+import org.davic.net.dvb.DvbLocator;
 
 public class SIBouquetImpl extends SICommonObject implements SIBouquet, 
                javax.tv.service.transport.Bouquet, javax.tv.service.navigation.CAIdentification {
 
 //nativeData is a pointer to a std::list<BAT>
 
-SIBouquetImpl (SIDatabaseRequest request, long nativeData) {
+SIBouquetImpl (SIDatabaseRequest request, NativeData nativeData) {
    super(request, nativeData);
 }
 
-protected void cleanUp(long nativeData) {
+protected void cleanUp(NativeData nativeData) {
    cleanUpStdList(nativeData);
 }
-private native void cleanUpStdList(long nativeData);
+private native void cleanUpStdList(NativeData nativeData);
 
 /*
 Return true when the information contained in the object that implements this interface was  ltered from an 'actual' 
 table or from a table with no 'actual/other' distinction. Returns: true if the information comes from an 'actual' table 
 or from a table with no 'actual/other' distiction, otherwise returns false */
 public boolean fromActual() {
-   //TODO
    return true;
 }
 
@@ -28,7 +29,9 @@ public boolean fromActual() {
 Get a list of DvbLocators identifying the services that belong to the bouquet. Returns: An array of DvbLocators 
 identifying the services See Also: org.davic.net.dvb.DvbLocator, SIService */
 public org.davic.net.dvb.DvbLocator[] getSIServiceLocators() {
-   return null; //TODO
+   //TODO
+   System.out.println("SIBouquetImpl.getSIServiceLocators(): implement me");
+   return new DvbLocator [] {};
 }
 
 
@@ -41,7 +44,7 @@ tags). */
 public short[] getDescriptorTags() {
    return descriptorTags(nativeData);
 }
-private native short[] descriptorTags(long nativeData);
+private native short[] descriptorTags(NativeData nativeData);
 
 
 /*
@@ -49,10 +52,10 @@ This method returns the name of this network. The name is extracted from the net
 the multilingual_network_name_descriptor. When this information is not available "" is returned. All control characters 
 as de ned in ETR 211 are ignored. For each character the DVB-SI 8 bit character code is mapped to the appropriate 
 Unicode representation. Returns: The network name of this network. */
-public java.lang.String getName() {
-   return new String(name(nativeData));
+public String getName() {
+   return name(nativeData);
 }
-private native byte[] name(long nativeData);
+private native String name(NativeData nativeData);
 
 
 /*
@@ -61,7 +64,7 @@ er. */
 public int getBouquetID() {
    return bouquetId(nativeData);
 }
-private native int bouquetId(long nativeData);
+private native int bouquetId(NativeData nativeData);
 
 
 /*           Bouquet
@@ -69,10 +72,10 @@ This method returns the short name (ETR 211) of this network without emphasis ma
 network_name_descriptor or optionally from the multilingual_network_name_descriptor. When this information is not 
 available "" is returned. For each character the DVB-SI 8 bit character code is mapped to the appropriate Unicode 
 representation. Returns: The short network name of this network. */
-public java.lang.String getShortBouquetName() {
-   return new String(shortBouquetName(nativeData));
+public String getShortBouquetName() {
+   return shortBouquetName(nativeData);
 }
-private native byte[] shortBouquetName(long nativeData);
+private native String shortBouquetName(NativeData nativeData);
 
 /*
 This method de nes extra semantics for the SIInformation.retrieveDescriptors method (second prototype). If the NIT 
@@ -85,14 +88,15 @@ An object supplied by the application. This object will be delivered to the list
 application can use this objects for internal communication purposes. If the application does not need any application 
 data, the parameter can be null. listener - SIRetrievalListener that will receive the event informing about the 
 completion of the request. */
-public SIRequest retrieveDescriptors(short retrieveMode, java.lang.Object appData, SIRetrievalListener listener, short[] someDescriptorTags) {
+public SIRequest retrieveDescriptors(short retrieveMode, java.lang.Object appData, SIRetrievalListener listener, short[] someDescriptorTags) throws SIIllegalArgumentException {
+   SIDatabase.checkRetrieveMode(retrieveMode);
    return SIDatabaseRequest.DescriptorRequestBouquet(this, someDescriptorTags, appData, listener, request.db, retrieveMode);
 }
 
 /*Retrieve information associated with transport streams carried via the network. The SIIterator that is returned with the event when the request completes successfully will contain one or more objects that implement the SITransportStreamNIT interface. Parameters: retrieveMode - Mode of retrieval indicating whether the data should be retrieved only from the cache (FROM_CACHE_ONLY), from the cache if available and if not from the stream (FROM_CACHE_OR_STREAM), or always from the stream (FROM_STREAM_ONLY). appData - An object supplied by the application. This object will be delivered to the listener when the request completes. The application can use this objects for internal communication purposes. If the application does not need any application data, the parameter can be null. listener - SIRetrievalListener that will receive the event informing about the completion of the request. someDescriptorTags - A list of hints for descriptors (identi ed by their tags) the application is interested in. If the array contains -1 as its one and only element, the application is interested in all descriptors. If someDescriptorTags is null, the application is not interested in descriptors. All 546 ETSI TS 102 812 V1.1.1 (2001-11) values that are out of the valid range for descriptor tags (i.e. 0...255) are ignored, except for the special meaning of -1 as the only element in the array. Returns: An SIRequest object Throws: SIIllegalArgumentException - thrown if the retrieveMode is invalid 
 See Also: SIRequest, SIRetrievalListener, SITransportStreamNIT, DescriptorTag*/
-public SIRequest retrieveSIBouquetTransportStreams(short retrieveMode, java.lang.Object appData, SIRetrievalListener listener, 
-short[] someDescriptorTags) {
+public SIRequest retrieveSIBouquetTransportStreams(short retrieveMode, java.lang.Object appData, SIRetrievalListener listener, short[] someDescriptorTags) throws SIIllegalArgumentException {
+   SIDatabase.checkRetrieveMode(retrieveMode);
    return SIDatabaseRequest.TransportStreamRequest(this, appData, listener, request.db, retrieveMode);
 }
 
@@ -202,7 +206,7 @@ public javax.tv.service.ServiceInformationType  getServiceInformationType () {
  
  */
 public int[] getCASystemIDs () {
-   //TODO
+   //javax-TODO
    return new int[0];
 }
 
@@ -216,7 +220,7 @@ public int[] getCASystemIDs () {
  
 */
 public boolean isFree () {
-   //TODO
+   //javax-TODO
    return true;
 }
 

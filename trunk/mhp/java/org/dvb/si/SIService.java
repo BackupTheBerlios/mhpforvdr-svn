@@ -119,8 +119,7 @@ is null, the application is not interested in descriptors. All values that are o
 tags (i.e. 0...255) are ignored, except for the special meaning of -1 as the only element in the array. Returns: An 
 SIRequest object Throws: SIIllegalArgumentException - thrown if the retrieveMode is 
 invalid */
-public SIRequest retrieveFollowingSIEvent(short retrieveMode, java.lang.Object appData, SIRetrievalListener listener, 
-short[] someDescriptorTags);
+public SIRequest retrieveFollowingSIEvent(short retrieveMode, java.lang.Object appData, SIRetrievalListener listener, short[] someDescriptorTags) throws SIIllegalArgumentException;
 
 
 /*
@@ -138,8 +137,7 @@ its one and only element, the application is interested in all descriptors. If s
 application is not interested in descriptors. All values that are out of the valid range for descriptor tags (i.e. 
 0...255) are ignored, except for the special meaning of -1 as the only element in the array. Returns:An SIRequest object 
 Throws: SIIllegalArgumentException - thrown if the retrieveMode is invalid */
-public SIRequest retrievePMTService(short retrieveMode, java.lang.Object appData, SIRetrievalListener listener, short[] 
-someDescriptorTags);
+public SIRequest retrievePMTService(short retrieveMode, java.lang.Object appData, SIRetrievalListener listener, short[] someDescriptorTags) throws SIIllegalArgumentException;
 
 
 /*
@@ -158,8 +156,7 @@ is null, the application is not interested in descriptors. All values that are o
 tags (i.e. 0...255) are ignored, except for the special meaning of -1 as the only element in the array. Returns: An 
 SIRequesappData, SIRetrievalListener listener, short[] someDescriptorTagst) object Throws: SIIllegalArgumentException - thrown if the retrieveMode is 
 invalid */
-public SIRequest retrievePresentSIEvent(short retrieveMode, java.lang.Object 
-appData, SIRetrievalListener listener, short[] someDescriptorTags);
+public SIRequest retrievePresentSIEvent(short retrieveMode, java.lang.Object appData, SIRetrievalListener listener, short[] someDescriptorTags) throws SIIllegalArgumentException;
 
 
 /*
@@ -178,8 +175,7 @@ descriptors. All values that are out of the valid range for descriptor tags (i.e
 special meaning of -1 as the only element in the array. startTime - The beginning of the required period in UTC time. 
 endTime - The end of the required period in UTC time. Returns: An SIRequest object Throws: SIIllegalArgumentException - 
 thrown if the retrieveMode is invalid */
-public SIRequest retrieveScheduledSIEvents(short retrieveMode, java.lang.Object appData, SIRetrievalListener listener, 
-short[] someDescriptorTags, java.util.Date startTime, java.util.Date endTime);
+public SIRequest retrieveScheduledSIEvents(short retrieveMode, java.lang.Object appData, SIRetrievalListener listener, short[] someDescriptorTags, java.util.Date startTime, java.util.Date endTime) throws SIIllegalArgumentException;
 
 
 

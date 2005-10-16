@@ -1,11 +1,12 @@
 package org.dvb.si;
 
+import vdr.mhp.lang.NativeData;
 
 public class PMTElementaryStreamImpl extends SICommonObject implements PMTElementaryStream {
 
 //nativeData is a pointer to a PMT::Stream
 
-PMTElementaryStreamImpl (SIDatabaseRequest request, long nativeData) {
+PMTElementaryStreamImpl (SIDatabaseRequest request, NativeData nativeData) {
    super(request, nativeData);
 }
 
@@ -24,7 +25,7 @@ component tag, this method returns -2. */
 public int getComponentTag() {
    return getComponentTag(nativeData);
 }
-private native int getComponentTag(long nativeData);
+private native int getComponentTag(NativeData nativeData);
 
 /*
 Gets a DvbLocator that identi es this elementary stream Returns: The DvbLocator of this elementary 
@@ -41,7 +42,7 @@ public org.davic.net.dvb.DvbLocator getDvbLocator() {
 public short[] getDescriptorTags() {
    return descriptorTags(nativeData);
 }
-private native short[] descriptorTags(long nativeData);
+private native short[] descriptorTags(NativeData nativeData);
 
 /*
 Get the elementary PID. Returns: The PID the data of elementary stream is sent on in the transport 
@@ -49,7 +50,7 @@ stream. */
 public short getElementaryPID() {
    return getElementaryPID(nativeData);
 }
-private native short getElementaryPID(long nativeData);
+private native short getElementaryPID(NativeData nativeData);
 
 /*
 Get the original network identi cation identi er. Returns: The original network identi 
@@ -64,7 +65,7 @@ Get the service identi cation identi er. Returns: The service identi cation. */
 public int getServiceID() {
    return getServiceID(request.nativeData);
 }
-private native int getServiceID(long nativREQUESTeData);
+private native int getServiceID(NativeData nativREQUESTeData);
 
 
 /*
@@ -73,7 +74,7 @@ PMTStreamType interface). See Also: PMTStreamType */
 public byte getStreamType() {
    return getStreamType(nativeData);
 }
-private native byte getStreamType(long nativeData);
+private native byte getStreamType(NativeData nativeData);
 
 
 /*
@@ -82,7 +83,7 @@ cation. */
 public int getTransportStreamID() {
    return getTransportStreamID(request.nativeData);
 }
-private native int getTransportStreamID(long nativeREQUESTData);
+private native int getTransportStreamID(NativeData nativeREQUESTData);
 
 
 /*
@@ -96,7 +97,8 @@ An object supplied by the application. This object will be delivered to the list
 application can use this objects for internal communication purposes. If the application does not need any application 
 data, the parameter can be null. listener - SIRetrievalListener that will receive the event informing about the 
 completion of the request. */
-public SIRequest retrieveDescriptors(short retrieveMode, java.lang.Object appData, SIRetrievalListener listener, short[] someDescriptorTags) {
+public SIRequest retrieveDescriptors(short retrieveMode, java.lang.Object appData, SIRetrievalListener listener, short[] someDescriptorTags) throws SIIllegalArgumentException {
+   SIDatabase.checkRetrieveMode(retrieveMode);
    return SIDatabaseRequest.DescriptorRequestPMTElementaryStream(this, someDescriptorTags, appData, listener, request.db, retrieveMode);
 }
 

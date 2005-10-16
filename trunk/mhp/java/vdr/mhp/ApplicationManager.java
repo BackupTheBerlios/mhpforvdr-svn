@@ -2,6 +2,7 @@
 package vdr.mhp;
 import org.dvb.application.*;
 import org.dvb.lang.DVBClassLoader;
+import org.dvb.si.SIDatabase;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 import vdr.mhp.lang.NativeData;
@@ -89,6 +90,7 @@ public static int Initialize(NativeData appDatabase) {
    
       //initialize org.dvb.application
       AppsDatabase.CreateDatabase(appDatabase);
+      SIDatabase.Initialize();
             
       //set some properties for System.getProperty()
       setupProperties();

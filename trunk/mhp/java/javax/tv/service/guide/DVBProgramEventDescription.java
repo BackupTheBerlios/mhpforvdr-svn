@@ -1,5 +1,6 @@
 package javax.tv.service.guide;
 
+// DEPRECATED
 
 //a trivial implementation - created by SIEventImpl with the data of that object
 public class DVBProgramEventDescription implements ProgramEventDescription {

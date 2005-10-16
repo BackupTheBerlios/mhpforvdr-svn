@@ -23,17 +23,17 @@ cApplications Applications;
 /* --------- cMyApplicationMonitor */
 
 void cApplicationMonitor::InitializeAllDevices() {
-   for (int i=0; i<DvbSi::Database::getNumberOfDatabases(); i++) {
-      DvbSi::Database::Ptr d=DvbSi::Database::getDatabase(i);
-      if (d)
-         new cApplicationMonitor(d);
+   std::list<DvbSi::Database::Ptr> list;
+   DvbSi::Database::getDatabases(list);
+   for (std::list<DvbSi::Database::Ptr>::iterator it = list.begin(); it != list.end(); ++it) {
+      new cApplicationMonitor(*it);
    }
 }
 
-cApplicationMonitor::cApplicationMonitor(DvbSi::Database::Ptr d)
-  : DvbSi::Filter(d), ts(0), request(0), numAitEntries(0) 
+cApplicationMonitor::cApplicationMonitor(DvbSi::Database::Ptr db)
+   : ts(0), db(db), request(0), filter(0)
 {
-   d->addDataSwitchListener(this);
+   db->addDataSwitchListener(this);
 }
 
 cApplicationMonitor::~cApplicationMonitor() {
@@ -69,12 +69,11 @@ void cApplicationMonitor::Result(DvbSi::Request *r) {
                switch (d->getDescriptorTag()) {
                case SI::ApplicationSignallingDescriptorTag:
                   service->AddAitPid(stream.getPid());
-                  //often several services hint at the same AIT pid, so check.
-                  if (!Matches(stream.getPid(), SI::TableIdAIT)) {
-                     printf("Adding AIT %d %d\n", stream.getPid(), SI::TableIdAIT);
-                     Add(stream.getPid(), SI::TableIdAIT);
-                     SetStatus(true);
+                  if (!filter) {
+                     // attached by its constructor
+                     filter=new AitFilter(db, ts);
                   }
+                  filter->Add(stream.getPid());
                   break;
                case SI::CarouselIdentifierDescriptorTag:
                   service->AddCarouselId(stream.getPid(), ((SI::CarouselIdentifierDescriptor *)d)->getCarouselId());
@@ -108,15 +107,31 @@ void cApplicationMonitor::DataSwitch(DvbSi::Database::Ptr db) {
       delete request;
       request=0;
    }*/
-   ts=Applications.GetTransportStream(db->getCurrentSource(), db->getNetworkId(), db->getPat().getTransportStreamId());
+   ts=Applications.GetTransportStream(db->getSource(), db->getOriginalNetworkId(), db->getPat().getTransportStreamId());
    delete request;
    request=0;
-   request=db->retrievePMTServices(this);
-   //printf("Current TS %d %d\n", ts->GetNid(), ts->GetTid());
+   delete filter;
+   filter=0;
+   request=db->retrieveActualPMTServices(this);
+   //printf("cApplicationMonitor::DataSwitch, current TS %d %d\n", ts->GetNid(), ts->GetTid());
 }
 
-void cApplicationMonitor::Process(u_short Pid, u_char Tid, const u_char *Data, int Length) {
-   if (ts && Tid==SI::TableIdAIT) {
+cApplicationMonitor::AitFilter::AitFilter(DvbSi::Database::Ptr db, cTransportStream *ts)
+   : DvbSi::Filter(db), ts(ts), numAitEntries(0)
+{
+   Attach();
+}
+
+void cApplicationMonitor::AitFilter::Add(u_short Pid) {
+   //often several services hint at the same AIT pid, so check.
+   if (!Matches(Pid, SI::TableIdAIT)) {
+      printf("Adding AIT %d %d\n", Pid, SI::TableIdAIT);
+      DvbSi::Filter::Add(Pid, SI::TableIdAIT);
+   }
+}
+
+void cApplicationMonitor::AitFilter::Process(u_short Pid, u_char Tid, const u_char *Data, int Length) {
+   if (Tid==SI::TableIdAIT) {
       cAIT ait(&Applications, ts);
       ait.setData(Data, Length, false);
       if (!ait.CheckCRCAndParse())
@@ -128,7 +143,7 @@ void cApplicationMonitor::Process(u_short Pid, u_char Tid, const u_char *Data, i
 }
 
 //taken from VDR 1.3.0, Copyright Klaus Schmidinger
-bool cApplicationMonitor::AitVersionChanged(int AitPid, int Version) {
+bool cApplicationMonitor::AitFilter::AitVersionChanged(int AitPid, int Version) {
   Version <<= 16;
   for (int i = 0; i < numAitEntries; i++) {
       if ((aitVersion[i] & 0x0000FFFF) == AitPid) {

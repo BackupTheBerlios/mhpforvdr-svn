@@ -37,7 +37,7 @@ public static final int INVALID = 0;
 public static final int NETWORK = HAS_ONID; //non-standard extension
 public static final int BOUQUET = HAS_BOUQUETID; //non-standard extension
 public static final int TRANSPORT_STREAM = HAS_ONID | HAS_TID;
-public static final int SERVICE = TRANSPORT_STREAM | HAS_SID;
+public static final int SERVICE = HAS_ONID | HAS_SID;
 public static final int COMPONENTS = SERVICE | HAS_CTAGS;
 public static final int EVENT = SERVICE | HAS_EID;
 public static final int EVENT_AND_COMPONENTS = SERVICE | EVENT | COMPONENTS;
@@ -67,7 +67,7 @@ public boolean provides(int type) {
 //internal API extension:
 //Returns true if locator describes a target given type. The descriptor is not more specific.
 public boolean is(int type) {
-   return flags == type;
+   return type == getType();
 }
 
 //internal API extension:
@@ -76,6 +76,7 @@ public int getType() {
    if (flags == TRANSPORT_STREAM
        || flags == NETWORK //non-standard extension
        || flags == BOUQUET //non-standard extension
+
        || flags == SERVICE
        || flags == COMPONENTS
        || flags == EVENT
@@ -84,6 +85,16 @@ public int getType() {
        || flags == CAROUSEL_PATH_AND_COMPONENTS
        || flags == CAROUSEL_PATH_AND_EVENT
        || flags == CAROUSEL_PATH_AND_EVENT_AND_COMPONENTS
+
+       // Sigh. TID is optional for Service and all those entities including a service reference
+       || flags == (SERVICE | HAS_TID)
+       || flags == (COMPONENTS | HAS_TID)
+       || flags == (EVENT | HAS_TID)
+       || flags == (EVENT_AND_COMPONENTS | HAS_TID)
+       || flags == (CAROUSEL_PATH | HAS_TID)
+       || flags == (CAROUSEL_PATH_AND_COMPONENTS | HAS_TID)
+       || flags == (CAROUSEL_PATH_AND_EVENT | HAS_TID)
+       || flags == (CAROUSEL_PATH_AND_EVENT_AND_COMPONENTS | HAS_TID)
       )
       return flags;
    else
@@ -138,8 +149,6 @@ void appendServiceWithoutEvent(StringBuffer url) {
       url.append(".");
 
       if (transport_stream_id != -1) {
-         //I learned that some implementation leave out the TID,
-         //but since MHP 1.0.3 it is supposed to be required.
          url.append(Integer.toHexString(transport_stream_id));
       }
       
@@ -280,7 +289,7 @@ public DvbLocator(String url) throws InvalidLocatorException {
                   
                   //parsing dvb_service_without_event with no textual_service_identifier
                   if (nextDot-index==1) {
-                     transport_stream_id=currentTransportStreamId();
+                     transport_stream_id=-1;
                   } else {
                      try {
                         transport_stream_id=Integer.parseInt(entity.substring(index, nextDot), 16);
@@ -448,7 +457,7 @@ specify a valid locator (e.g. a numeric identifier out of range) */
 public DvbLocator(int onid, int tsid, int serviceid) throws InvalidLocatorException {
    if (onid<0)
       throw new InvalidLocatorException(this, "Invalid original network ID "+onid);
-   if (tsid<0)
+   if (tsid<0 && tsid != -1)
       throw new InvalidLocatorException(this, "Invalid transport stream ID "+tsid);
    if (serviceid<0)
       throw new InvalidLocatorException(this, "Invalid service ID "+serviceid);
@@ -470,7 +479,7 @@ public DvbLocator(int onid, int tsid, int serviceid, int eventid) throws
 InvalidLocatorException{
    if (onid<0)
       throw new InvalidLocatorException(this, "Invalid original network ID "+onid);
-   if (tsid<0)
+   if (tsid<0 && tsid != -1)
       throw new InvalidLocatorException(this, "Invalid transport stream ID "+tsid);
    if (serviceid<0)
       throw new InvalidLocatorException(this, "Invalid service ID "+serviceid);
@@ -494,11 +503,11 @@ thlocator wouldn't specify a valid locator (e.g. a numeric identifier out of
   throws InvalidLocatorException {
    if (onid<0)
       throw new InvalidLocatorException(this, "Invalid original network ID "+onid);
-   if (tsid<0)
+   if (tsid<0 && tsid != -1)
       throw new InvalidLocatorException(this, "Invalid transport stream ID "+tsid);
    if (serviceid<0)
       throw new InvalidLocatorException(this, "Invalid service ID "+serviceid);
-   if (eventid<0)
+   if (eventid<0 && eventid != -1)
       throw new InvalidLocatorException(this, "Invalid event ID "+eventid);
    if (componenttag<0)
       throw new InvalidLocatorException(this, "Invalid component tag "+componenttag);
@@ -506,9 +515,11 @@ thlocator wouldn't specify a valid locator (e.g. a numeric identifier out of
    transport_stream_id=tsid;
    service_id=serviceid;
    event_id=eventid;
-   component_tags=new int[1];
-   component_tags[0]=componenttag;
-   flags=EVENT_AND_COMPONENTS;
+   component_tags=new int[] { componenttag };
+   if (eventid == -1)
+      flags=COMPONENTS;
+   else
+      flags=EVENT_AND_COMPONENTS;
 }
   /*Constructor for the DVB 
 locatoor "dvb://onid.tsid.serviceid.componenttag" Parameters: onid - original 
@@ -524,18 +535,21 @@ public DvbLocator(int onid, int tsid, int serviceid, int
 eventid, int  componenttag[]) throws InvalidLocatorException {
    if (onid<0)
       throw new InvalidLocatorException(this, "Invalid original network ID "+onid);
-   if (tsid<0)
+   if (tsid<0 && tsid != -1)
       throw new InvalidLocatorException(this, "Invalid transport stream ID "+tsid);
    if (serviceid<0)
       throw new InvalidLocatorException(this, "Invalid service ID "+serviceid);
-   if (eventid<0)
+   if (eventid<0 && eventid != -1)
       throw new InvalidLocatorException(this, "Invalid event ID "+eventid);
    original_network_id=onid;
    transport_stream_id=tsid;
    service_id=serviceid;
    event_id=eventid;
    component_tags=componenttag;
-   flags=EVENT_AND_COMPONENTS;
+   if (eventid == -1)
+      flags=COMPONENTS;
+   else
+      flags=EVENT_AND_COMPONENTS;
 }
 /* Constructor 
 for the DVB    locator corresponding to the URL form                             
@@ -551,11 +565,11 @@ public DvbLocator(int onid, int tsid, int serviceid, int eventid, int componentt
  String filePath) throws InvalidLocatorException {
    if (onid<0)
       throw new InvalidLocatorException(this, "Invalid original network ID "+onid);
-   if (tsid<0)
+   if (tsid<0 && tsid != -1)
       throw new InvalidLocatorException(this, "Invalid transport stream ID "+tsid);
    if (serviceid<0)
       throw new InvalidLocatorException(this, "Invalid service ID "+serviceid);
-   if (eventid<0)
+   if (eventid<0 && eventid != -1)
       throw new InvalidLocatorException(this, "Invalid event ID "+eventid);
    original_network_id=onid;
    transport_stream_id=tsid;
@@ -563,7 +577,10 @@ public DvbLocator(int onid, int tsid, int serviceid, int eventid, int componentt
    event_id=eventid;
    component_tags=componenttags;
    path=filePath;
-   flags=CAROUSEL_PATH_AND_EVENT_AND_COMPONENTS;
+   if (eventid == -1)
+      flags=CAROUSEL_PATH_AND_COMPONENTS;
+   else
+      flags=CAROUSEL_PATH_AND_EVENT_AND_COMPONENTS;
 }
 /*Constructor for the DVB locator corresponding to the URL form 
 "dvb://onid.tsid.serviceid.componenttag{&componenttag};eventid/filepath"

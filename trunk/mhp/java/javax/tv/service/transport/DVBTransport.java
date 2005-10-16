@@ -2,19 +2,22 @@
 package javax.tv.service.transport;
 import org.dvb.si.SIDatabase;
 import org.davic.net.dvb.DvbLocator;
+import org.dvb.si.SIDatabase;
 
 /*
-   As the spec wants it, one object to implement them all.
-   I am not quite sure what this object is supposed to represent.
-   The spec only mentions "the object implementing Transport",
-   so this means only one object which represents the receiving devices
-   abstractly.
-   However, since VDR supports multiple devices with possibly different delivery
-   systems, there are some difficulties.
-   => TODO for the future.
+   VDR does not provide any cache for Networks or Bouquets.
+   So this class simply takes all information directly from the Stream, no intermediate caching.
+   Of course, only the information from the current stream are available.
+   A reimplementation of these interface are a TODO for the future.
 */
 
 public class DVBTransport implements Transport, NetworkCollection, BouquetCollection {
+
+SIDatabase database;
+
+public DVBTransport(SIDatabase database) {
+   this.database = database;
+}
 
 /*
  
@@ -47,6 +50,7 @@ public class DVBTransport implements Transport, NetworkCollection, BouquetCollec
  */
 
 public void addServiceDetailsChangeListener ( ServiceDetailsChangeListener listener) {
+   System.out.println("DVBTransport.addServiceDetailsChangeListener: implement me");
 }
 
 
@@ -62,6 +66,7 @@ public void addServiceDetailsChangeListener ( ServiceDetailsChangeListener liste
  */
 
 public void removeServiceDetailsChangeListener ( ServiceDetailsChangeListener listener) {
+   System.out.println("DVBTransport.removeServiceDetailsChangeListener: implement me");
 }
 
 
@@ -75,7 +80,7 @@ public void removeServiceDetailsChangeListener ( ServiceDetailsChangeListener li
 */
 
 public javax.tv.service.navigation.DeliverySystemType  getDeliverySystemType () {
-   return javax.tv.service.navigation.DeliverySystemType.UNKNOWN;
+   return database.getDeliverySystemType();
 }
 
 
@@ -89,14 +94,17 @@ public javax.tv.service.SIRequest  retrieveNetwork ( javax.tv.locator.Locator lo
              throws javax.tv.locator.InvalidLocatorException ,
                  java.lang.SecurityException
 {
-   SIDatabase db=SIDatabase.getSIDatabase()[0];
    if (!(locator instanceof DvbLocator))
       throw new javax.tv.locator.InvalidLocatorException(locator, "Unsupported locator class");
    if (!((DvbLocator)locator).provides(DvbLocator.NETWORK))
       throw new javax.tv.locator.InvalidLocatorException(locator, "Locator does not specify network");
    int nid=((DvbLocator)locator).getNetworkId();
    javax.tv.service.OrgDvbSiRequestAdapter req=new javax.tv.service.OrgDvbSiRequestAdapter(requestor);
-   req.setRequest(db.retrieveSINetworks(org.dvb.si.SIInformation.FROM_CACHE_OR_STREAM, null, req, nid, null));
+   try {
+      req.setRequest(database.retrieveSINetworks(org.dvb.si.SIInformation.FROM_CACHE_OR_STREAM, null, req, nid, null));
+   } catch (org.dvb.si.SIIllegalArgumentException ex) {
+      ex.printStackTrace();
+   }
    return req;
 }
 
@@ -112,9 +120,12 @@ public javax.tv.service.SIRequest  retrieveNetwork ( javax.tv.locator.Locator lo
  DATA_UNAVAILABLE . */
 
 public javax.tv.service.SIRequest  retrieveNetworks ( javax.tv.service.SIRequestor requestor) {
-   SIDatabase db=SIDatabase.getSIDatabase()[0];
    javax.tv.service.OrgDvbSiRequestAdapter req=new javax.tv.service.OrgDvbSiRequestAdapter(requestor);
-   req.setRequest(db.retrieveSINetworks(org.dvb.si.SIInformation.FROM_CACHE_OR_STREAM, null, req, -1, null));
+   try {
+      req.setRequest(database.retrieveSINetworks(org.dvb.si.SIInformation.FROM_CACHE_OR_STREAM, null, req, -1, null));
+   } catch (org.dvb.si.SIIllegalArgumentException ex) {
+      ex.printStackTrace();
+   }
    return req;
 }
 
@@ -152,6 +163,7 @@ public javax.tv.service.SIRequest  retrieveNetworks ( javax.tv.service.SIRequest
  */
 
 public void addNetworkChangeListener ( NetworkChangeListener listener) {
+   System.out.println("DVBTransport.addNetworkChangeListener: implement me");
 }
 
 
@@ -170,6 +182,7 @@ public void addNetworkChangeListener ( NetworkChangeListener listener) {
 */
 
 public void removeNetworkChangeListener ( NetworkChangeListener listener) {
+   System.out.println("DVBTransport.removeNetworkChangeListener: implement me");
 }
 
 
@@ -182,14 +195,17 @@ public javax.tv.service.SIRequest  retrieveBouquet ( javax.tv.locator.Locator lo
              throws javax.tv.locator.InvalidLocatorException ,
                  java.lang.SecurityException
 {
-   SIDatabase db=SIDatabase.getSIDatabase()[0];
    if (!(locator instanceof DvbLocator))
       throw new javax.tv.locator.InvalidLocatorException(locator, "Unsupported locator class");
    if (!((DvbLocator)locator).provides(DvbLocator.BOUQUET))
       throw new javax.tv.locator.InvalidLocatorException(locator, "Locator does not specify bouquet");
    int bid=((DvbLocator)locator).getBouquetId();
    javax.tv.service.OrgDvbSiRequestAdapter req=new javax.tv.service.OrgDvbSiRequestAdapter(requestor);
-   req.setRequest(db.retrieveSIBouquets(org.dvb.si.SIInformation.FROM_CACHE_OR_STREAM, null, req, bid, null));
+   try {
+      req.setRequest(database.retrieveSIBouquets(org.dvb.si.SIInformation.FROM_CACHE_OR_STREAM, null, req, bid, null));
+   } catch (org.dvb.si.SIIllegalArgumentException ex) {
+      ex.printStackTrace();
+   }
    return req;
 }
 
@@ -206,9 +222,12 @@ public javax.tv.service.SIRequest  retrieveBouquet ( javax.tv.locator.Locator lo
 
 public javax.tv.service.SIRequest  retrieveBouquets ( javax.tv.service.SIRequestor requestor)
 {
-   SIDatabase db=SIDatabase.getSIDatabase()[0];
    javax.tv.service.OrgDvbSiRequestAdapter req=new javax.tv.service.OrgDvbSiRequestAdapter(requestor);
-   req.setRequest(db.retrieveSIBouquets(org.dvb.si.SIInformation.FROM_CACHE_OR_STREAM, null, req, -1, null));
+   try {
+      req.setRequest(database.retrieveSIBouquets(org.dvb.si.SIInformation.FROM_CACHE_OR_STREAM, null, req, -1, null));
+   } catch (org.dvb.si.SIIllegalArgumentException ex) {
+      ex.printStackTrace();
+   }
    return req;
 }
 
@@ -246,6 +265,7 @@ public javax.tv.service.SIRequest  retrieveBouquets ( javax.tv.service.SIRequest
  */
 
 public void addBouquetChangeListener ( BouquetChangeListener listener) {
+   System.out.println("DVBTransport.addBouquetChangeListener: implement me");
 }
 
 
@@ -264,6 +284,7 @@ public void addBouquetChangeListener ( BouquetChangeListener listener) {
 */
 
 public void removeBouquetChangeListener ( BouquetChangeListener listener) {
+   System.out.println("DVBTransport.removeBouquetChangeListener: implement me");
 }
 
 

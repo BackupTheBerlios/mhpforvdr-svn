@@ -22,13 +22,26 @@ class cDevice;
 
 namespace Service {
 
-// An interface representing an object a tuner can be tuned to,
+   // The possible delivery systems.
+   // DeliverySystemNone means no tuner at all (not always applicable)
+   // DeliverySystemSatellite, -Cable and -Terrestrial means DVB-S, -C or T respectively.
+   // DeliverySystemOther means a tuner with a different delivery system.
+enum DeliverySystem 
+     {
+      DeliverySystemNone, DeliverySystemSatellite,
+      DeliverySystemCable, DeliverySystemTerrestrial,
+      DeliverySystemOther
+     };
+
+ // An interface representing an object a tuner can be tuned to,
 // such as a transport stream or transponder.
 class Tunable {
 public:
    // Returns a cChannels which holds all necessary data for tuning.
    // Any other fields (IDs, PIDs, Names, ...) shall be ignored.
+   // Note that <vdr/channels.h> is not included by this file.
    virtual const cChannel *getTunableChannel() = 0;
+   virtual DeliverySystem getDeliverySystem() = 0;
 };
 
 // An interface representing a collection of Elementary Streams
@@ -50,9 +63,19 @@ public:
 class ChannelInformation {
 public:
    virtual const char *getName(void) = 0;
+   // If there is a short name, it is returned.
+   // If there is not short name, and orname is false, a null is returned,
+   // if orname is true, the (long) name is returned.
    virtual const char *getShortName(bool OrName = false) = 0;
    virtual const char *getProvider(void) = 0;
    virtual const char *getPortalName(void) = 0;
+};
+
+class CaInformation {
+public:
+   typedef std::vector<int> CaIDList;
+   virtual void getCaIDs(CaIDList &list) = 0;
+   virtual bool isFreeToAir() = 0;
 };
 
 // An interface for elements of a ChannelList
@@ -71,6 +94,7 @@ public:
    virtual Tunable *getTunable() = 0;
    virtual ChannelInformation *getChannelInformation() = 0;
    virtual ElementaryStreams *getElementaryStreams() = 0;
+   virtual CaInformation *getCaInformation() = 0;
 };
 
 enum SwitchSource {
@@ -92,14 +116,13 @@ public:
    virtual bool Tune(Tunable *tune) = 0;
    // Returns true if this tuned is currently tuned to given transponder
    virtual bool IsTunedTo(Tunable *tune) = 0;
-   // The cDevice of this tuner
+   // Returns if the tuner is capable of receiving the given Tunable
+   virtual bool Provides(Tunable *tune) = 0;
+   // Returns the ID of the current transport stream
+   virtual TransportStreamID getCurrentTransportStream() = 0;
+   // The cDevice of this tuner. Note that <vdr/device.h> is not included by this file.
    virtual cDevice *getDevice() = 0;
    // Get delivery system.
-   enum DeliverySystem {
-                         DeliverySystemNone, DeliverySystemSatellite,
-                         DeliverySystemCable, DeliverySystemTerrestrial,
-                         DeliverySystemOther
-                       };
    virtual DeliverySystem getDeliverySystem() = 0;
 };
 
@@ -154,11 +177,18 @@ public:
    virtual Service::Ptr findService(Tunable *tunable, ServiceID id, ElementaryStreams *streams) = 0;
 
    // Finds a service for the given ID. Retuns a null Ptr if none is found.
+   // None of the implications below apply, specifically, the TID is not ignored if it is -1.
    virtual Service::Ptr findService(ServiceID id) = 0;
-   // Tries all services for the given ID. Returns false if none is found.
-   // Channels with different sources (which is a VDR specific parameter), but same NID-TID-SID
-   // should be identical. However, there may be broken SI data out there.
-   virtual bool findService(int nid, int tid, int sid, std::list<Service::Ptr> services) = 0;
+   // Channels with different sources (which is a VDR specific parameter), but same ONID-TID-SID
+   // should be identical. Even more, channels with same ONID-SID should be identical.
+   // However, there may be broken SI data out there.
+   // Tries to find all services for the given ID. If the TID is -1, it is ignored.
+   // Returns false if none are found.
+   virtual bool findServices(int onid, int tid, int sid, std::list<Service::Ptr> services) = 0;
+   // Same implications as above.
+   // Returns the service with given ID, or the most probable channel if multiple services are found.
+   // One valid way to choose the most probable channel is to return the first found channel.
+   virtual Service::Ptr findService(int onid, int tid, int sid) = 0;
    // Finds the service associated with the given channel number. Retuns a null Ptr if channel number is invalid.
    virtual Service::Ptr findService(int channelNumber) = 0;
    // Get the current number of services

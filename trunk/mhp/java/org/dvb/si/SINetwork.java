@@ -51,8 +51,7 @@ application can use this objects for internal communication purposes. If the app
 data, the parameter can be null. listener - SIRetrievalListener that will receive the event informing about the 
 completion of the request. Returns: An SIRequest object Throws: SIIllegalArgumentException - thrown if the retrieveMode 
 is invalid */
-public SIRequest retrieveDescriptors(short retrieveMode, java.lang.Object appData, SIRetrievalListener 
-listener);
+public SIRequest retrieveDescriptors(short retrieveMode, java.lang.Object appData, SIRetrievalListener listener) throws SIIllegalArgumentException;
 
 
 /*
@@ -66,8 +65,7 @@ An object supplied by the application. This object will be delivered to the list
 application can use this objects for internal communication purposes. If the application does not need any application 
 data, the parameter can be null. listener - SIRetrievalListener that will receive the event informing about the 
 completion of the request. */
-public SIRequest retrieveDescriptors(short retrieveMode, java.lang.Object appData, SIRetrievalListener listener, short[] 
-someDescriptorTags);
+public SIRequest retrieveDescriptors(short retrieveMode, java.lang.Object appData, SIRetrievalListener listener, short[] someDescriptorTags) throws SIIllegalArgumentException;
 
 
 /*This method de nes extra semantics for the SIInformation.retrieveDescriptors method (second prototype).
@@ -88,8 +86,7 @@ tags (i.e. 0...255) are ignored, except for the special meaning of -1 as the onl
 SIRequest object Throws: SIIllegalArgumentException - thrown if the retrieveMode is 
 invalid
  */
-public SIRequest retrieveSITransportStreams(short retrieveMode, java.lang.Object appData, SIRetrievalListener listener, 
-short[] someDescriptorTags);
+public SIRequest retrieveSITransportStreams(short retrieveMode, java.lang.Object appData, SIRetrievalListener listener, short[] someDescriptorTags) throws SIIllegalArgumentException;
 
 
 

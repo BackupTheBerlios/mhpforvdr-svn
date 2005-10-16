@@ -5,8 +5,10 @@ import javax.tv.locator.Locator;
 import javax.tv.locator.InvalidLocatorException;
 import javax.tv.service.navigation.ServiceList;
 import javax.tv.service.navigation.ServiceFilter;
+import javax.tv.service.navigation.VDRServiceList;
 import javax.tv.service.transport.Transport;
 import javax.tv.service.transport.DVBTransport;
+import javax.tv.service.guide.VDRProgramSchedule;
 
 import org.davic.net.dvb.DvbLocator;
 
@@ -34,17 +36,9 @@ public class SIManagerImpl extends SIManager {
 
 String preferredLanguage = null;
 
-/*
-   In javax.tv.service, there is only one SIManager instance,
-   but in the object logic we have possibly multiple instances
-   of SIDatabase.
-   Currently, the primary database is used and only one object
-   of type Transport is created.
-   TODO: Think about a solution
-*/
 
-//SIDatabase db;
-Transport defaultTransport = new DVBTransport();
+// make this static? Don't know.
+Transport[] transports = null;
 
 
 /*
@@ -121,9 +115,7 @@ public void registerInterest ( Locator locator,
  */
 
 public java.lang.String[] getSupportedDimensions () {
-   String ret[]=new String[1];
-   ret[0]=DVBRatingDimension.dimensionName;
-   return ret;
+   return new String [] { DVBRatingDimension.dimensionName };
 }
 
 /*
@@ -157,7 +149,13 @@ public RatingDimension  getRatingDimension (java.lang.String name)
  */
 
 public Transport [] getTransports () {
-   return new Transport [] { defaultTransport };
+   if (transports == null) {
+      SIDatabase[] databases = SIDatabase.getSIDatabase();
+      Transport[] transports= new Transport[databases.length];
+      for (int i=0;i<databases.length;i++)
+         transports[i]=new DVBTransport(databases[i]);
+   }
+   return transports;
 }
 
 
@@ -173,13 +171,20 @@ public SIRequest  retrieveSIElement ( Locator locator,
                    throws InvalidLocatorException ,
                       java.lang.SecurityException 
 {
-   //What says the spec?
-   //When passed a locator that points to a service, an object implementing
-   // the ServiceDetails interface shall be returned. Other types of locators are not supported.
-   if (locator instanceof DvbLocator) {
+   // What does the spec say?
+   //  When passed a locator that points to a service, an object implementing
+   //  the ServiceDetails interface shall be returned. Other types of locators are not supported.
+   //  Locators representing program events are not supported and shall fail with an
+   //  SIRequestFailureType(INSUFFICIENT_RESOURCES).
+   //  Other types of locators are supported as de?ned.
+   // But then, we can retrieve an event, so why not do that?
+         if (locator instanceof DvbLocator) {
       DvbLocator loc=(DvbLocator)locator;
       if (loc.is(DvbLocator.SERVICE)) {
          return retrieveServiceDetails(locator, requestor);
+      } else if (loc.is(DvbLocator.EVENT)) {
+         // return deliverRequest(SIRequestFailureType.INSUFFICIENT_RESOURCES);
+         return retrieveProgramEvent(locator, requestor);
       } else
          throw new InvalidLocatorException(locator, "Only locators pointing to a service are accepted");
    } else
@@ -207,7 +212,11 @@ public Service  getService ( Locator locator)
    if (locator instanceof DvbLocator) {
       DvbLocator loc=(DvbLocator)locator;
       if (loc.is(DvbLocator.SERVICE)) {
-         return VDRService.getService(loc.getOriginalNetworkId(), loc.getTransportStreamId(), loc.getServiceId());
+         Service service = VDRService.getService(loc.getOriginalNetworkId(), loc.getTransportStreamId(), loc.getServiceId());
+         if (service == null)
+            throw new InvalidLocatorException(locator, "Service referenced by locator not found");
+         else
+            return service;
       } else
          throw new InvalidLocatorException(locator, "Only locators pointing to a service are accepted");
    } else
@@ -216,9 +225,32 @@ public Service  getService ( Locator locator)
 
 
 /*
- 
- Retrieves the ServiceDetails object corresponding to
- the given Locator .*/
+
+   Retrieves the ServiceDetails object corresponding to
+   the given Locator .
+   Note that the locator may point to an SI element lower in the hierarchy than a
+   service (such as a program event). In such a case, the ServiceDetails for the
+   service that the program event is part of will be returned. 
+   If a transport-independent locator is provided, one or more ServiceDetails
+   objects may be returned. However, it is permissible in this case for this method
+   to always retrieve a single ServiceDetails object, as determined by the
+   implementation, user preferences, or availability. To obtain all of the
+   corresponding ServiceDetails objects, the application may transform the
+   transport-independent locator into multiple transport-dependent locators and
+   retrieve a ServiceDetails object for each.
+   This method delivers its results asynchronously.
+   Parameters:
+   locator - A locator referencing a Service
+   requestor - The SIRequestor to be notified when this retrieval operation
+   completes.
+   Returns:
+   An SIRequest object identifying this asynchronous retrieval request.
+   Throws:
+   InvalidLocatorException - If locator does not reference a valid Service.
+   java.lang.SecurityException - If the caller does not have
+   javax.tv.service.ReadPermission(locator).
+
+*/
 
 public SIRequest  retrieveServiceDetails ( Locator locator,
                          SIRequestor requestor)
@@ -228,6 +260,9 @@ public SIRequest  retrieveServiceDetails ( Locator locator,
    if (locator instanceof DvbLocator) {
       DvbLocator loc=(DvbLocator)locator;
       if (loc.is(DvbLocator.SERVICE)) {
+         Service service = getService(locator);
+         return service.retrieveDetails(requestor);
+         /*
          SIDatabase db=SIDatabase.getDatabaseForChannel
             (loc.getOriginalNetworkId(), loc.getTransportStreamId(), loc.getServiceId());
          System.out.println("Database: "+db);
@@ -238,6 +273,7 @@ public SIRequest  retrieveServiceDetails ( Locator locator,
             req.setRequest(db.retrieveSIService(org.dvb.si.SIInformation.FROM_CACHE_OR_STREAM, null, req, loc, null));
             return req;
          }
+         */
       } else
          throw new InvalidLocatorException(locator, "Only locators pointing to a service are accepted");
    } else
@@ -258,9 +294,8 @@ public SIRequest  retrieveProgramEvent ( Locator locator,
                     throws InvalidLocatorException ,
                         java.lang.SecurityException
 {
-   //TODO
-   //see guide.DVBProgramSchedule.retrieveProgramEvent()
-   return deliverRequest(requestor, SIRequestFailureType.INSUFFICIENT_RESOURCES);
+   VDRService service = (VDRService)getService(locator);
+   return new VDRProgramSchedule(service).retrieveProgramEvent(locator, requestor);
 }
 
 
@@ -287,7 +322,7 @@ public SIRequest  retrieveProgramEvent ( Locator locator,
 */
 
 public ServiceList  filterServices ( ServiceFilter filter) {
-   return javax.tv.service.navigation.VDRServiceList.getList(filter);
+   return new VDRServiceList(filter);
 }
 
 

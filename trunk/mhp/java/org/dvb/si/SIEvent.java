@@ -116,8 +116,7 @@ someDescriptorTags is null, the application is not interested in descriptors. Al
 for descriptor tags (i.e. 0...255) are ignored, except for the special meaning of -1 as the only element in the 
 array.Returns: An SIRequest object Throws: SIIllegalArgumentException - thrown if the retrieveMode is 
 invalid */
-public SIRequest retrieveSIService(short retrieveMode, java.lang.Object appData, SIRetrievalListener listener, short[] 
-someDescriptorTags);
+public SIRequest retrieveSIService(short retrieveMode, java.lang.Object appData, SIRetrievalListener listener, short[] someDescriptorTags) throws SIIllegalArgumentException;
 
 
 

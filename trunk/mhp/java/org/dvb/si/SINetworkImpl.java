@@ -1,5 +1,6 @@
 package org.dvb.si;
 
+import vdr.mhp.lang.NativeData;
 
 /*This interface (together with the SITransportStreamNIT interface) represents a sub-table 
 of the Network Information Table (NIT) describing a particular network. Each object that 
@@ -10,14 +11,14 @@ public class SINetworkImpl extends SICommonObject implements SINetwork, javax.tv
 
 //nativeData is a pointer to a std::list<NIT>
 
-SINetworkImpl (SIDatabaseRequest request, long nativeData) {
+SINetworkImpl (SIDatabaseRequest request, NativeData nativeData) {
    super(request, nativeData);
 }
 
-protected void cleanUp(long nativeData) {
+protected void cleanUp(NativeData nativeData) {
    cleanUpStdList(nativeData);
 }
-private native void cleanUpStdList(long nativeData);
+private native void cleanUpStdList(NativeData nativeData);
 
 /*
 Return true when the information contained in the object that implements this interface was  ltered from an 'actual' 
@@ -42,7 +43,7 @@ tags). */
 public short[] getDescriptorTags() {
    return descriptorTags(nativeData);
 }
-private native short[] descriptorTags(long nativeData);
+private native short[] descriptorTags(NativeData nativeData);
 
 
 /*
@@ -50,10 +51,10 @@ This method returns the name of this network. The name is extracted from the net
 the multilingual_network_name_descriptor. When this information is not available "" is returned. All control characters 
 as de ned in ETR 211 are ignored. For each character the DVB-SI 8 bit character code is mapped to the appropriate 
 Unicode representation. Returns: The network name of this network. */
-public java.lang.String getName() {
-   return new String(name(nativeData));
+public String getName() {
+   return name(nativeData);
 }
-private native byte[] name(long nativeData);
+private native String name(NativeData nativeData);
 
 
 /*
@@ -62,7 +63,7 @@ er. */
 public int getNetworkID() {
    return networkId(nativeData);
 }
-private native int networkId(long nativeData);
+private native int networkId(NativeData nativeData);
 
 
 /*
@@ -70,10 +71,10 @@ This method returns the short name (ETR 211) of this network without emphasis ma
 network_name_descriptor or optionally from the multilingual_network_name_descriptor. When this information is not 
 available "" is returned. For each character the DVB-SI 8 bit character code is mapped to the appropriate Unicode 
 representation. Returns: The short network name of this network. */
-public java.lang.String getShortNetworkName() {
-   return new String(shortNetworkName(nativeData));
+public String getShortNetworkName() {
+   return shortNetworkName(nativeData);
 }
-private native byte[] shortNetworkName(long nativeData);
+private native String shortNetworkName(NativeData nativeData);
 
 
 /*
@@ -87,14 +88,16 @@ An object supplied by the application. This object will be delivered to the list
 application can use this objects for internal communication purposes. If the application does not need any application 
 data, the parameter can be null. listener - SIRetrievalListener that will receive the event informing about the 
 completion of the request. */
-public SIRequest retrieveDescriptors(short retrieveMode, java.lang.Object appData, SIRetrievalListener listener, short[] someDescriptorTags) {
+public SIRequest retrieveDescriptors(short retrieveMode, java.lang.Object appData, SIRetrievalListener listener, short[] someDescriptorTags) throws SIIllegalArgumentException {
+   SIDatabase.checkRetrieveMode(retrieveMode);
    return SIDatabaseRequest.DescriptorRequestNetwork(this, someDescriptorTags, appData, listener, request.db, retrieveMode);
 }
 
 /*Retrieve information associated with transport streams carried via the network. The SIIterator that is returned with the event when the request completes successfully will contain one or more objects that implement the SITransportStreamNIT interface. Parameters: retrieveMode - Mode of retrieval indicating whether the data should be retrieved only from the cache (FROM_CACHE_ONLY), from the cache if available and if not from the stream (FROM_CACHE_OR_STREAM), or always from the stream (FROM_STREAM_ONLY). appData - An object supplied by the application. This object will be delivered to the listener when the request completes. The application can use this objects for internal communication purposes. If the application does not need any application data, the parameter can be null. listener - SIRetrievalListener that will receive the event informing about the completion of the request. someDescriptorTags - A list of hints for descriptors (identi ed by their tags) the application is interested in. If the array contains -1 as its one and only element, the application is interested in all descriptors. If someDescriptorTags is null, the application is not interested in descriptors. All 546 ETSI TS 102 812 V1.1.1 (2001-11) values that are out of the valid range for descriptor tags (i.e. 0...255) are ignored, except for the special meaning of -1 as the only element in the array. Returns: An SIRequest object Throws: SIIllegalArgumentException - thrown if the retrieveMode is invalid 
 See Also: SIRequest, SIRetrievalListener, SITransportStreamNIT, DescriptorTag*/
-public SIRequest retrieveSITransportStreams(short retrieveMode, java.lang.Object appData, SIRetrievalListener listener, 
-short[] someDescriptorTags) {
+public SIRequest retrieveSITransportStreams(short retrieveMode, java.lang.Object appData, SIRetrievalListener listener,
+                                            short[] someDescriptorTags) throws SIIllegalArgumentException {
+   SIDatabase.checkRetrieveMode(retrieveMode);
    return SIDatabaseRequest.TransportStreamRequest(this, appData, listener, request.db, retrieveMode);
 }
 
@@ -218,7 +221,11 @@ public javax.tv.service.ServiceInformationType  getServiceInformationType () {
 
 public javax.tv.service.SIRequest  retrieveTransportStreams ( javax.tv.service.SIRequestor requestor) {
    javax.tv.service.OrgDvbSiRequestAdapter req=new javax.tv.service.OrgDvbSiRequestAdapter(requestor);
-   req.setRequest(retrieveSITransportStreams(FROM_CACHE_OR_STREAM, null, req, null));
+   try {
+      req.setRequest(retrieveSITransportStreams(FROM_CACHE_OR_STREAM, null, req, null));
+   } catch (org.dvb.si.SIIllegalArgumentException ex) {
+      ex.printStackTrace();
+   }
    return req;
 }
 

@@ -14,6 +14,7 @@
 #include <vdr/filter.h>
 #include <vdr/thread.h>
 #include <libdsmcc/util.h>
+#include <libservice/filter.h>
 
 namespace DvbSi {
 
@@ -35,13 +36,13 @@ typedef SmartPtr<Database> DatabasePtr;
 #define FILTER_TIMEOUT_TOT 30
 #define FILTER_TIMEOUT_TDT 30
 
-class Filter : public cFilter {
+class Filter : public Service::FilterTransportStreamFilter {
 friend class Database;
 public:
-   Filter(DatabasePtr db, bool attach=true);
+   Filter(DatabasePtr db);
    virtual ~Filter();
-   void Attach();
-   void Detach();
+   virtual void Attach();
+   virtual void Detach();
    DatabasePtr getDatabase();
 protected:
    DatabasePtr database;
@@ -49,12 +50,12 @@ private:
    bool attached;
 };
 
-class RequestFilter : public Filter {
+/*class RequestFilter : public Filter {
 public:
    RequestFilter(DatabasePtr db, Request *r);
 protected:
    Request *request;
-};
+};*/
 
 /*class SingleShotFilter : public Filter {
 public:

@@ -35,9 +35,7 @@ public DVBContentRatingAdvisory(short level) {
  */
 
 public java.lang.String[] getDimensionNames () {
-   String ret[]=new String[1];
-   ret[0]=DVBRatingDimension.dimensionName;
-   return ret;
+   return new String [] { DVBRatingDimension.dimensionName };
 }
 
 

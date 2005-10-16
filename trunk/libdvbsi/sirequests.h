@@ -30,6 +30,14 @@ protected:
    virtual void Process(u_short Pid, u_char Tid, const u_char *Data, int Length);
 };
 
+//retrieve NIT for actual network
+class ActualNetworkRequest : public TableFilterTrackerRequest<NIT> {
+public:
+   ActualNetworkRequest(DatabasePtr  db, Listener *listener, RetrieveMode mode, void *appData);
+protected:
+   virtual void Process(u_short Pid, u_char Tid, const u_char *Data, int Length);
+};
+
 //retrieve current TSDT
 class TransportStreamDescriptionRequest : public TableFilterTrackerRequest<TSDT> {
 public:
@@ -41,7 +49,8 @@ protected:
 //retrieve PMTs of current TS for specified service IDs
 class PMTServicesRequest : public TableFilterRequest<PMT> { //needs PAT
 public:
-   PMTServicesRequest(DatabasePtr  db, Listener *listener, IdTracker *serviceIds, RetrieveMode mode, void *appData);   
+   PMTServicesRequest(DatabasePtr  db, Listener *listener, int originalNetworkId, int transportStreamId, IdTracker *serviceIds, RetrieveMode mode, void *appData);
+   //onid, tid, sid equals data source
 protected:
    virtual void Process(u_short Pid, u_char Tid, const u_char *Data, int Length);
    bool addNext(SI::PAT &pat);
@@ -53,9 +62,10 @@ private:
 //retrieve SDTs for specified transport stream IDs
 class ServiceTableRequest : public TableFilterTrackerRequest<SDT> {
 public:
-   ServiceTableRequest(DatabasePtr  db, Listener *listener, IdTracker *transportStreamIds, RetrieveMode mode, void *appData);
+   ServiceTableRequest(DatabasePtr  db, Listener *listener, IdTracker *originalNetworkId, IdTracker *transportStreamIds, RetrieveMode mode, void *appData);
 protected:
    virtual void Process(u_short Pid, u_char Tid, const u_char *Data, int Length);
+   IdTracker *originalNetworkIds;
    int duplicatesOther;
 };
 
@@ -79,6 +89,16 @@ public:
 protected:
    virtual void Process(u_short Pid, u_char Tid, const u_char *Data, int Length);
    bool presentFollowing;
+};
+
+class TimeScheduleEventTableRequest : public TableFilterTrackerRequest<EIT> {
+public:
+   TimeScheduleEventTableRequest(DatabasePtr  db, Listener *listener, time_t begin, time_t end, int tid, int sid, RetrieveMode mode, void *appData);
+protected:
+   virtual void Process(u_short Pid, u_char Tid, const u_char *Data, int Length);
+   std::vector<int> segments;
+   bool presentFollowingFinished, scheduleFinished;
+   bool buildSegmentList(time_t begin, time_t end);
 };
 
 //retrieve one or more BATs for specified bouquet IDs
@@ -152,7 +172,7 @@ protected:
 //retrieve elementary streams for specified component tags from PMT of service specified
 class PMTElementaryStreamRequest : public ListSecondaryRequest<PMT::Stream> { //needs PAT
 public:
-   PMTElementaryStreamRequest(DatabasePtr  db, Listener *listener, int serviceId, IdTracker *componentTags, RetrieveMode mode, void *appData);
+   PMTElementaryStreamRequest(DatabasePtr  db, Listener *listener, int originalNetworkId, int transportStreamId, int serviceId, IdTracker *componentTags, RetrieveMode mode, void *appData);
    ~PMTElementaryStreamRequest();
    virtual void Result(Request *req);
    int getTransportStreamId() { return tid; }
@@ -207,6 +227,25 @@ public:
    int getTransportStreamId() { return tid; }
    int getOriginalNetworkId() { return nid; }
 protected:
+   int sid;
+   int tid;
+   int nid;
+};
+
+//retrieve the scheduled events (all events after present/following)
+// of a service of actual network with specified TID/SID
+class TimeScheduleEventRequest : public ListSecondaryRequest<EIT::Event> { //needs PAT
+public:
+   TimeScheduleEventRequest(DatabasePtr  db, Listener *listener, time_t begin, time_t end,
+                        int tid, int sid, RetrieveMode mode, void *appData);
+   virtual void Result(Request *req);
+   int getServiceId() { return sid; }
+   int getTransportStreamId() { return tid; }
+   int getOriginalNetworkId() { return nid; }
+protected:
+   time_t begin, end;
+   bool first;
+   RetrieveMode mode;
    int sid;
    int tid;
    int nid;

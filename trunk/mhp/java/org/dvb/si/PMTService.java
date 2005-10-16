@@ -51,8 +51,7 @@ application is interested in. If the array contains -1 as its one and only eleme
 descriptors. If somePMTDescriptorTags is null, the application is not interested in descriptors. All non applicable tag 
 values are ignored. Returns: An SIRequest object Throws: SIIllegalArgumentException - thrown if the retrieveMode is 
 invalid See Also: SIRequest, SIRetrievalListener, PMTElementaryStream */
-public SIRequest retrievePMTElementaryStreams(short retrieveMode, java.lang.Object appData, SIRetrievalListener 
-listener, short[] somePMTDescriptorTags);
+public SIRequest retrievePMTElementaryStreams(short retrieveMode, java.lang.Object appData, SIRetrievalListener listener, short[] somePMTDescriptorTags) throws SIIllegalArgumentException;
 
 
 
