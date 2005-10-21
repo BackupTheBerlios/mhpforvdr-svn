@@ -56,6 +56,7 @@ public:
    void *getAppData() { return appData; }
    Listener *getListener() { return listener; }
    ResultCode getResultCode() { return result; }
+   virtual void Dispatch();
 protected:
    ResultCode result;
 private:

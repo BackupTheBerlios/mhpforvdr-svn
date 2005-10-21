@@ -419,7 +419,7 @@ void ActualTransportStreamRequest::Result(Request *req) {
    } else
       result=req->getResultCode();
    delete req;
-   Dispatch();
+   ScheduleDispatch();
 }
 
 
@@ -449,7 +449,7 @@ TransportStreamRequest::TransportStreamRequest(Request *re, std::list<NIT> *nitl
       }
    } else
       result=request->getResultCode();
-   Dispatch();
+   ScheduleDispatch();
 }
 
 
@@ -478,7 +478,7 @@ TransportStreamBATRequest::TransportStreamBATRequest(Request *re, std::list<BAT>
       }
    } else
       result=request->getResultCode();
-   Dispatch();
+   ScheduleDispatch();
 }
 
 
@@ -526,7 +526,7 @@ void PMTElementaryStreamRequest::Result(Request *req) {
    } else
       result=req->getResultCode();
    delete req;
-   Dispatch();
+   ScheduleDispatch();
 }
 
 
@@ -571,7 +571,7 @@ void ServicesRequest::Result(Request *req) {
    } else
       result=req->getResultCode();
    delete req;
-   Dispatch();
+   ScheduleDispatch();
 }
 
 ActualServicesRequest::ActualServicesRequest(Database::Ptr db, Listener *listener, IdTracker *serviceIds, RetrieveMode mode, void *appData)
@@ -615,7 +615,7 @@ void ActualServicesRequest::Result(Request *req) {
    } else
       result=req->getResultCode();
    delete req;
-   Dispatch();
+   ScheduleDispatch();
 }
 
 PresentFollowingEventRequest::PresentFollowingEventRequest(Database::Ptr db, Listener *listener, 
@@ -670,7 +670,7 @@ void PresentFollowingEventRequest::Result(Request *req) {
    } else
       result=req->getResultCode();
    delete req;
-   Dispatch(database);
+   ScheduleDispatch(database);
 }
 
 ScheduleEventRequest::ScheduleEventRequest(Database::Ptr db, Listener *listener, 
@@ -710,7 +710,7 @@ void ScheduleEventRequest::Result(Request *req) {
    } else
       result=req->getResultCode();
    delete req;
-   Dispatch();
+   ScheduleDispatch();
 }
 
 TimeScheduleEventRequest::TimeScheduleEventRequest(Database::Ptr db, Listener *listener, time_t begin, time_t end,
@@ -751,7 +751,7 @@ void TimeScheduleEventRequest::Result(Request *req) {
    } else
       result=req->getResultCode();
    delete req;
-   Dispatch();
+   ScheduleDispatch();
 }
 
 
@@ -802,7 +802,7 @@ void TimeScheduleEventRequest::Result(Request *req) {
    } else {
       result=req->getResultCode();
       delete req;
-      Dispatch();
+      ScheduleDispatch();
       return;
    }
    
@@ -817,7 +817,7 @@ void TimeScheduleEventRequest::Result(Request *req) {
       }
    } else {
       delete req;
-      Dispatch();
+      ScheduleDispatch();
    }
 }
 */

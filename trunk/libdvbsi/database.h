@@ -201,7 +201,7 @@ private:
       class RequestDispatcher : public Dispatcher {
       public:
          RequestDispatcher(Request *req) : r(req) {}
-         virtual void Dispatch() { r->getListener()->Result(r); }
+         virtual void Dispatch() { r->Dispatch(); }
       private:
          Request *r;
       };

@@ -33,7 +33,7 @@ public:
    DatabaseRequest(Listener *l, void *ad=0) : Request(l, ad), finished(false), hasDispatched(false) {}
    virtual const DataSource &getDataSource() { return source; }
 protected:
-   void Dispatch(DatabasePtr db);
+   void ScheduleDispatch(DatabasePtr db);
    void setDataSource(const DataSource &s) { source=s; }
    bool finished;
    bool hasDispatched;
@@ -47,8 +47,9 @@ public:
    virtual ~FilterRequest();
    bool CancelRequest();
    virtual void Detach();
+   virtual void Dispatch();
 protected:
-   void Dispatch() { DatabaseRequest::Dispatch(getDatabase()); }
+   void ScheduleDispatch() { DatabaseRequest::ScheduleDispatch(getDatabase()); }
    virtual void OtherTransportStream(Service::TransportStreamID ts);
    bool checkFinish();
    virtual void Execute(); //from TimedBySeconds to handle timeout
@@ -416,7 +417,7 @@ public:
    typedef T objectType;
    DatabasePtr  getDatabase() { return database; }
 protected:
-   void Dispatch() { DatabaseRequest::Dispatch(getDatabase()); }
+   void ScheduleDispatch() { DatabaseRequest::ScheduleDispatch(getDatabase()); }
    DatabasePtr  database;
 };
 

@@ -10,5 +10,11 @@
 
 #include "request.h"
 
-//nothing here currently ;-)
+namespace DvbSi {
+
+void Request::Dispatch() {
+   getListener()->Result(this);
+}
+
+}
 
